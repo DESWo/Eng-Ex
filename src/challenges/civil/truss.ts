@@ -40,13 +40,18 @@ export function memberLength(joints: TrussJoint[], key: string) {
   return Math.hypot(jb.x - ja.x, jb.y - ja.y)
 }
 
+/** Per-beam strength limits, so different materials can be mixed in one bridge. */
+export interface BeamCaps {
+  tension: number
+  compression: number
+}
+
 export function solveTruss(
   joints: TrussJoint[],
   memberKeys: string[],
   loadJointId: string,
   loadWeight: number,
-  tensionCap: number,
-  compressionCap: number,
+  capsFor: (key: string) => BeamCaps,
 ): SolveOutcome {
   const jointById = new Map(joints.map((j) => [j.id, j]))
 
@@ -154,7 +159,8 @@ export function solveTruss(
     const stretch = (ub[0] - ua[0]) * c + (ub[1] - ua[1]) * s
     const force = (EA / length) * stretch
     forces[key] = force
-    const cap = force >= 0 ? tensionCap : compressionCap
+    const caps = capsFor(key)
+    const cap = force >= 0 ? caps.tension : caps.compression
     const util = Math.abs(force) / cap
     utilization[key] = util
     if (util >= worstUtil) {
