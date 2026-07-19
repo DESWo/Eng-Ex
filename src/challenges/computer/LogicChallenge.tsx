@@ -24,12 +24,6 @@ const evalGate = (gate: Gate, a: boolean, b: boolean) => {
   }
 }
 
-const GATE_HINT: Record<Gate, string> = {
-  AND: 'ON only when BOTH inputs are on',
-  OR: 'ON when EITHER input is on',
-  XOR: 'ON when the inputs are DIFFERENT',
-  NOT: 'flips input A: ON becomes off',
-}
 
 interface LogicRound {
   label: string
@@ -199,12 +193,11 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
               onClick={() => setGate(g)}
               aria-pressed={gate === g}
               className={cn(
-                'rounded-2xl border-2 px-4 py-2 text-left transition-colors duration-200',
+                'rounded-2xl border-2 px-5 py-2.5 font-display text-sm font-bold transition-colors duration-200',
                 gate === g ? 'accent-border accent-soft accent-text' : 'border-stone-200 hover:border-stone-300 dark:border-white/10 dark:hover:border-white/25',
               )}
             >
-              <span className="font-display text-sm font-bold">{g}</span>
-              <span className="block text-xs text-ink-soft dark:text-stone-400">{GATE_HINT[g]}</span>
+              {g}
             </button>
           ))}
         </div>

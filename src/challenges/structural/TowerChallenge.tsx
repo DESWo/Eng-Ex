@@ -201,11 +201,11 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
           </motion.div>
         ) : overBudget ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget. Try a cheaper mix. A wide base adds a lot of stiffness for the price.
+            Over budget. This design costs more than you are allowed to spend.
           </p>
         ) : (
           <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Too wobbly. Stiffness {stiffness} is below the wind ({round.wind}). Upgrade the core or add a damper.
+            The tower sways too much in this wind. Its stiffness ({stiffness}) could not stand up to the gusts ({round.wind}).
           </p>
         )}
       </div>

@@ -265,7 +265,6 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     throw new Error(`Unknown terminal ${id}`)
   }
 
-  const missing = required.filter((id) => !powered.has(id))
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -442,7 +441,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
         {short && (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
             Whoa, short circuit! A wire runs from + straight back to − without passing through
-            anything. Remove it before something melts.
+            anything, so all the power races through it. That would overheat fast.
           </p>
         )}
         {!short && wonRound && (
@@ -456,16 +455,12 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
         )}
         {!short && !winNow && winIfOn && hasSwitch && !switchOn && (
           <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            The wiring is perfect. Now flip the switch!
+            The loop looks complete, but nothing is running. Something is still holding the current back.
           </p>
         )}
         {!short && !winNow && !winIfOn && powered.size > 0 && (
           <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Power is flowing, but not through everything. Still outside the loop:{' '}
-            {missing
-              .map((id) => round.components.find((c) => c.id === id)?.label ?? id)
-              .join(', ')}
-            .
+            Some power is flowing, but not every part has lit up yet.
           </p>
         )}
       </div>

@@ -209,7 +209,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
           </motion.p>
         ) : overBudget ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget. Switch off a stage you do not actually need for this water.
+            Over budget. This many stages costs more than you are allowed to spend.
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">

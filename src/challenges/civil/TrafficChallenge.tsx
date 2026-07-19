@@ -7,7 +7,6 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Slider } from '@/components/ui/Slider'
 import type { ChallengeProps } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
 const CYCLE = 60 // seconds in one full light cycle
@@ -41,32 +40,13 @@ function RoadCard({
   arriving: number
   clearing: number
 }) {
-  const keepsUp = clearing >= arriving
   return (
-    <div
-      className={cn(
-        'rounded-2xl border-2 p-4 transition-colors duration-200',
-        keepsUp
-          ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10'
-          : 'border-rose-300 bg-rose-50 dark:border-rose-500/40 dark:bg-rose-500/10',
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-display text-sm font-bold">{name}</p>
-        <Badge
-          className={
-            keepsUp
-              ? 'bg-emerald-200 text-emerald-900 dark:bg-emerald-500/25 dark:text-emerald-200'
-              : 'bg-rose-200 text-rose-900 dark:bg-rose-500/25 dark:text-rose-200'
-          }
-        >
-          {keepsUp ? 'Keeps up' : 'Backs up'}
-        </Badge>
-      </div>
+    <div className="rounded-2xl border-2 border-stone-200 p-4 dark:border-white/10">
+      <p className="font-display text-sm font-bold">{name}</p>
       <p className="mt-2 text-sm tabular-nums text-ink-soft dark:text-stone-300">
-        {arriving} cars arrive each minute.
+        <span className="font-bold">{arriving}</span> cars arrive each minute.
         <br />
-        Green time clears <span className="font-bold">{clearing}</span> each minute.
+        Its green time clears <span className="font-bold">{clearing}</span> each minute.
       </p>
     </div>
   )
@@ -213,8 +193,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
             className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
           >
             {!okNS
-              ? 'The northbound queue keeps growing. Slide green time toward North-South.'
-              : 'The westbound queue keeps growing. Slide green time toward East-West.'}
+              ? 'The northbound queue never cleared. Cars piled up faster than the light let them through.'
+              : 'The westbound queue never cleared. Cars piled up faster than the light let them through.'}
           </motion.p>
         )}
       </div>

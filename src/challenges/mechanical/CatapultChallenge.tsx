@@ -51,9 +51,9 @@ type Verdict = 'short' | 'far' | 'hit' | 'wall'
 
 const messages: Record<Verdict, (d: number) => string> = {
   hit: (d) => `Bullseye! You landed right on the camp at ${d} m.`,
-  short: (d) => `Too short! It landed at ${d} m. Add power, or flatten the angle a touch.`,
-  far: (d) => `Too far! It flew to ${d} m. Ease off the power a little.`,
-  wall: () => 'Thunk! The wall caught it. Arc higher to clear it.',
+  short: (d) => `Landed short, at ${d} m.`,
+  far: (d) => `Overshot, all the way to ${d} m.`,
+  wall: () => 'Thunk! The wall knocked it down.',
 }
 
 export function CatapultChallenge({ onComplete }: ChallengeProps) {
@@ -326,7 +326,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
         )}
         {!result && showTip && (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Engineer's tip: 45 degrees flies farthest in calm air. Walls want a higher arc. Wind wants extra power or less.
+            Stuck? Change just one thing at a time, angle or power, and watch how the landing spot moves. That is how engineers zero in.
           </p>
         )}
       </div>

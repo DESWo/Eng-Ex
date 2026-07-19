@@ -205,7 +205,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Systems tie together: more science needs more power AND more cooling. Feed the whole chain.
+            Some subsystems still are not getting what they need. Notice which ones lean on the others.
           </p>
         )}
       </div>

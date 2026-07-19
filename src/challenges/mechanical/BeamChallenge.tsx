@@ -81,8 +81,8 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
       {wonRound && <Confetti />}
 
       <p className="mb-4 text-sm text-ink-soft dark:text-stone-400">
-        Cargo landed on the left side. Choose a counterweight and slide it out until the beam sits
-        level.
+        Cargo landed on the left side. Use one counterweight on the right to get the beam level and
+        keep it there.
       </p>
 
       {/* Scene */}
@@ -171,8 +171,8 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
             {balanced
               ? 'Steady... hold it there!'
               : diff < 0
-                ? `The cargo is winning (left ${leftTwist} vs right ${rightTwist}). Add weight or slide it outward.`
-                : `Too much on your side (left ${leftTwist} vs right ${rightTwist}). Ease back toward the middle.`}
+                ? 'The cargo side is dropping. It out-twists your counterweight right now.'
+                : 'Your counterweight side is dropping. It out-twists the cargo right now.'}
           </p>
         )}
       </div>

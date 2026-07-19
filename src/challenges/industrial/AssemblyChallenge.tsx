@@ -112,8 +112,8 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <ol className="space-y-0.5 text-sm text-ink-soft dark:text-stone-400">
           <li>1. Every item moves down the line one station at a time.</li>
-          <li>2. The SLOWEST station sets the pace for everyone. That is the bottleneck.</li>
-          <li>3. Add workers to speed a station up. Beat the target rate with the workers you have.</li>
+          <li>2. Each worker you add to a station makes that station faster.</li>
+          <li>3. Beat the target rate with the workers you have. Watch where things pile up.</li>
         </ol>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           {round.label} · aim for {round.targetRate}/min
@@ -211,7 +211,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
           </motion.p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            The line runs at the speed of <span className="font-bold">{bottleneck.name}</span> ({cycleTime.toFixed(1)}s per item). Put more workers there to speed everything up.
+            Right now the line makes {rate}/min. A line can only move as fast as its slowest station.
           </p>
         )}
       </div>

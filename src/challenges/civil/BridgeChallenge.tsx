@@ -207,8 +207,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <ol className="space-y-0.5 text-sm text-ink-soft dark:text-stone-400">
           <li>1. Tap two dots to stretch a beam between them. Tap a beam to remove it.</li>
-          <li>2. Build the road across the water first, then brace it. Triangles are your friends.</li>
-          <li>3. Stay under budget, then send the truck.</li>
+          <li>2. Build a bridge the truck can cross without it collapsing.</li>
+          <li>3. Stay under budget, then send the truck to test it.</li>
         </ol>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           {round.label} · {round.load} tons
@@ -336,17 +336,17 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         )}
         {phase === 'failed' && failMode === 'unstable' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            The bridge folds up like paper. It is not stiff enough. Add diagonals until every shape is a triangle, and tie the tops together.
+            The whole thing folded up and dropped the truck into the river.
           </motion.p>
         )}
         {phase === 'failed' && failMode === 'tension' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Snap! The red beam was stretched past its limit. More bracing spreads the pull across more beams.
+            Snap! The red beam was stretched past its breaking point.
           </motion.p>
         )}
         {phase === 'failed' && failMode === 'compression' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Buckled! The red beam was squeezed until it bent. Squeezed beams fail early. Long crossing braces share the squeeze.
+            Crunch! The red beam was squeezed until it buckled. Squeezed beams give out earlier than stretched ones.
           </motion.p>
         )}
         {phase === 'build' && overBudget && (

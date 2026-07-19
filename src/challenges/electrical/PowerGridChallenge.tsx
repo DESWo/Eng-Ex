@@ -297,12 +297,12 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
         )}
         {allLit && overBudget && (
           <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Every home has power, but the wire ran out. Remove some lines and find shorter routes.
+            Every home is lit, but you used more wire than the budget allows.
           </p>
         )}
         {!allLit && overBudget && (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Out of wire! Try letting houses share one route instead of building separate lines.
+            Out of wire, and some homes are still dark.
           </p>
         )}
       </div>

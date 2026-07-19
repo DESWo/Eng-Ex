@@ -88,8 +88,8 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">
-          Trim the plane for level flight. Enough lift to match the weight, but keep the nose below
-          the stall angle.
+          Fly the plane straight and level, holding the dashed line. Two controls: work out what each
+          one does to the flight.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">{round.label}</Badge>
@@ -155,11 +155,11 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
           {wonRound
             ? 'Smooth and level. That is a happy passenger flight.'
             : status === 'stall'
-              ? 'Stalled! The nose is too high, so the wing stopped lifting. Lower the angle.'
+              ? 'Stalled! The nose got so steep the wing lost its grip on the air.'
               : status === 'climb'
-                ? 'Climbing. You have more lift than you need. Ease the nose down or the throttle back.'
+                ? 'Climbing away from the target line. There is more lift than weight right now.'
                 : status === 'sink'
-                  ? 'Sinking. Not enough lift. Add throttle or raise the nose a little.'
+                  ? 'Sinking below the line. There is not enough lift to hold the weight up.'
                   : 'Holding level... steady!'}
         </p>
       </div>
@@ -170,7 +170,7 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
         <Slider label="Nose angle" value={angle} min={0} max={24} unit="°" onChange={setAngle} />
       </div>
       <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
-        Careful: past {STALL_ANGLE}° the wing stalls no matter how fast you go.
+        Careful with the nose angle: too steep and the wing stalls no matter how fast you go.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

@@ -97,8 +97,8 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">
-          Pull the control rods out to make power. Pump enough coolant to keep the core below the red
-          line.
+          Bring the reactor up to meet the grid's demand, and keep the core temperature out of the
+          red. Two controls, see what each one does.
         </p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           {round.label} · aim for {bandLow}-{bandHigh} MW
@@ -232,16 +232,16 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
           </motion.p>
         ) : meltdown ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Meltdown! Too much power with too little cooling. Hit reset, insert rods, then bring it up slowly.
+            Meltdown! The core ran away and overheated. Hit reset to bring it back online.
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
             {!inBand
               ? power < bandLow
-                ? 'Not enough power. Pull the rods out a bit more.'
-                : 'Too much power. Push the rods back in.'
+                ? 'The grid needs more power than the reactor is making.'
+                : 'The reactor is making more power than the grid needs.'
               : temp >= SAFE_TEMP
-                ? 'Power is right, but it is running hot. Turn up the coolant.'
+                ? 'Power is on target, but the core is running hot.'
                 : 'Looking good... hold it steady!'}
           </p>
         )}

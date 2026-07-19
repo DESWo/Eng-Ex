@@ -4,17 +4,13 @@ import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
   Coffee,
-  Droplets,
-  Fan,
   Flame,
   Lamp,
   Lightbulb,
   Microwave,
-  Monitor,
   Refrigerator,
   RotateCcw,
   Snowflake,
-  Tv,
   Utensils,
   WashingMachine,
   Zap,
@@ -28,11 +24,17 @@ import type { ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
+// Motors (AC, fridge, dryer...) briefly draw this much EXTRA the instant they
+// switch on. A circuit can look fine on steady watts and still trip at startup.
+const SURGE = 0.5 // +50% => 1.5x startup draw
+
 interface Appliance {
   id: string
   label: string
   watts: number
   icon: LucideIcon
+  /** Motors spike at startup. Their steady bar hides that extra draw. */
+  motor?: boolean
 }
 
 interface BreakerCircuit {
@@ -47,51 +49,55 @@ interface OverloadRound {
   appliances: Appliance[]
 }
 
-/** Each win brings a new house with trickier loads. */
+const surgeExtra = (a: Appliance) => (a.motor ? Math.round(a.watts * SURGE) : 0)
+
+/** Each win is a fuller house on tighter circuits. */
 const ROUNDS: OverloadRound[] = [
   {
-    label: 'The kitchen remodel',
+    label: 'Kitchen rush',
     circuits: [
       { id: 'A', label: 'Circuit A', rating: 1800 },
       { id: 'B', label: 'Circuit B', rating: 1800 },
     ],
     appliances: [
-      { id: 'heater', label: 'Heater', watts: 1200, icon: Flame },
+      { id: 'heater', label: 'Space heater', watts: 1200, icon: Flame },
       { id: 'kettle', label: 'Kettle', watts: 1100, icon: Coffee },
       { id: 'microwave', label: 'Microwave', watts: 700, icon: Microwave },
-      { id: 'tv', label: 'TV', watts: 200, icon: Tv },
-      { id: 'lamp', label: 'Lamp', watts: 100, icon: Lamp },
+      { id: 'toaster', label: 'Toaster', watts: 250, icon: Utensils },
+      { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
+      { id: 'lights', label: 'Lights', watts: 100, icon: Lightbulb },
     ],
   },
   {
-    label: 'Summer heat wave',
+    label: 'Hot afternoon',
     circuits: [
-      { id: 'A', label: 'Circuit A', rating: 1500 },
-      { id: 'B', label: 'Circuit B', rating: 1500 },
-      { id: 'C', label: 'Circuit C', rating: 1500 },
+      { id: 'A', label: 'Circuit A', rating: 1800 },
+      { id: 'B', label: 'Circuit B', rating: 1800 },
+      { id: 'C', label: 'Circuit C', rating: 1800 },
     ],
     appliances: [
-      { id: 'ac', label: 'AC unit', watts: 1400, icon: Snowflake },
-      { id: 'dishwasher', label: 'Dishwasher', watts: 1200, icon: Droplets },
+      { id: 'ac', label: 'AC unit', watts: 900, icon: Snowflake, motor: true },
+      { id: 'oven', label: 'Oven', watts: 1200, icon: Flame },
       { id: 'microwave', label: 'Microwave', watts: 900, icon: Microwave },
-      { id: 'computer', label: 'Computer', watts: 300, icon: Monitor },
-      { id: 'tv', label: 'TV', watts: 200, icon: Tv },
-      { id: 'lights', label: 'Lights', watts: 150, icon: Lightbulb },
-      { id: 'fan', label: 'Fan', watts: 100, icon: Fan },
+      { id: 'toaster', label: 'Toaster', watts: 800, icon: Utensils },
+      { id: 'fridge', label: 'Fridge', watts: 400, icon: Refrigerator, motor: true },
+      { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
     ],
   },
   {
-    label: 'Laundry day',
+    label: 'Laundry and dinner',
     circuits: [
       { id: 'A', label: 'Circuit A', rating: 2000 },
-      { id: 'B', label: 'Circuit B', rating: 1600 },
+      { id: 'B', label: 'Circuit B', rating: 1800 },
+      { id: 'C', label: 'Circuit C', rating: 1600 },
     ],
     appliances: [
-      { id: 'dryer', label: 'Dryer', watts: 1800, icon: WashingMachine },
-      { id: 'microwave', label: 'Microwave', watts: 900, icon: Microwave },
-      { id: 'airfryer', label: 'Air fryer', watts: 450, icon: Utensils },
-      { id: 'fridge', label: 'Mini fridge', watts: 250, icon: Refrigerator },
-      { id: 'lamp', label: 'Lamp', watts: 100, icon: Lamp },
+      { id: 'dryer', label: 'Dryer', watts: 1400, icon: WashingMachine },
+      { id: 'ac', label: 'AC unit', watts: 800, icon: Snowflake, motor: true },
+      { id: 'oven', label: 'Oven', watts: 1000, icon: Flame },
+      { id: 'fridge', label: 'Fridge', watts: 350, icon: Refrigerator, motor: true },
+      { id: 'airfryer', label: 'Air fryer', watts: 700, icon: Utensils },
+      { id: 'lamp', label: 'Lamp', watts: 250, icon: Lamp },
     ],
   },
 ]
@@ -129,6 +135,7 @@ function ApplianceChip({
       <Icon className="h-4 w-4" />
       {appliance.label}
       <span className="tabular-nums opacity-70">{appliance.watts}W</span>
+      {appliance.motor && <Zap className="h-3.5 w-3.5 text-amber-500" fill="currentColor" />}
     </button>
   )
 }
@@ -142,20 +149,22 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const round = ROUNDS[roundIndex % ROUNDS.length]
+  const hasMotors = round.appliances.some((a) => a.motor)
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current)
   }, [])
 
-  const loadOf = (circuitId: string) =>
-    round.appliances
-      .filter((a) => assignment[a.id] === circuitId)
-      .reduce((sum, a) => sum + a.watts, 0)
+  const onCircuit = (circuitId: string) => round.appliances.filter((a) => assignment[a.id] === circuitId)
+  /** Steady draw shown on the meters while you arrange. */
+  const steadyOf = (circuitId: string) => onCircuit(circuitId).reduce((sum, a) => sum + a.watts, 0)
+  /** Peak draw the instant the power comes on (steady + every motor's surge). */
+  const peakOf = (circuitId: string) =>
+    onCircuit(circuitId).reduce((sum, a) => sum + a.watts + surgeExtra(a), 0)
 
   const unassigned = round.appliances.filter((a) => !assignment[a.id])
-  const tripped = round.circuits.filter((c) => loadOf(c.id) > c.rating)
+  const tripped = round.circuits.filter((c) => peakOf(c.id) > c.rating)
 
-  /** Tap an appliance to pick it up, then tap a circuit (or the pool) to place it. */
   const clickAppliance = (applianceId: string) => {
     if (phase === 'testing') return
     setPhase('idle')
@@ -206,23 +215,28 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {phase === 'passed' && <Confetti />}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p aria-live="polite" className="text-sm font-semibold text-ink-soft dark:text-stone-400">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p aria-live="polite" className="max-w-md text-sm font-semibold text-ink-soft dark:text-stone-400">
           {selectedAppliance
-            ? `Now tap a circuit to plug the ${selectedAppliance.label.toLowerCase()} in. Tap the shelf to unplug it.`
-            : 'Tap an appliance to pick it up, then tap a circuit to plug it in.'}
+            ? `Tap a circuit to plug in the ${selectedAppliance.label.toLowerCase()}, or the shelf to set it back.`
+            : 'Plug everything in, then hit the power. A breaker trips if its circuit is pushed past its limit.'}
         </p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">{round.label}</Badge>
       </div>
+
+      {hasMotors && (
+        <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+          <Zap className="h-3.5 w-3.5" fill="currentColor" />
+          Motors draw about 1.5x for a moment when they first switch on.
+        </p>
+      )}
 
       {/* Unplugged shelf. Tap it (while holding an appliance) to unplug. */}
       <div
         onClick={() => placeSelected(null)}
         className={cn(
           'rounded-2xl border-2 border-dashed p-4 transition-colors duration-200',
-          selectedId
-            ? 'accent-border cursor-pointer'
-            : 'border-stone-200 dark:border-white/10',
+          selectedId ? 'accent-border cursor-pointer' : 'border-stone-200 dark:border-white/10',
         )}
       >
         <p className="mb-3 font-display text-xs font-bold uppercase tracking-widest text-ink-soft dark:text-stone-400">
@@ -230,9 +244,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
         </p>
         <div className="flex flex-wrap gap-2">
           {unassigned.length === 0 && (
-            <p className="text-sm text-ink-soft dark:text-stone-400">
-              Everything is plugged in. Hit the power!
-            </p>
+            <p className="text-sm text-ink-soft dark:text-stone-400">Everything is plugged in. Hit the power!</p>
           )}
           {unassigned.map((a) => (
             <ApplianceChip
@@ -248,13 +260,10 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Circuits */}
-      <div
-        className={cn('mt-4 grid gap-4', round.circuits.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
-      >
+      <div className={cn('mt-4 grid gap-4', round.circuits.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
         {round.circuits.map((circuit) => {
-          const load = loadOf(circuit.id)
-          const over = load > circuit.rating
-          const isTripped = phase === 'failed' && over
+          const steady = steadyOf(circuit.id)
+          const isTripped = phase === 'failed' && peakOf(circuit.id) > circuit.rating
           return (
             <motion.div
               key={circuit.id}
@@ -264,48 +273,52 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
               className={cn(
                 'rounded-2xl border-2 p-4 transition-colors duration-200',
                 selectedId && 'accent-border cursor-pointer border-dashed',
-                !selectedId && isTripped
-                  && 'border-rose-400 bg-rose-50 dark:border-rose-500/50 dark:bg-rose-500/10',
-                !selectedId && !isTripped && phase === 'passed'
-                  && 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10',
-                !selectedId && !isTripped && phase !== 'passed'
-                  && 'border-stone-200 dark:border-white/10',
+                !selectedId && isTripped && 'border-rose-400 bg-rose-50 dark:border-rose-500/50 dark:bg-rose-500/10',
+                !selectedId && !isTripped && phase === 'passed' && 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10',
+                !selectedId && !isTripped && phase !== 'passed' && 'border-stone-200 dark:border-white/10',
               )}
             >
               <div className="mb-3 flex items-center justify-between">
-                <p className="font-display text-sm font-bold">{circuit.label}</p>
+                <p className="font-display text-sm font-bold">
+                  {circuit.label}{' '}
+                  <span className="text-xs font-normal text-ink-soft dark:text-stone-400">
+                    · {circuit.rating}W limit
+                  </span>
+                </p>
                 {isTripped && (
-                  <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                    Tripped!
-                  </Badge>
+                  <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">Tripped!</Badge>
                 )}
               </div>
               <Meter
-                label="Load"
-                display={`${load.toLocaleString('en-US')}W of ${circuit.rating.toLocaleString('en-US')}W`}
-                fraction={load / circuit.rating}
-                barClass={over ? 'bg-rose-500' : load / circuit.rating > 0.85 ? 'bg-amber-400' : 'bg-emerald-500'}
+                label={phase === 'failed' && isTripped ? 'Startup spike' : 'Steady load'}
+                display={
+                  phase === 'failed' && isTripped
+                    ? `${peakOf(circuit.id).toLocaleString('en-US')}W peak`
+                    : `${steady.toLocaleString('en-US')}W`
+                }
+                fraction={(phase === 'failed' && isTripped ? peakOf(circuit.id) : steady) / circuit.rating}
+                barClass={
+                  isTripped ? 'bg-rose-500' : steady > circuit.rating ? 'bg-rose-500' : steady / circuit.rating > 0.8 ? 'bg-amber-400' : 'bg-emerald-500'
+                }
               />
               <div className="mt-3 flex min-h-11 flex-wrap gap-2">
-                {round.appliances
-                  .filter((a) => assignment[a.id] === circuit.id)
-                  .map((a) => (
-                    <ApplianceChip
-                      key={a.id}
-                      appliance={a}
-                      assigned
-                      selected={selectedId === a.id}
-                      disabled={phase === 'testing'}
-                      onClick={() => clickAppliance(a.id)}
-                    />
-                  ))}
+                {onCircuit(circuit.id).map((a) => (
+                  <ApplianceChip
+                    key={a.id}
+                    appliance={a}
+                    assigned
+                    selected={selectedId === a.id}
+                    disabled={phase === 'testing'}
+                    onClick={() => clickAppliance(a.id)}
+                  />
+                ))}
               </div>
             </motion.div>
           )
         })}
       </div>
 
-      {/* Feedback */}
+      {/* Feedback (observational: what happened, not what to do) */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
         {phase === 'passed' && (
           <motion.p
@@ -313,7 +326,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
           >
-            Everything hums along safely. Not a single breaker tripped.
+            The whole house came on and every breaker held. Nice and steady.
           </motion.p>
         )}
         {phase === 'failed' && firstTripped && (
@@ -322,8 +335,8 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
           >
-            {firstTripped.label} tripped! {loadOf(firstTripped.id).toLocaleString('en-US')}W is more
-            than its {firstTripped.rating.toLocaleString('en-US')}W rating. Move something off it.
+            Snap! {firstTripped.label} spiked to {peakOf(firstTripped.id).toLocaleString('en-US')}W the
+            instant everything switched on, past its {firstTripped.rating.toLocaleString('en-US')}W limit.
           </motion.p>
         )}
       </div>
@@ -335,12 +348,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
             <ArrowRight className="h-5 w-5" />
           </Button>
         ) : (
-          <Button
-            variant="accent"
-            size="lg"
-            onClick={powerOn}
-            disabled={phase === 'testing' || unassigned.length > 0}
-          >
+          <Button variant="accent" size="lg" onClick={powerOn} disabled={phase === 'testing' || unassigned.length > 0}>
             <Zap className="h-5 w-5" fill="currentColor" />
             {phase === 'testing' ? 'Testing...' : 'Power on!'}
           </Button>
