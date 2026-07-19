@@ -5,10 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  // On GitHub Pages the site is served from https://<user>.github.io/eng-ex/,
-  // so production assets must be prefixed with that subpath. Local dev stays at root.
-  // (If you rename the repo or use a custom domain, change this to '/<new-name>/' or '/'.)
-  base: mode === 'production' ? '/eng-ex/' : '/',
+  // On GitHub Pages the site is served from https://deswo.github.io/Eng-Ex/, and
+  // Pages paths are CASE-SENSITIVE, so this must match the repo name exactly ('Eng-Ex').
+  // Local dev stays at root. (Custom domain or repo rename? change this to '/' or '/<new-name>/'.)
+  base: mode === 'production' ? '/Eng-Ex/' : '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
