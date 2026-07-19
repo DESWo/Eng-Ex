@@ -11,9 +11,12 @@ import { cn } from '@/lib/utils'
 /* ------------------- tuning knobs (edit freely) ------------------- */
 /** Each win moves to a new town with less wire or closed routes. */
 const ROUNDS = [
-  { label: 'Willow Creek', budget: 280, closed: [] as string[] },
-  { label: 'Copper shortage', budget: 262, closed: [] as string[] },
-  { label: 'Flood season', budget: 270, closed: ['d|e'] },
+  // The cheapest possible network costs 455 m of wire, so these budgets force
+  // genuinely efficient routing rather than "connect whatever works".
+  { label: 'Willow Creek', budget: 500, closed: [] as string[] },
+  { label: 'Copper shortage', budget: 475, closed: [] as string[] },
+  // With a-c and e-g washed out, the cheapest network costs 490 m.
+  { label: 'Flood season', budget: 510, closed: ['a|c', 'e|g'] },
 ]
 
 interface GridNode {
@@ -24,27 +27,36 @@ interface GridNode {
 }
 
 const NODES: GridNode[] = [
-  { id: 'plant', x: 110, y: 250, kind: 'plant' },
-  { id: 'a', x: 320, y: 110, kind: 'house' },
-  { id: 'b', x: 300, y: 390, kind: 'house' },
-  { id: 'c', x: 520, y: 170, kind: 'house' },
-  { id: 'd', x: 560, y: 360, kind: 'house' },
-  { id: 'e', x: 710, y: 250, kind: 'house' },
+  { id: 'plant', x: 100, y: 250, kind: 'plant' },
+  { id: 'a', x: 250, y: 110, kind: 'house' },
+  { id: 'b', x: 240, y: 385, kind: 'house' },
+  { id: 'c', x: 400, y: 205, kind: 'house' },
+  { id: 'd', x: 410, y: 420, kind: 'house' },
+  { id: 'e', x: 560, y: 120, kind: 'house' },
+  { id: 'f', x: 570, y: 320, kind: 'house' },
+  { id: 'g', x: 700, y: 210, kind: 'house' },
+  { id: 'h', x: 710, y: 405, kind: 'house' },
 ]
 
 /** Possible wire routes. Cost is the wire length in meters. */
 const EDGES: { a: string; b: string; cost: number }[] = [
-  { a: 'plant', b: 'a', cost: 60 },
-  { a: 'plant', b: 'b', cost: 55 },
-  { a: 'plant', b: 'c', cost: 100 },
-  { a: 'plant', b: 'd', cost: 115 },
-  { a: 'a', b: 'b', cost: 70 },
-  { a: 'a', b: 'c', cost: 55 },
-  { a: 'b', b: 'c', cost: 75 },
-  { a: 'b', b: 'd', cost: 65 },
-  { a: 'c', b: 'd', cost: 45 },
-  { a: 'c', b: 'e', cost: 50 },
-  { a: 'd', b: 'e', cost: 45 },
+  { a: 'plant', b: 'a', cost: 55 },
+  { a: 'plant', b: 'b', cost: 60 },
+  { a: 'plant', b: 'c', cost: 75 },
+  { a: 'a', b: 'c', cost: 45 },
+  { a: 'a', b: 'b', cost: 90 },
+  { a: 'b', b: 'c', cost: 70 },
+  { a: 'b', b: 'd', cost: 80 },
+  { a: 'c', b: 'd', cost: 70 },
+  { a: 'c', b: 'e', cost: 60 },
+  { a: 'c', b: 'f', cost: 65 },
+  { a: 'd', b: 'f', cost: 60 },
+  { a: 'd', b: 'h', cost: 95 },
+  { a: 'e', b: 'f', cost: 75 },
+  { a: 'e', b: 'g', cost: 55 },
+  { a: 'f', b: 'g', cost: 60 },
+  { a: 'f', b: 'h', cost: 70 },
+  { a: 'g', b: 'h', cost: 60 },
 ]
 
 const edgeId = (e: { a: string; b: string }) => `${e.a}|${e.b}`

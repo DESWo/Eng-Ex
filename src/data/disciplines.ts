@@ -325,13 +325,13 @@ export const disciplines: Discipline[] = [
       ],
       builds: ['Power grids', 'Phone chips', 'Electric cars', 'Solar farms', 'Speakers', 'Smart lights'],
       challengeTeaser:
-        'Five houses are sitting in the dark. Route power lines from the plant to every home before the wire runs out.',
+        'A whole neighbourhood is sitting in the dark. Route power lines from the plant to every home before the wire runs out.',
     },
     challenges: [
       {
         id: 'power-grid',
         title: 'Power Up',
-        goal: 'Light all 5 houses',
+        goal: 'Light every house',
         why: [
           {
             icon: Cable,
