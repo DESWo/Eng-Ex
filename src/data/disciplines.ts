@@ -147,6 +147,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Mechanical engineering is a loop: guess, test, watch, improve. Machines get great one small tweak at a time.',
+      tradeoff:
+        'Every machine trades one thing for another: speed for force, power for control, simple for strong.',
+      realWorld: {
+        intro: 'The same forces you tuned run the machines all around you.',
+        examples: [
+          'Gear ratios let a bike or car trade speed for hill-climbing power.',
+          'Robot arms in factories aim with the exact torque idea from the balance beam.',
+          'Catapults and trebuchets flung stones with your launch physics for centuries.',
+        ],
+      },
     },
     diy: {
       title: 'Build a spoon catapult',
@@ -263,6 +273,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Civil engineering is the art of the tradeoff: strong enough to trust, affordable enough to build.',
+      tradeoff:
+        'Civil engineers balance strength, safety, and cost, and there is never quite enough budget for all three.',
+      realWorld: {
+        intro: 'You just used the tools that shape real cities.',
+        examples: [
+          'Truss bridges span highways and rivers with the exact triangles you built.',
+          'Traffic engineers time real city lights the way you split the green.',
+          'Buildings in earthquake zones use bracing and base isolation like your tower.',
+        ],
+      },
     },
     diy: {
       title: 'Build a popsicle stick truss bridge',
@@ -379,6 +399,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Electrical engineering is about connection: finding the smartest path from power to people.',
+      tradeoff:
+        'Electrical design trades wire, cost, and safety margins against getting power everywhere it needs to go.',
+      realWorld: {
+        intro: 'This is how the power in your walls actually works.',
+        examples: [
+          'The power grid routes electricity to millions of homes like your Power Up map.',
+          'Every phone and console is a maze of circuits like the ones you wired.',
+          'The breaker panel in your house does exactly what Don\'t Trip models.',
+        ],
+      },
     },
     diy: {
       title: 'Build a paper clip flashlight',
@@ -454,6 +484,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Nuclear engineering is careful balance: make big power, but always carry the heat away and keep a safe margin.',
+      tradeoff:
+        'A reactor trades more power for more heat, so cooling and safety margins must grow right alongside it.',
+      realWorld: {
+        intro: 'Real reactors are run by this same balance, every second.',
+        examples: [
+          'Power plants make about a tenth of the world\'s electricity from reactors like yours.',
+          'Submarines and some spacecraft carry compact reactors for years of power.',
+          'Operators watch power and temperature gauges just like the ones you balanced.',
+        ],
+      },
     },
     diy: {
       title: 'Build a domino chain reaction',
@@ -523,6 +563,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Flying is a balance of four forces. Level flight is just lift matching weight, with the wing kept below its stall angle.',
+      tradeoff:
+        'Flight trades lift against weight and thrust against drag, and pushing one too far costs you another.',
+      realWorld: {
+        intro: 'Every plane you have flown on lives by these four forces.',
+        examples: [
+          'Airliners "trim" for level cruise exactly like you did.',
+          'Pilots train hard to avoid the stall you triggered by over-tilting the nose.',
+          'Wings, flaps, and tails are all shaped to manage lift and drag.',
+        ],
+      },
     },
     diy: {
       title: 'Trim a paper airplane',
@@ -592,6 +642,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Industrial engineering is bottleneck hunting: find the slowest step, fix that one, then find the next.',
+      tradeoff:
+        'Industrial engineers trade workers, machines, and money to squeeze more output from the same line.',
+      realWorld: {
+        intro: 'The world\'s factories and warehouses run on this idea.',
+        examples: [
+          'Car plants balance their assembly stations to keep the line moving.',
+          'Amazon warehouses are designed around finding and fixing bottlenecks.',
+          'Even theme-park queues and hospital ERs are laid out this way.',
+        ],
+      },
     },
     diy: {
       title: 'Run a paper airplane factory',
@@ -661,6 +721,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Systems engineering is balancing the whole: sharing a limited budget so every connected part gets just enough.',
+      tradeoff:
+        'Systems engineers trade mass, power, and money across every subsystem so the whole mission still works.',
+      realWorld: {
+        intro: 'This is the job that gets spacecraft off the ground.',
+        examples: [
+          'NASA and SpaceX split a strict mass and power budget across every subsystem.',
+          'Satellites balance science, comms, power, and thermal exactly like your mission.',
+          'Self-driving cars juggle sensors, computers, and battery the same way.',
+        ],
+      },
     },
     diy: {
       title: 'Egg drop on a budget',
@@ -730,6 +800,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Robotics is turning a goal into motion: the right angles at each joint to put the hand exactly where you want it.',
+      tradeoff:
+        'Robots trade reach, speed, and precision: a long, fast arm is rarely also a delicate one.',
+      realWorld: {
+        intro: 'The angles you found are what real robots compute constantly.',
+        examples: [
+          'Factory arms weld and assemble by solving joint angles thousands of times a second.',
+          'Surgical robots place their tools with millimeter precision the same way.',
+          'Mars rovers reach out and grab rock samples with jointed arms.',
+        ],
+      },
     },
     diy: {
       title: 'Build a cardboard grabber',
@@ -799,6 +879,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Environmental engineering is matching the fix to the problem: the right cleanup steps, for the least cost.',
+      tradeoff:
+        'Clean engineers trade cost and energy against how pure the water, air, or soil ends up.',
+      realWorld: {
+        intro: 'Your filter is a shrunk-down version of a real treatment plant.',
+        examples: [
+          'City water plants stack screens, sand, carbon, and UV just like your stages.',
+          'The same layered idea cleans wastewater before it returns to rivers.',
+          'Air scrubbers on factories match each cleanup step to the pollutant.',
+        ],
+      },
     },
     diy: {
       title: 'Build a bottle water filter',
@@ -868,6 +958,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Structural engineering is a balance of stiffness and cost: strong enough to stand still, cheap enough to build.',
+      tradeoff:
+        'Structural engineers trade stiffness against cost: a rock-solid tower nobody can afford is a failed design.',
+      realWorld: {
+        intro: 'Real skyscrapers fight the wind with the tricks you used.',
+        examples: [
+          'Taipei 101 hides a giant tuned mass damper like the one you added.',
+          'Wide bases and braced cores keep towers steady in storms and quakes.',
+          'Bridges and stadium roofs balance the same stiffness-versus-cost call.',
+        ],
+      },
     },
     diy: {
       title: 'Build the tallest paper tower',
@@ -937,6 +1037,16 @@ export const disciplines: Discipline[] = [
       heading: 'Why did that work?',
       bigIdea:
         'Computer engineering is built from simple choices: tiny gates that each say yes or no, stacked into something that thinks.',
+      tradeoff:
+        'Chip designers trade speed, power, and size: faster chips run hotter and cost more to make.',
+      realWorld: {
+        intro: 'Every device you own is built from the gates you tested.',
+        examples: [
+          'A phone chip packs billions of AND, OR, and NOT gates like yours.',
+          'Those gates add up to the logic that runs games, video, and the internet.',
+          'The same gates control smart lights, cars, and home appliances.',
+        ],
+      },
     },
     diy: {
       title: 'Two-switch logic light',

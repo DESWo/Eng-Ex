@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { cn } from '@/lib/utils'
 
 function LogoMark() {
   return (
@@ -20,7 +21,22 @@ export function Navbar() {
             Engineering Explorer
           </span>
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1 sm:gap-3">
+          <NavLink
+            to="/about"
+            className={({ isActive }) =>
+              cn(
+                'rounded-full px-3 py-2 font-display text-sm font-semibold transition-colors duration-200',
+                isActive
+                  ? 'bg-stone-900/5 text-ink dark:bg-white/10 dark:text-stone-100'
+                  : 'text-ink-soft hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/10',
+              )
+            }
+          >
+            About
+          </NavLink>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )

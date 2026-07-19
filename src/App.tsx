@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { LandingPage } from '@/pages/LandingPage'
 import { DisciplinePage } from '@/pages/DisciplinePage'
+import { AboutPage } from '@/pages/AboutPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 /** Jump back to the top whenever the route changes. */
@@ -27,6 +28,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/explore/:slug" element={<DisciplinePage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

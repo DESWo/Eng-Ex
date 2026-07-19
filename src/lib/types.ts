@@ -57,6 +57,13 @@ export interface Discipline {
     heading: string
     /** One line that ties the whole field together, shown after the per-game cards. */
     bigIdea: string
+    /** The core engineering tradeoff of this field, in one plain sentence. */
+    tradeoff: string
+    /** Where this concept shows up in the real world (industry examples). */
+    realWorld: {
+      intro: string
+      examples: string[]
+    }
   }
   /** A real-world project for the "Try it at home" step. */
   diy: {

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Check, Heart, Lightbulb, RotateCcw } from 'lucide-react'
+import { ArrowRight, Check, Factory, Heart, Lightbulb, RotateCcw, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { loadJson } from '@/lib/storage'
@@ -92,6 +92,43 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
             </p>
             <p className="mt-1.5 font-display text-lg font-semibold leading-snug">{learn.bigIdea}</p>
           </div>
+        </Card>
+      </motion.div>
+
+      {/* The tradeoff at the heart of the field */}
+      <motion.div variants={fadeUp}>
+        <Card className="flex items-start gap-4 p-6">
+          <span className="accent-soft flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
+            <Scale className="accent-text h-6 w-6" />
+          </span>
+          <div>
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-ink-soft dark:text-stone-400">
+              The tradeoff
+            </p>
+            <p className="mt-1.5 text-[15px] leading-relaxed">{learn.tradeoff}</p>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Real-world application: you used the same concept engineers use */}
+      <motion.div variants={fadeUp}>
+        <Card className="border-2 accent-border p-6">
+          <p className="accent-text flex items-center gap-2 font-display text-xs font-bold uppercase tracking-widest">
+            <Factory className="h-4 w-4" />
+            Real-world application
+          </p>
+          <p className="mt-2 font-display text-lg font-semibold leading-snug">{learn.realWorld.intro}</p>
+          <ul className="mt-3 space-y-2">
+            {learn.realWorld.examples.map((example) => (
+              <li key={example} className="flex gap-2.5 text-[15px] leading-relaxed">
+                <span className="accent-text mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full accent-bg" />
+                {example}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm font-semibold text-ink-soft dark:text-stone-400">
+            You just used the same idea engineers use in industry.
+          </p>
         </Card>
       </motion.div>
 
