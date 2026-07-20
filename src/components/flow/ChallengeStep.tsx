@@ -35,7 +35,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
   })
 
   const active = challenges.find((c) => c.id === activeId) ?? challenges[0]
-  const ChallengeComponent = challengeRegistry[active.id]
+  const ChallengeComponent = challengeRegistry[active.id]?.Component
   const nextChallenge = challenges.find((c) => !solved[c.id] && c.id !== active.id)
 
   const levelsFor = useLevelCounts()
@@ -65,6 +65,8 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
                 key={c.id}
                 type="button"
                 onClick={() => setActiveId(c.id)}
+                onMouseEnter={() => challengeRegistry[c.id]?.preload()}
+                onFocus={() => challengeRegistry[c.id]?.preload()}
                 aria-pressed={isActive}
                 title={`${lv}/${LEVELS_PER_CHALLENGE} levels cleared`}
                 className={cn(

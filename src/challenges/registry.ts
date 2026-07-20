@@ -2,6 +2,12 @@ import { lazy } from 'react'
 import type { ComponentType } from 'react'
 import type { ChallengeProps } from '@/lib/types'
 
+export interface RegisteredChallenge {
+  Component: ComponentType<ChallengeProps>
+  /** Starts the chunk download early, e.g. while a picker chip is hovered. */
+  preload: () => void
+}
+
 /**
  * Each game loads as its own chunk the first time somebody opens it, so the
  * landing page does not pay for all 33 up front.
@@ -9,14 +15,17 @@ import type { ChallengeProps } from '@/lib/types'
 const lazyChallenge = <T,>(
   load: () => Promise<T>,
   pick: (m: T) => ComponentType<ChallengeProps>,
-) => lazy(() => load().then((m) => ({ default: pick(m) })))
+): RegisteredChallenge => ({
+  Component: lazy(() => load().then((m) => ({ default: pick(m) }))),
+  preload: () => void load(),
+})
 
 /**
  * Every playable challenge, keyed by id.
  * A discipline's `challenges` list (src/data/disciplines.ts) points here.
  * To add a challenge: build the component, then register it below.
  */
-export const challengeRegistry: Record<string, ComponentType<ChallengeProps>> = {
+export const challengeRegistry: Record<string, RegisteredChallenge> = {
   catapult: lazyChallenge(
     () => import('@/challenges/mechanical/CatapultChallenge'),
     (m) => m.CatapultChallenge,

@@ -179,7 +179,7 @@ export const disciplines: Discipline[] = [
         'Load a marshmallow in the spoon, pull back, and launch.',
       ],
       experiment:
-        'Slide the 3-stick stack closer to or farther from the spoon and launch again. You just changed the launch angle, exactly like the slider in Catapult Lab.',
+        'Slide the 3-stick stack closer to or farther from the spoon and launch again. You just changed the launch angle, exactly like dragging the launch arrow in Catapult Lab.',
       safety: 'Launch away from faces, screens, and pets.',
     },
   },
