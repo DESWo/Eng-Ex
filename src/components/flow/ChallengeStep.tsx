@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check, PartyPopper, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
@@ -121,8 +121,17 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
       </div>
 
       {ChallengeComponent ? (
-        // Keyed so switching challenges gives each one a fresh start.
-        <ChallengeComponent key={active.id} onComplete={handleComplete} />
+        // Games are lazy chunks; the fallback shows while one downloads.
+        <Suspense
+          fallback={
+            <Card className="flex h-64 animate-pulse items-center justify-center text-ink-soft dark:text-stone-400">
+              Setting up the lab…
+            </Card>
+          }
+        >
+          {/* Keyed so switching challenges gives each one a fresh start. */}
+          <ChallengeComponent key={active.id} onComplete={handleComplete} />
+        </Suspense>
       ) : (
         <Card className="p-8 text-center text-ink-soft dark:text-stone-400">
           This challenge is still being built. Check back soon!
