@@ -1,40 +1,82 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Check, RotateCcw, X } from 'lucide-react'
+import { Check, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
-import { Slider } from '@/components/ui/Slider'
-import type { ChallengeProps } from '@/lib/types'
+import { InsightToggle } from '@/components/level/InsightToggle'
+import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
+import { Scorecard } from '@/components/level/Scorecard'
+import { useLevels } from '@/hooks/useLevels'
+import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-interface MissionRound {
+const BLOCK = 5 // kilograms per block
+const MAX_BLOCKS = 14
+
+interface MissionSetup {
   label: string
   brief: string
-  massBudget: number // kg to split across subsystems
+  massBudget: number
   /** Each science point needs this much power. */
   powerPerScience: number
   goals: { science: number; comms: number }
+  /** Level 2 on: instruments draw power that the panels must supply. */
+  powerCheck: boolean
+  /** Level 3 on: instruments also make heat the radiators must dump. */
+  thermalCheck: boolean
+  /** Level 4 on: the flow readout is available. */
+  flows: boolean
 }
 
-/** Each win is a bolder mission on the same mass budget. */
-const ROUNDS: MissionRound[] = [
+const LEVELS: ChallengeLevel<MissionSetup>[] = [
   {
-    label: 'Weather satellite',
-    brief: 'Take pictures and send them home. Balance the mass so nothing starves.',
-    massBudget: 100,
-    powerPerScience: 1.2,
-    goals: { science: 20, comms: 15 },
+    n: 1,
+    title: 'Fit it together',
+    phase: 'play',
+    concept: 'A satellite is a team',
+    teach: 'Deal out mass blocks to the subsystems. Science instruments earn the mission its keep and the comms antenna phones the results home, so give each what its goal asks for.',
+    setup: { label: 'Weather satellite', brief: 'Take pictures and send them home. The rocket has room to spare today.', massBudget: 160, powerPerScience: 1.2, goals: { science: 20, comms: 15 }, powerCheck: false, thermalCheck: false, flows: false },
   },
   {
-    label: 'Deep space probe',
-    brief: 'Far from the Sun, power is scarce and comms need to be strong. Every kilogram counts.',
-    massBudget: 130,
-    powerPerScience: 1.6,
-    goals: { science: 30, comms: 28 },
+    n: 2,
+    title: 'Nothing runs on hope',
+    phase: 'understand',
+    concept: 'Power is a subsystem too',
+    teach: 'Instruments draw power, and power comes from panels that weigh something. The mass you give the power system does nothing for the goals directly, and the mission dies without it.',
+    setup: { label: 'Weather satellite II', brief: 'A bigger instrument package, and this time the electricity has to come from somewhere.', massBudget: 90, powerPerScience: 1.2, goals: { science: 30, comms: 25 }, powerCheck: true, thermalCheck: false, flows: false },
+  },
+  {
+    n: 3,
+    title: 'Everything leans on everything',
+    phase: 'understand',
+    concept: 'Coupled subsystems',
+    teach: 'Now the heat matters too: every instrument warms the craft and the radiators must dump it. Add science and you need more power AND more cooling, which both cost mass you wanted for science. That circle is systems engineering.',
+    setup: { label: 'Deep space probe', brief: 'Far from the Sun, every subsystem pulls on every other one.', massBudget: 120, powerPerScience: 1.6, goals: { science: 30, comms: 25 }, powerCheck: true, thermalCheck: true, flows: false },
+  },
+  {
+    n: 4,
+    title: 'Watch the flows',
+    phase: 'analyze',
+    concept: 'Supply against demand',
+    teach: 'Turn on the flow readout. Power flows from the panels to the instruments and heat flows out through the radiators, and you can see exactly which pipe is about to starve.',
+    setup: { label: 'Survey probe', brief: 'A heavier survey mission, fully instrumented.', massBudget: 135, powerPerScience: 1.6, goals: { science: 35, comms: 28 }, powerCheck: true, thermalCheck: true, flows: true },
+  },
+  {
+    n: 5,
+    title: 'Science per kilogram',
+    phase: 'optimize',
+    concept: 'Margins cost science',
+    teach: 'The agency wants maximum science, but a craft with zero margin dies the first time anything sags. Leave spare mass and spare power, and every scrap of both is science you did not fly.',
+    setup: { label: 'Flagship mission', brief: 'Squeeze out the science, but leave enough slack that one bad day does not end the mission.', massBudget: 130, powerPerScience: 1.4, goals: { science: 25, comms: 20 }, powerCheck: true, thermalCheck: true, flows: true },
+    metrics: [
+      { id: 'science', label: 'Science flown', goal: 'max', target: 35 },
+      { id: 'spare', label: 'Mass margin', goal: 'max', target: 10, unit: ' kg' },
+      { id: 'power', label: 'Power margin', goal: 'max', target: 8 },
+    ],
   },
 ]
 
@@ -42,12 +84,19 @@ const ROUNDS: MissionRound[] = [
 const YIELD = { power: 2.4, science: 1.0, comms: 1.0, thermal: 1.0 }
 
 export function MissionChallenge({ onComplete }: ChallengeProps) {
-  const [roundIndex, setRoundIndex] = useState(0)
-  const round = ROUNDS[roundIndex % ROUNDS.length]
+  const lv = useLevels('mission', LEVELS)
+  const round = lv.level.setup
 
-  const [mass, setMass] = useState({ power: 25, science: 25, comms: 25, thermal: 25 })
+  // Start lean so no level clears itself on load.
+  const [mass, setMass] = useState({ power: 10, science: 10, comms: 10, thermal: 10 })
   const [wonRound, setWonRound] = useState(false)
+  const [showFlows, setShowFlows] = useState(true)
   const completedRef = useRef(false)
+
+  useEffect(() => {
+    setMass({ power: 10, science: 10, comms: 10, thermal: 10 })
+    setWonRound(false)
+  }, [lv.level.n])
 
   const usedMass = mass.power + mass.science + mass.comms + mass.thermal
   const overMass = usedMass > round.massBudget
@@ -64,41 +113,51 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
   const checks = {
     science: science >= round.goals.science,
     comms: comms >= round.goals.comms,
-    power: powerSupply >= powerDemand,
-    thermal: cooling >= coolingNeed,
+    power: !round.powerCheck || powerSupply >= powerDemand,
+    thermal: !round.thermalCheck || cooling >= coolingNeed,
     mass: !overMass,
   }
   const win = Object.values(checks).every(Boolean)
 
   useEffect(() => {
-    if (win && !wonRound) {
+    if (!win || wonRound) return
+    const timer = setTimeout(() => {
       setWonRound(true)
+      lv.clearLevel(
+        lv.level.metrics
+          ? {
+              science: Math.round(science),
+              spare: round.massBudget - usedMass,
+              power: Math.round(powerSupply - powerDemand),
+            }
+          : undefined,
+      )
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }
-  }, [win, wonRound, onComplete])
+    }, 600)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [win, wonRound, science, usedMass, powerSupply, powerDemand])
 
   const setPart = (key: keyof typeof mass, value: number) =>
     setMass((prev) => ({ ...prev, [key]: value }))
 
-  const nextRound = () => {
-    setRoundIndex((i) => i + 1)
-    setMass({ power: 25, science: 25, comms: 25, thermal: 25 })
-    setWonRound(false)
-  }
-
   const reset = () => {
-    setMass({ power: 25, science: 25, comms: 25, thermal: 25 })
+    setMass({ power: 10, science: 10, comms: 10, thermal: 10 })
     setWonRound(false)
   }
 
   const requirements = [
     { ok: checks.science, label: `Science ≥ ${round.goals.science}`, value: `${Math.round(science)}` },
     { ok: checks.comms, label: `Comms ≥ ${round.goals.comms}`, value: `${Math.round(comms)}` },
-    { ok: checks.power, label: 'Power supply ≥ demand', value: `${Math.round(powerSupply)}/${Math.round(powerDemand)}` },
-    { ok: checks.thermal, label: 'Cooling ≥ heat', value: `${Math.round(cooling)}/${Math.round(coolingNeed)}` },
+    ...(round.powerCheck
+      ? [{ ok: checks.power, label: 'Power supply ≥ demand', value: `${Math.round(powerSupply)}/${Math.round(powerDemand)}` }]
+      : []),
+    ...(round.thermalCheck
+      ? [{ ok: checks.thermal, label: 'Cooling ≥ heat', value: `${Math.round(cooling)}/${Math.round(coolingNeed)}` }]
+      : []),
   ]
 
   const modules: { key: keyof typeof mass; name: string; ok: boolean; x: number }[] = [
@@ -111,6 +170,11 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {wonRound && <Confetti />}
+
+      <LevelHeader
+        lv={lv}
+        insight={round.flows ? <InsightToggle label="flows" on={showFlows} onChange={setShowFlows} /> : undefined}
+      />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
@@ -175,6 +239,24 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
         ))}
       </div>
 
+      {/* Level 4 flows: how full each supply pipe runs */}
+      {round.flows && showFlows && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Meter
+            label="Power pipe"
+            display={`${Math.round(powerDemand)} drawn of ${Math.round(powerSupply)} made`}
+            fraction={powerSupply > 0 ? Math.min(1, powerDemand / powerSupply) : 1}
+            barClass={checks.power ? 'bg-sky-500' : 'bg-rose-500'}
+          />
+          <Meter
+            label="Heat pipe"
+            display={`${Math.round(coolingNeed)} made of ${Math.round(cooling)} dumped`}
+            fraction={cooling > 0 ? Math.min(1, coolingNeed / cooling) : 1}
+            barClass={checks.thermal ? 'bg-amber-500' : 'bg-rose-500'}
+          />
+        </div>
+      )}
+
       {/* Mass budget */}
       <div className="mt-4">
         <Meter
@@ -185,13 +267,51 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
         />
       </div>
 
-      {/* Sliders */}
-      <div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        <Slider label="Power system (kg)" value={mass.power} min={0} max={70} onChange={(v) => setPart('power', v)} />
-        <Slider label="Science instruments (kg)" value={mass.science} min={0} max={70} onChange={(v) => setPart('science', v)} />
-        <Slider label="Comms antenna (kg)" value={mass.comms} min={0} max={70} onChange={(v) => setPart('comms', v)} />
-        <Slider label="Thermal control (kg)" value={mass.thermal} min={0} max={70} onChange={(v) => setPart('thermal', v)} />
+      {/* Hand out the mass budget as physical blocks, five kilograms at a time. */}
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {([
+          ['power', 'Power system'],
+          ['science', 'Science instruments'],
+          ['comms', 'Comms antenna'],
+          ['thermal', 'Thermal control'],
+        ] as const).map(([key, label]) => {
+          const blocks = Math.round(mass[key] / BLOCK)
+          return (
+            <div key={key} className="rounded-2xl bg-stone-100 p-3 dark:bg-white/5">
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <p className="font-display text-sm font-semibold">{label}</p>
+                <span className="accent-text font-display text-sm font-bold tabular-nums">{mass[key]} kg</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {Array.from({ length: MAX_BLOCKS }, (_, i) => {
+                  const filled = i < blocks
+                  const canAdd = !filled && i === blocks && usedMass + BLOCK <= round.massBudget
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={!filled && !canAdd}
+                      onClick={() => setPart(key, (filled ? i : i + 1) * BLOCK)}
+                      aria-label={`${filled ? 'Remove' : 'Add'} ${BLOCK} kg on ${label}`}
+                      className={cn(
+                        'h-6 w-6 rounded transition-colors duration-150',
+                        filled
+                          ? 'accent-bg shadow-clay'
+                          : canAdd
+                            ? 'border-2 border-dashed border-stone-300 hover:border-stone-400 dark:border-white/20'
+                            : 'border-2 border-dashed border-stone-200 opacity-40 dark:border-white/10',
+                      )}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
       </div>
+      <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
+        Each block is {BLOCK} kg. Blocks grey out when the rocket has nothing left to give.
+      </p>
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
@@ -211,18 +331,39 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {wonRound && (
-          <Button variant="accent" onClick={nextRound}>
-            Next mission
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        )}
         <Button variant="ghost" onClick={reset} aria-label="Reset the design">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">Round {(roundIndex % ROUNDS.length) + 1}</Badge>
+        <Badge className="ml-auto">{round.massBudget - usedMass} kg spare</Badge>
       </div>
+
+      {lv.level.metrics && (
+        <div className="mt-4">
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={{
+              science: Math.round(science),
+              spare: round.massBudget - usedMass,
+              power: Math.round(powerSupply - powerDemand),
+            }}
+            best={lv.best}
+            scored={wonRound}
+          />
+        </div>
+      )}
+
+      {wonRound && (
+        <LevelComplete
+          lv={lv}
+          message={
+            lv.level.metrics
+              ? `${Math.round(science)} science flown with ${round.massBudget - usedMass} kg in hand. Push it further.`
+              : 'Cleared for launch.'
+          }
+          onReplay={reset}
+        />
+      )}
     </Card>
   )
 }

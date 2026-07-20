@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { challengeRegistry } from '@/challenges/registry'
+import { useLevelCounts } from '@/hooks/useLevelCounts'
+import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 import { loadJson, saveJson } from '@/lib/storage'
 import type { Discipline } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -35,7 +37,10 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
   const active = challenges.find((c) => c.id === activeId) ?? challenges[0]
   const ChallengeComponent = challengeRegistry[active.id]
   const nextChallenge = challenges.find((c) => !solved[c.id] && c.id !== active.id)
-  const solvedCount = challenges.filter((c) => solved[c.id]).length
+
+  const levelsFor = useLevelCounts()
+  const totalLevels = challenges.length * LEVELS_PER_CHALLENGE
+  const clearedLevels = challenges.reduce((sum, c) => sum + levelsFor(c.id), 0)
 
   const handleComplete = () => {
     setSolved((prev) => {
@@ -54,12 +59,14 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
         <div className="flex flex-wrap gap-2">
           {challenges.map((c, i) => {
             const isActive = c.id === active.id
+            const lv = levelsFor(c.id)
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setActiveId(c.id)}
                 aria-pressed={isActive}
+                title={`${lv}/${LEVELS_PER_CHALLENGE} levels cleared`}
                 className={cn(
                   'flex items-center gap-2 rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors duration-200',
                   isActive
@@ -69,7 +76,19 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
                       : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                 )}
               >
-                {solved[c.id] ? (
+                {lv >= LEVELS_PER_CHALLENGE ? (
+                  <Check className="h-4 w-4" />
+                ) : lv > 0 ? (
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums',
+                      isActive ? 'bg-white/25' : 'bg-stone-200 dark:bg-white/10',
+                    )}
+                  >
+                    {lv}/{LEVELS_PER_CHALLENGE}
+                  </span>
+                ) : solved[c.id] ? (
+                  // Beaten before the level system existed; no level data to show.
                   <Check className="h-4 w-4" />
                 ) : (
                   <span
@@ -87,9 +106,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
           })}
         </div>
         <p className="mt-2 text-sm text-ink-soft dark:text-stone-400">
-          {challenges.length === 1
-            ? `Beat the challenge to keep going. (${solvedCount}/1 done)`
-            : `Beat any challenge to keep going. Clear all ${challenges.length} for full engineer status (${solvedCount}/${challenges.length} so far).`}
+          {`Beat level 1 of any game to keep going. Every game runs ${LEVELS_PER_CHALLENGE} levels deep: ${clearedLevels}/${totalLevels} cleared so far.`}
         </p>
       </div>
 

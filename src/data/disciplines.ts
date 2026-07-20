@@ -16,6 +16,7 @@ import {
   Factory,
   Feather,
   Filter,
+  Flame,
   Gauge,
   Lightbulb,
   Move,
@@ -27,6 +28,7 @@ import {
   Route,
   Satellite,
   Scale,
+  Search,
   Share2,
   ShieldCheck,
   Snowflake,
@@ -99,24 +101,24 @@ export const disciplines: Discipline[] = [
         ],
       },
       {
-        id: 'gears',
-        title: 'Gear It Up',
-        goal: 'Match the fan speed',
+        id: 'suspension',
+        title: 'Smooth Ride',
+        goal: 'Tame the bumps',
         why: [
           {
             icon: Gauge,
-            title: 'A big gear spins a small one faster',
-            body: 'When a big gear drives a small gear, the small one whips around faster. You trade turning force for speed.',
+            title: 'Springs trade motion for comfort',
+            body: 'A spring lets the wheel chase the road while the body floats above it. Softer rides smoother, but a loaded van squashes a soft spring through all its travel.',
           },
           {
-            icon: Scale,
-            title: 'Or trade speed for strength',
-            body: 'Flip it around, small gear driving a big one, and you get slow but strong. That is how a bike climbs a steep hill.',
+            icon: Wind,
+            title: 'Resonance is the ambush',
+            body: 'Every spring has a rhythm it naturally bounces at. If the road hits that same rhythm, each bump adds to the last and a small shake grows violent. Strength does not save you; changing the rhythm does.',
           },
           {
             icon: Cog,
-            title: 'Stacking gears multiplies',
-            body: 'Chaining two gear pairs multiplies the effect, so one motor can spin a fan gently or like a hurricane.',
+            title: 'Dampers blunt what they cannot move',
+            body: 'A shock absorber turns bounce into heat. It cannot shift the resonance, only flatten it, which is why engineers pick the spring first and the damper second.',
           },
         ],
       },
@@ -152,7 +154,7 @@ export const disciplines: Discipline[] = [
       realWorld: {
         intro: 'The same forces you tuned run the machines all around you.',
         examples: [
-          'Gear ratios let a bike or car trade speed for hill-climbing power.',
+          'Car suspensions use your spring-and-damper tuning so the body floats while the wheels chase the road.',
           'Robot arms in factories aim with the exact torque idea from the balance beam.',
           'Catapults and trebuchets flung stones with your launch physics for centuries.',
         ],
@@ -479,6 +481,50 @@ export const disciplines: Discipline[] = [
         },
         ],
       },
+      {
+        id: 'shield',
+        title: 'Shield Stack',
+        goal: 'Make it safe to stand there',
+        why: [
+          {
+            icon: ShieldCheck,
+            title: 'Each centimetre cuts it again',
+            body: 'Shielding does not chip away a fixed amount. Every centimetre removes the same fraction of what is left, so the dose falls away steeply rather than steadily.',
+          },
+          {
+            icon: Atom,
+            title: 'Gamma and neutrons want opposite things',
+            body: 'Dense metal like lead is superb at stopping gamma rays and nearly useless against neutrons. Neutrons are slowed by light hydrogen-rich stuff like water and plastic, because a neutron loses most of its energy hitting something its own size.',
+          },
+          {
+            icon: Weight,
+            title: 'Real shields are layered',
+            body: 'Because no single material handles everything, a working shield is a sandwich: something light for the neutrons, something dense for the gamma, and as little of the expensive stuff as you can get away with.',
+          },
+        ],
+      },
+      {
+        id: 'decay-heat',
+        title: 'Decay Heat',
+        goal: 'Keep it cool for a day',
+        why: [
+          {
+            icon: Flame,
+            title: 'Off is not cold',
+            body: 'Shutting a reactor down stops the chain reaction, not the heat. The fragments left in the fuel keep decaying, and for the first hour that is still tens of megawatts with nowhere to go.',
+          },
+          {
+            icon: Timer,
+            title: 'It fades slowly and never stops',
+            body: 'Decay heat drops fast at first and then crawls. A day later it is still running at a few percent, which is why cooling has to keep working long after everyone assumes the danger has passed.',
+          },
+          {
+            icon: Recycle,
+            title: 'Passive cooling needs no power',
+            body: 'Hot water rises and cold water sinks, so coolant circulates on its own. It is weak, but once decay heat has faded far enough, weak is exactly enough, and it cannot run out of battery.',
+          },
+        ],
+      },
     ],
     learn: {
       heading: 'Why did that work?',
@@ -556,6 +602,50 @@ export const disciplines: Discipline[] = [
           title: 'Too steep means stall',
           body: 'Past the stall angle the wing suddenly loses its lift. Speed cannot save it. You have to lower the nose.',
         },
+        ],
+      },
+      {
+        id: 'orbit',
+        title: 'Orbit Insertion',
+        goal: 'Park it in a circle',
+        why: [
+          {
+            icon: Rocket,
+            title: 'Forward, not upward',
+            body: 'Firing your engine forwards does not lift you straight up. It stretches the far side of your orbit outwards, which is why a burn here shows up as height half a lap away.',
+          },
+          {
+            icon: Satellite,
+            title: 'Reaching is not staying',
+            body: 'One burn only touches the target height once per lap before falling back. A second burn at the top lifts the low side to match, and that is what actually parks a satellite.',
+          },
+          {
+            icon: PiggyBank,
+            title: 'Every drop is planned years ahead',
+            body: 'Nothing refuels in orbit, so a mission budgets its speed changes before launch. Real transfers use this exact two-burn manoeuvre because it is the cheapest one there is.',
+          },
+        ],
+      },
+      {
+        id: 'reentry',
+        title: 'Re-entry',
+        goal: 'Bring the crew home',
+        why: [
+          {
+            icon: Flame,
+            title: 'There is a corridor, not a target',
+            body: 'Come in too shallow and you skip off the atmosphere back into space. Too steep and the shield cannot soak up the heat in time. Every returning spacecraft threads the gap between those two.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Blunt is what survives',
+            body: 'A pointed nose sits right in the hottest air. A blunt one pushes a thick shock wave out in front that holds the worst heat away from the skin, which is why real capsules look like squashed cones.',
+          },
+          {
+            icon: TriangleAlert,
+            title: 'Peak heat and total heat are different problems',
+            body: 'A steep entry hits harder but is over quickly. A shallow one is gentle but soaks for far longer, so it needs a thicker shield. Engineers have to design for both at once.',
+          },
         ],
       },
     ],
@@ -637,6 +727,50 @@ export const disciplines: Discipline[] = [
         },
         ],
       },
+      {
+        id: 'quality-gate',
+        title: 'Quality Gate',
+        goal: 'Stop shipping faults',
+        why: [
+          {
+            icon: Search,
+            title: 'A defect gets dearer the longer it hides',
+            body: 'A unit spoiled at the first station is worth almost nothing. Let it travel and every station after pours more work into something already ruined, so the same fault costs several times more to throw away.',
+          },
+          {
+            icon: Factory,
+            title: 'End-of-line checking can lose money',
+            body: 'Inspecting only at the end catches every fault and still costs more than inspecting nothing, because you are binning finished goods. Real factories check just before the expensive steps instead.',
+          },
+          {
+            icon: PiggyBank,
+            title: 'Quality has three bills, not one',
+            body: 'What you spend inspecting, what you waste scrapping, and what customers charge you for the ones that got through. Push any one to zero and the other two climb, so the job is balancing all three.',
+          },
+        ],
+      },
+      {
+        id: 'warehouse',
+        title: 'Warehouse Layout',
+        goal: 'Save the pickers a walk',
+        why: [
+          {
+            icon: Route,
+            title: 'Distance is paid once per trip',
+            body: 'A product fetched forty times a day is walked to forty times a day, so moving it one aisle closer saves that distance forty times over. Layout is multiplied by frequency, which is why it matters so much.',
+          },
+          {
+            icon: Weight,
+            title: 'Counting trips is not the same as counting work',
+            body: 'Cement gets picked six times a day and weighs forty kilos. Tape gets picked twenty times and weighs nothing. Once you count what people are actually carrying, the rarely picked heavy things belong nearest the door, which is the opposite of what trip counts alone suggest.',
+          },
+          {
+            icon: Users,
+            title: 'The best aisle gets crowded',
+            body: 'Everything wants to live at the front, but a front aisle full of the busiest products fills up with pickers queueing round each other. Real warehouses spread the traffic out on purpose.',
+          },
+        ],
+      },
     ],
     learn: {
       heading: 'Why did that work?',
@@ -714,6 +848,50 @@ export const disciplines: Discipline[] = [
           title: 'The mission has to close',
           body: 'A design only works when every requirement is met at once, within the budget. That is called closing the design.',
         },
+        ],
+      },
+      {
+        id: 'redundancy',
+        title: 'Backup Plan',
+        goal: 'Get the odds up',
+        why: [
+          {
+            icon: Share2,
+            title: 'Odds multiply, so they only go down',
+            body: 'If every subsystem has to survive, the chance of all of them making it is each chance multiplied together. Four parts that are each 95 percent reliable give a mission that is only 81 percent reliable.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'A spare only helps if the part was likely to fail',
+            body: 'Doubling up something that was already going to survive changes almost nothing. Doubling up the shakiest part can move the whole mission several percentage points, which is why engineers hunt for the weak link before spending anything.',
+          },
+          {
+            icon: Weight,
+            title: 'Redundancy is paid in mass and money',
+            body: 'A spare is a whole extra piece of hardware to build, test, and lift. Real spacecraft carry backups only where the sums say the risk is worth the kilograms.',
+          },
+        ],
+      },
+      {
+        id: 'critical-path',
+        title: 'Critical Path',
+        goal: 'Hit the deadline',
+        why: [
+          {
+            icon: Timer,
+            title: 'One chain decides the date',
+            body: 'A project finishes when its longest chain of dependent work finishes. Everything else is running alongside with time to spare, so the finish date is decided by that one chain and nothing else.',
+          },
+          {
+            icon: Route,
+            title: 'Speeding up spare work buys nothing',
+            body: 'Pour money into a task that was already waiting around and the project finishes on exactly the same day. It is the single most common way project budgets get wasted, and it always feels productive at the time.',
+          },
+          {
+            icon: TrendingUp,
+            title: 'The critical path moves',
+            body: 'Shorten the critical chain enough and a different chain becomes the longest one. From then on your money has to go somewhere else, which is why schedules get replanned rather than set once.',
+          },
         ],
       },
     ],
@@ -795,6 +973,50 @@ export const disciplines: Discipline[] = [
         },
         ],
       },
+      {
+        id: 'line-follower',
+        title: 'Line Follower',
+        goal: 'Drive the whole track',
+        why: [
+          {
+            icon: Route,
+            title: 'Sense, decide, steer, repeat',
+            body: 'The bot measures how far it has drifted, steers back, then measures again. That loop runs hundreds of times a second inside anything that drives itself.',
+          },
+          {
+            icon: TrendingUp,
+            title: 'Steering harder is not steering better',
+            body: 'Crank the strength up and the bot overshoots, then overcorrects, then weaves wider and wider. Real control systems fail exactly this way.',
+          },
+          {
+            icon: Gauge,
+            title: 'Damping watches the rate of change',
+            body: 'By reacting to how fast the error is growing instead of how big it is, damping catches an overshoot before it happens. Cruise control and drone autopilots do the same thing.',
+          },
+        ],
+      },
+      {
+        id: 'gripper',
+        title: 'Safe Grip',
+        goal: 'Hold it without breaking it',
+        why: [
+          {
+            icon: Scale,
+            title: 'Friction decides the minimum',
+            body: 'A gripper does not hold things by being strong, it holds them by friction. Grippier pads need far less squeeze to stop the same object slipping.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Real parts have a ceiling too',
+            body: 'Most things an engineer handles break under enough force, so the safe answer is a window between slipping and crushing, not a single number.',
+          },
+          {
+            icon: Timer,
+            title: 'Moving fast costs margin',
+            body: 'Accelerating an object hard means the gripper fights its weight and its inertia at once. Every second you shave off the lift eats into your safety margin.',
+          },
+        ],
+      },
     ],
     learn: {
       heading: 'Why did that work?',
@@ -872,6 +1094,50 @@ export const disciplines: Discipline[] = [
           title: 'Clean water, real lives',
           body: 'This is not a game for millions of people. Safe water is one of engineering\'s biggest gifts to the world.',
         },
+        ],
+      },
+      {
+        id: 'solar',
+        title: 'Solar Array',
+        goal: 'Keep the lights on',
+        why: [
+          {
+            icon: Sprout,
+            title: 'A panel rating is not a daily total',
+            body: 'A 3 kW array does not make 3 kW all day. It makes nothing before sunrise, peaks around noon, and fades to nothing again, so what it actually delivers is that rating multiplied by a handful of useful sun hours.',
+          },
+          {
+            icon: Zap,
+            title: 'Generating it is not the same as having it',
+            body: 'You can generate twice what a house uses and still sit in the dark every evening, because the sun sets exactly when everyone comes home and starts cooking. Matching daily totals proves almost nothing.',
+          },
+          {
+            icon: Recycle,
+            title: 'Storage is what makes it usable',
+            body: 'A battery moves midday surplus into the evening, which is the only reason a solar house works after dark. It is also why grids with lots of renewables spend so much effort on storing energy rather than just making more.',
+          },
+        ],
+      },
+      {
+        id: 'stormwater',
+        title: 'Stormwater',
+        goal: 'Keep it off the road',
+        why: [
+          {
+            icon: Droplets,
+            title: 'Drains are sized for the average, not the storm',
+            body: 'Rain in a downpour arrives far faster than any sensible pipe can carry away. The job is not moving it faster, it is holding the surge somewhere until the pipe catches up.',
+          },
+          {
+            icon: Sprout,
+            title: 'Shrinking the flood beats storing it',
+            body: 'Tarmac sheds almost every drop that lands on it. Permeable paving and planting drink a good share before it ever becomes runoff, and cutting the flood at the source is usually far cheaper than digging somewhere to put it.',
+          },
+          {
+            icon: Building,
+            title: 'The site still has to do its job',
+            body: 'You could solve any drainage problem by turning the whole site into a meadow, except then nobody can park. Real schemes balance staying dry, staying affordable, and still being useful.',
+          },
         ],
       },
     ],
@@ -953,6 +1219,50 @@ export const disciplines: Discipline[] = [
         },
         ],
       },
+      {
+        id: 'beam-section',
+        title: 'Beam Section',
+        goal: 'Stiff enough, light enough',
+        why: [
+          {
+            icon: ArrowDownToLine,
+            title: 'Depth counts three times over',
+            body: 'Stiffness grows with the cube of the depth, so making a beam twice as deep makes it eight times harder to bend. Depth is by far the cheapest stiffness you can buy.',
+          },
+          {
+            icon: Columns3,
+            title: 'The middle is barely working',
+            body: 'Bending stretches one face and squashes the other, and right through the centre runs a line carrying almost no stress at all. Metal sitting there is mostly just weight.',
+          },
+          {
+            icon: Feather,
+            title: 'That is why beams are I-shaped',
+            body: 'Cut out the lazy middle and put that metal at the top and bottom instead, and you keep nearly all the stiffness for a fraction of the weight. Every steel-framed building you have walked past is built on this one idea.',
+          },
+        ],
+      },
+      {
+        id: 'foundation',
+        title: 'Foundation',
+        goal: 'Keep it standing straight',
+        why: [
+          {
+            icon: ArrowDownToLine,
+            title: 'Soil carries pressure, not weight',
+            body: 'A column does not care how heavy it is, the ground cares how hard it is pushed. Spreading the same load over a wider footing drops the pressure fast, because area grows with the square of the width.',
+          },
+          {
+            icon: Scale,
+            title: 'Sinking is fine, tilting is not',
+            body: 'A building can settle several centimetres and be perfectly usable. Let one side settle further than the other and the frame twists, doors jam, and walls crack. Engineers design for the difference, not the total.',
+          },
+          {
+            icon: TriangleAlert,
+            title: 'Safe footings can still wreck a building',
+            body: 'Size each footing just to pass its own pressure check and both are individually fine, yet the heavier column still sinks further. Getting them to settle together means making the heavy footing wider than its own check ever asks for.',
+          },
+        ],
+      },
     ],
     learn: {
       heading: 'Why did that work?',
@@ -1030,6 +1340,50 @@ export const disciplines: Discipline[] = [
           title: 'Millions of these = a computer',
           body: 'One gate is simple. Pack millions onto a chip and they can run games, videos, and the whole internet.',
         },
+        ],
+      },
+      {
+        id: 'binary',
+        title: 'Binary Bulbs',
+        goal: 'Send the reading',
+        why: [
+          {
+            icon: Binary,
+            title: 'Every place is worth double',
+            body: 'Bulbs are worth 1, 2, 4, 8, 16 and so on, so any whole number can be built by switching on the right few. This is how every value inside every computer is actually stored.',
+          },
+          {
+            icon: Cable,
+            title: 'Width sets the ceiling',
+            body: 'With n signal lines you can only ever count up to 2 to the n, minus one. Choosing that width is a real design decision: too narrow and readings get clipped, too wide and you pay for wires you never use.',
+          },
+          {
+            icon: ToggleLeft,
+            title: 'A minus sign is not free',
+            body: 'To send negative numbers, one bulb has to stop carrying a value and start carrying the sign. You have not gained anything for nothing, you have traded away half your range.',
+          },
+        ],
+      },
+      {
+        id: 'error-check',
+        title: 'Error Check',
+        goal: 'Make the link trustworthy',
+        why: [
+          {
+            icon: ShieldCheck,
+            title: 'Silent corruption is the real enemy',
+            body: 'Data arriving wrong is bad. Data arriving wrong while everything reports success is far worse, because every calculation downstream quietly trusts it. Check bits exist to turn silent errors into loud ones.',
+          },
+          {
+            icon: Share2,
+            title: 'Detecting and repairing are different jobs',
+            body: 'One check bit can tell you something broke. It takes several before the receiver can work out WHICH bit broke and repair it without asking for a resend, which is the only option when the sender is hours away.',
+          },
+          {
+            icon: Gauge,
+            title: 'Protection is paid for in bandwidth',
+            body: 'Every check bit is a bit not carrying data, and every resend sends the same packet twice. Reliability is never free, so engineers buy exactly as much as the link actually needs.',
+          },
         ],
       },
     ],

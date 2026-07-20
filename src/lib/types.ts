@@ -12,6 +12,42 @@ export interface ChallengeProps {
   onComplete: () => void
 }
 
+/**
+ * The four-beat arc every challenge walks through across its five levels:
+ * play it, understand its limits, analyze what is really happening, then optimize.
+ */
+export type LevelPhase = 'play' | 'understand' | 'analyze' | 'optimize'
+
+/** One scored dimension on a level 5 optimization run. */
+export interface LevelMetric {
+  id: string
+  label: string
+  /** Whether a good score is a small number (cost) or a big one (strength). */
+  goal: 'min' | 'max'
+  /** The par value. Beating par on every metric at once should be hard. */
+  target: number
+  unit?: string
+}
+
+/**
+ * One level of a challenge. Every challenge has exactly five, and each one
+ * introduces a single new idea rather than just tightening the numbers.
+ * `setup` carries whatever per-level config that specific game needs.
+ */
+export interface ChallengeLevel<Setup = unknown> {
+  n: 1 | 2 | 3 | 4 | 5
+  /** Short name for the level, shown on the rail. */
+  title: string
+  phase: LevelPhase
+  /** The single new idea this level adds, in two or three words. */
+  concept: string
+  /** One or two sentences on what changed and why engineers care. */
+  teach: string
+  setup: Setup
+  /** Level 5 only: the competing goals scored on the scorecard. */
+  metrics?: LevelMetric[]
+}
+
 export interface LearnPoint {
   icon: LucideIcon
   title: string

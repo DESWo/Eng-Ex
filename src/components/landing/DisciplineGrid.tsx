@@ -16,12 +16,12 @@ const gridMotion = {
   viewport: { once: true, margin: '-60px' },
 }
 
-function Grid({ items, percentFor }: { items: Discipline[]; percentFor: (slug: string) => number }) {
+function Grid({ items }: { items: Discipline[] }) {
   return (
     <motion.div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" {...gridMotion}>
       {items.map((discipline) => (
         <motion.div key={discipline.slug} variants={fadeUp} className="h-full">
-          <DisciplineCard discipline={discipline} percent={percentFor(discipline.slug)} />
+          <DisciplineCard discipline={discipline} />
         </motion.div>
       ))}
     </motion.div>
@@ -88,15 +88,7 @@ function LockedMore({
 }
 
 /** Shown once every core field is finished: branches grouped under each core parent. */
-function UnlockedMore({
-  core,
-  more,
-  percentFor,
-}: {
-  core: Discipline[]
-  more: Discipline[]
-  percentFor: (slug: string) => number
-}) {
+function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }) {
   return (
     <>
       <div className="mb-4 mt-20 text-center">
@@ -141,7 +133,7 @@ function UnlockedMore({
                   </p>
                 </div>
               </div>
-              <Grid items={branches} percentFor={percentFor} />
+              <Grid items={branches} />
             </div>
           )
         })}
@@ -173,11 +165,11 @@ export function DisciplineGrid() {
         </p>
       </div>
 
-      <Grid items={core} percentFor={percentFor} />
+      <Grid items={core} />
 
       {more.length > 0 &&
         (unlocked ? (
-          <UnlockedMore core={core} more={more} percentFor={percentFor} />
+          <UnlockedMore core={core} more={more} />
         ) : (
           <LockedMore core={core} doneCount={doneCount} percentFor={percentFor} />
         ))}

@@ -2,6 +2,8 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Check, Factory, Heart, Lightbulb, RotateCcw, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { useLevelCounts } from '@/hooks/useLevelCounts'
+import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 import { loadJson } from '@/lib/storage'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import type { Discipline, Reflection } from '@/lib/types'
@@ -18,6 +20,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
   const { learn, challenges } = discipline
   const reflection = loadJson<Record<string, Reflection>>('reflections', {})[discipline.slug]
   const solved = loadJson<Record<string, Record<string, boolean>>>('challenges', {})[discipline.slug] ?? {}
+  const levelsFor = useLevelCounts()
   const multi = challenges.length > 1
 
   return (
@@ -58,11 +61,17 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
                 )}
               </span>
               <h3 className="font-display text-lg font-bold">{challenge.title}</h3>
-              {!solved[challenge.id] && (
+              {!solved[challenge.id] ? (
                 <span className="text-xs font-semibold text-ink-soft dark:text-stone-500">
                   (not played yet)
                 </span>
-              )}
+              ) : levelsFor(challenge.id) >= LEVELS_PER_CHALLENGE ? (
+                <span className="accent-text text-xs font-semibold">(all levels cleared)</span>
+              ) : levelsFor(challenge.id) > 0 ? (
+                <span className="text-xs font-semibold text-ink-soft dark:text-stone-500">
+                  ({levelsFor(challenge.id)}/{LEVELS_PER_CHALLENGE} levels)
+                </span>
+              ) : null}
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-3">

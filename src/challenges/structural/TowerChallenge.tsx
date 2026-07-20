@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, RotateCcw, Wind } from 'lucide-react'
+import { RotateCcw, Wind } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
-import type { ChallengeProps } from '@/lib/types'
+import { InsightToggle } from '@/components/level/InsightToggle'
+import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
+import { Scorecard } from '@/components/level/Scorecard'
+import { useLevels } from '@/hooks/useLevels'
+import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
@@ -23,55 +27,112 @@ const WIDE_STIFF = 9
 
 type CoreId = keyof typeof CORES
 
-interface TowerRound {
+interface TowerSetup {
   label: string
   wind: number
-  budget: number
+  /** Budget, or null while money is no object. */
+  budget: number | null
   floors: number
+  /** Which upgrades are on the menu yet. */
+  upgrades: boolean
+  /** Level 4 on: the sway readout is available. */
+  swayReadout: boolean
+  brief: string
 }
 
-/** Each win builds taller in rougher wind. */
-const ROUNDS: TowerRound[] = [
-  { label: 'Gentle breeze', wind: 14, budget: 12, floors: 5 },
-  { label: 'City gusts', wind: 26, budget: 16, floors: 7 },
-  { label: 'Hurricane season', wind: 40, budget: 22, floors: 9 },
+/** How far the top floor swings: wind against stiffness. */
+const swayOf = (wind: number, stiffness: number) =>
+  Math.round(((wind * 10) / Math.max(1, stiffness)) * 10) / 10
+
+const LEVELS: ChallengeLevel<TowerSetup>[] = [
+  {
+    n: 1,
+    title: 'Stand up straight',
+    phase: 'play',
+    concept: 'Tall things sway',
+    teach: 'Wind pushes hardest at the top, and a bendy core lets the whole tower wave around. Pick a core stiff enough to beat the breeze. Spend whatever you like.',
+    setup: { label: 'Gentle breeze', wind: 12, budget: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-storey block on an open site. Stop it waving at the neighbours.' },
+  },
+  {
+    n: 2,
+    title: 'The developer calls',
+    phase: 'understand',
+    concept: 'Stiffness per dollar',
+    teach: 'Concrete solves everything and costs the most per point of stiffness. With a real budget, the strongest core is no longer automatically the right one.',
+    setup: { label: 'City gusts', wind: 26, budget: 12, floors: 6, upgrades: true, swayReadout: false, brief: 'A taller block in gustier air, and now every dollar is argued over.' },
+  },
+  {
+    n: 3,
+    title: 'More than one trick',
+    phase: 'understand',
+    concept: 'Three ways to fight sway',
+    teach: 'A stiffer core resists the wind, a wide base braces against it, and a tuned damper is a huge weight up top that swings against the sway. No core alone survives this level, so the upgrades stop being optional extras.',
+    setup: { label: 'Storm front', wind: 30, budget: 14, floors: 7, upgrades: true, swayReadout: false, brief: 'Wind no core can beat alone. Time to combine tricks.' },
+  },
+  {
+    n: 4,
+    title: 'Feel the top floor',
+    phase: 'analyze',
+    concept: 'The sway readout',
+    teach: 'Turn on the readout. Two towers that both survive can move very differently: the number is how far the top floor swings, and the people up there feel every bit of it.',
+    setup: { label: 'Storm front', wind: 32, budget: 15, floors: 8, upgrades: true, swayReadout: true, brief: 'Same storm, with the top-floor movement measured.' },
+  },
+  {
+    n: 5,
+    title: 'Nine floors, no seasickness',
+    phase: 'optimize',
+    concept: 'Standing is the easy part',
+    teach: 'The wind is survivable several ways now, and they are not equal: the cheap one sways enough to slosh coffee nine floors up. Keep it stiff enough to be comfortable without gold-plating the core.',
+    setup: { label: 'Hurricane season', wind: 36, budget: 20, floors: 9, upgrades: true, swayReadout: true, brief: 'Sign off the tower people will actually live in.' },
+    metrics: [
+      { id: 'cost', label: 'Build cost', goal: 'min', target: 16 },
+      { id: 'sway', label: 'Top-floor sway', goal: 'min', target: 9.8 },
+      { id: 'margin', label: 'Stiffness margin', goal: 'max', target: 1 },
+    ],
+  },
 ]
 
 export function TowerChallenge({ onComplete }: ChallengeProps) {
+  const lv = useLevels('tower', LEVELS)
+  const round = lv.level.setup
+
   const [coreId, setCoreId] = useState<CoreId>('wood')
   const [damper, setDamper] = useState(false)
   const [wide, setWide] = useState(false)
-  const [roundIndex, setRoundIndex] = useState(0)
   const [wonRound, setWonRound] = useState(false)
+  const [showSway, setShowSway] = useState(true)
   const completedRef = useRef(false)
 
-  const round = ROUNDS[roundIndex % ROUNDS.length]
+  useEffect(() => {
+    setCoreId('wood')
+    setDamper(false)
+    setWide(false)
+    setWonRound(false)
+  }, [lv.level.n])
+
   const core = CORES[coreId]
   const cost = core.cost + (damper ? DAMPER_COST : 0) + (wide ? WIDE_COST : 0)
   const stiffness = core.stiff + (damper ? DAMPER_STIFF : 0) + (wide ? WIDE_STIFF : 0)
-  const overBudget = cost > round.budget
+  const overBudget = round.budget !== null && cost > round.budget
   const strongEnough = stiffness >= round.wind
+  const swayTop = swayOf(round.wind, stiffness)
   const win = strongEnough && !overBudget
 
   useEffect(() => {
     if (!win || wonRound) return
     const timer = setTimeout(() => {
       setWonRound(true)
+      lv.clearLevel(
+        lv.level.metrics ? { cost, sway: swayTop, margin: stiffness - round.wind } : undefined,
+      )
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
     }, 800)
     return () => clearTimeout(timer)
-  }, [win, wonRound, onComplete])
-
-  const nextRound = () => {
-    setRoundIndex((i) => i + 1)
-    setCoreId('wood')
-    setDamper(false)
-    setWide(false)
-    setWonRound(false)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [win, wonRound, cost, swayTop, stiffness])
 
   const reset = () => {
     setCoreId('wood')
@@ -91,11 +152,13 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {wonRound && <Confetti />}
 
+      <LevelHeader
+        lv={lv}
+        insight={round.swayReadout ? <InsightToggle label="sway" on={showSway} onChange={setShowSway} /> : undefined}
+      />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">
-          Design a skyscraper that barely sways in the wind, without overspending. Stiffness has to
-          beat the wind.
-        </p>
+        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           <Wind className="mr-1 h-4 w-4" />
           {round.label} · wind {round.wind}
@@ -173,12 +236,18 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
 
       {/* Meters */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Meter
-          label="Budget"
-          display={`$${cost} of $${round.budget}`}
-          fraction={cost / round.budget}
-          barClass={overBudget ? 'bg-rose-500' : cost / round.budget > 0.9 ? 'bg-amber-400' : 'bg-emerald-500'}
-        />
+        {round.budget !== null ? (
+          <Meter
+            label="Budget"
+            display={`$${cost} of $${round.budget}`}
+            fraction={cost / round.budget}
+            barClass={overBudget ? 'bg-rose-500' : cost / round.budget > 0.9 ? 'bg-amber-400' : 'bg-emerald-500'}
+          />
+        ) : (
+          <p className="self-center font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
+            No budget this level. Cost so far: ${cost}
+          </p>
+        )}
         <Meter
           label="Stiffness"
           display={`${stiffness} vs wind ${round.wind}`}
@@ -186,6 +255,14 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
           markerFraction={round.wind / 48}
           barClass={strongEnough ? 'bg-emerald-500' : 'bg-amber-400'}
         />
+        {round.swayReadout && showSway && (
+          <Meter
+            label="Top-floor sway"
+            display={`${swayTop}`}
+            fraction={Math.min(1, swayTop / 20)}
+            barClass={swayTop <= 9.8 ? 'bg-emerald-500' : 'bg-amber-400'}
+          />
+        )}
       </div>
 
       {/* Feedback */}
@@ -193,7 +270,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         {wonRound ? (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
             Rock steady! It barely sways.
-            {round.budget - cost >= 2 && (
+            {round.budget !== null && round.budget - cost >= 2 && (
               <Badge className="bg-emerald-200 text-emerald-900 dark:bg-emerald-500/25 dark:text-emerald-200">
                 ${round.budget - cost} under budget
               </Badge>
@@ -237,6 +314,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
             })}
           </div>
         </div>
+        {round.upgrades && (
         <div>
           <p className="mb-2 font-display text-sm font-semibold">2. Add upgrades</p>
           <div className="flex flex-wrap gap-2">
@@ -267,21 +345,39 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
             A damper is a heavy weight up top that swings against the sway. Real skyscrapers use them.
           </p>
         </div>
+        )}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {wonRound && (
-          <Button variant="accent" onClick={nextRound}>
-            Taller tower
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        )}
         <Button variant="ghost" onClick={reset} aria-label="Reset the tower">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">Round {(roundIndex % ROUNDS.length) + 1}</Badge>
+        <Badge className="ml-auto">{round.floors} floors</Badge>
       </div>
+
+      {lv.level.metrics && (
+        <div className="mt-4">
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={{ cost, sway: swayTop, margin: stiffness - round.wind }}
+            best={lv.best}
+            scored={wonRound}
+          />
+        </div>
+      )}
+
+      {wonRound && (
+        <LevelComplete
+          lv={lv}
+          message={
+            lv.level.metrics
+              ? `Stands at ${swayTop} of sway for $${cost}. Try another combination.`
+              : 'Rock steady. Build on.'
+          }
+          onReplay={reset}
+        />
+      )}
     </Card>
   )
 }

@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, RotateCcw, Undo2 } from 'lucide-react'
+import { RotateCcw, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { simulate, type SimPart } from '@/challenges/electrical/circuitSim'
-import type { ChallengeProps } from '@/lib/types'
+import { InsightToggle } from '@/components/level/InsightToggle'
+import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
+import { Scorecard } from '@/components/level/Scorecard'
+import { Meter } from '@/components/ui/Meter'
+import { useLevels } from '@/hooks/useLevels'
+import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
@@ -34,58 +39,128 @@ interface Requirement {
   text: string
 }
 
-interface CircuitRound {
+interface CircuitSetup {
   label: string
   brief: string
   parts: BoardPart[]
   requirements: Requirement[]
+  /** Total wire length allowed in board units, or null. */
+  wireBudget: number | null
+  /** Level 4 on: current flow is animated along live wires. */
+  flow: boolean
 }
 
-/** Each round adds one new wiring idea. */
-const ROUNDS: CircuitRound[] = [
+const LEVELS: ChallengeLevel<CircuitSetup>[] = [
   {
-    label: 'Build 1: First light',
-    brief: 'Wire the bulb to the battery so it lights up.',
-    parts: [{ id: 'b1', kind: 'bulb', label: 'Bulb', x: 420, y: 180 }],
-    requirements: [{ id: 'b1', want: 'full', text: 'Bulb glows at full brightness' }],
+    n: 1,
+    title: 'First light',
+    phase: 'play',
+    concept: 'Electricity needs a loop',
+    teach: 'Current only flows around an unbroken loop: out of the battery, through the bulb, and back. Wire it up and make it glow.',
+    setup: {
+      label: 'First light',
+      brief: 'Wire the bulb to the battery so it lights up.',
+      parts: [{ id: 'b1', kind: 'bulb', label: 'Bulb', x: 420, y: 180 }],
+      requirements: [{ id: 'b1', want: 'full', text: 'Bulb glows at full brightness' }],
+      wireBudget: null,
+      flow: false,
+    },
   },
   {
-    label: 'Build 2: Put it on a switch',
-    brief: 'The bulb should light, but only while the switch is closed.',
-    parts: [
-      { id: 's1', kind: 'switch', label: 'Switch', x: 340, y: 95 },
-      { id: 'b1', kind: 'bulb', label: 'Bulb', x: 560, y: 190 },
-    ],
-    requirements: [
-      { id: 'b1', want: 'full', text: 'Bulb is full when the switch is closed' },
-      { id: 'b1', want: 'off', switchesOpen: true, text: 'Bulb goes out when the switch opens' },
-    ],
+    n: 2,
+    title: 'Copper is money',
+    phase: 'understand',
+    concept: 'Wire has a length',
+    teach: 'A switch is a drawbridge in the loop, and from now on wire is metered. A tidy, direct run passes; a sprawling one costs more copper than the job allows.',
+    setup: {
+      label: 'On a switch',
+      brief: 'The bulb should light, but only while the switch is closed. Mind the wire budget.',
+      parts: [
+        { id: 's1', kind: 'switch', label: 'Switch', x: 340, y: 95 },
+        { id: 'b1', kind: 'bulb', label: 'Bulb', x: 560, y: 190 },
+      ],
+      requirements: [
+        { id: 'b1', want: 'full', text: 'Bulb is full when the switch is closed' },
+        { id: 'b1', want: 'off', switchesOpen: true, text: 'Bulb goes out when the switch opens' },
+      ],
+      wireBudget: 800,
+      flow: false,
+    },
   },
   {
-    label: 'Build 3: Two bulbs, both bright',
-    brief: 'Light BOTH bulbs at full brightness from the one battery.',
-    parts: [
-      { id: 'b1', kind: 'bulb', label: 'Bulb A', x: 430, y: 105 },
-      { id: 'b2', kind: 'bulb', label: 'Bulb B', x: 430, y: 265 },
-    ],
-    requirements: [
-      { id: 'b1', want: 'full', text: 'Bulb A at full brightness' },
-      { id: 'b2', want: 'full', text: 'Bulb B at full brightness' },
-    ],
+    n: 3,
+    title: 'Two bulbs, one battery',
+    phase: 'understand',
+    concept: 'Series against parallel',
+    teach: 'Chain the bulbs one after the other and they share the battery, so both run dim. Give each its OWN loop back to the battery and both burn at full. Same parts, different wiring, completely different circuit.',
+    setup: {
+      label: 'Both bright',
+      brief: 'Light BOTH bulbs at full brightness from the one battery.',
+      parts: [
+        { id: 'b1', kind: 'bulb', label: 'Bulb A', x: 430, y: 105 },
+        { id: 'b2', kind: 'bulb', label: 'Bulb B', x: 430, y: 265 },
+      ],
+      requirements: [
+        { id: 'b1', want: 'full', text: 'Bulb A at full brightness' },
+        { id: 'b2', want: 'full', text: 'Bulb B at full brightness' },
+      ],
+      wireBudget: null,
+      flow: false,
+    },
   },
   {
-    label: 'Build 4: Control just one',
-    brief: 'Both bulbs full, but the switch must turn off ONLY bulb B.',
-    parts: [
-      { id: 'b1', kind: 'bulb', label: 'Bulb A', x: 400, y: 100 },
-      { id: 'b2', kind: 'bulb', label: 'Bulb B', x: 400, y: 265 },
-      { id: 's1', kind: 'switch', label: 'Switch', x: 620, y: 265 },
-    ],
-    requirements: [
-      { id: 'b1', want: 'full', text: 'Bulb A at full brightness' },
-      { id: 'b2', want: 'full', text: 'Bulb B at full brightness' },
-      { id: 'b1', want: 'full', switchesOpen: true, text: 'Bulb A stays on when the switch opens' },
-      { id: 'b2', want: 'off', switchesOpen: true, text: 'Bulb B goes out when the switch opens' },
+    n: 4,
+    title: 'Watch it flow',
+    phase: 'analyze',
+    concept: 'Current made visible',
+    teach: 'Turn on the flow view and the current itself marches along every live wire. Watch what happens to the moving dots when you open the switch or break a loop, and where they never went at all.',
+    setup: {
+      label: 'Control just one',
+      brief: 'Both bulbs full, but the switch must turn off ONLY bulb B.',
+      parts: [
+        { id: 'b1', kind: 'bulb', label: 'Bulb A', x: 400, y: 100 },
+        { id: 'b2', kind: 'bulb', label: 'Bulb B', x: 400, y: 265 },
+        { id: 's1', kind: 'switch', label: 'Switch', x: 620, y: 265 },
+      ],
+      requirements: [
+        { id: 'b1', want: 'full', text: 'Bulb A at full brightness' },
+        { id: 'b2', want: 'full', text: 'Bulb B at full brightness' },
+        { id: 'b1', want: 'full', switchesOpen: true, text: 'Bulb A stays on when the switch opens' },
+        { id: 'b2', want: 'off', switchesOpen: true, text: 'Bulb B goes out when the switch opens' },
+      ],
+      wireBudget: null,
+      flow: true,
+    },
+  },
+  {
+    n: 5,
+    title: 'Wire the workshop',
+    phase: 'optimize',
+    concept: 'Right, then lean',
+    teach: 'Three bulbs, one switch that controls only the bench light, and a copper bill. Plenty of wirings work; the good one does it with the least wire and the fewest runs.',
+    setup: {
+      label: 'The workshop',
+      brief: 'All three full when closed; only bulb C goes out when the switch opens.',
+      parts: [
+        { id: 'b1', kind: 'bulb', label: 'Bulb A', x: 430, y: 95 },
+        { id: 'b2', kind: 'bulb', label: 'Bulb B', x: 430, y: 265 },
+        { id: 'b3', kind: 'bulb', label: 'Bulb C', x: 640, y: 180 },
+        { id: 's1', kind: 'switch', label: 'Switch', x: 640, y: 320 },
+      ],
+      requirements: [
+        { id: 'b1', want: 'full', text: 'Bulb A at full brightness' },
+        { id: 'b2', want: 'full', text: 'Bulb B at full brightness' },
+        { id: 'b3', want: 'full', text: 'Bulb C at full brightness' },
+        { id: 'b1', want: 'full', switchesOpen: true, text: 'Bulb A stays on when the switch opens' },
+        { id: 'b2', want: 'full', switchesOpen: true, text: 'Bulb B stays on when the switch opens' },
+        { id: 'b3', want: 'off', switchesOpen: true, text: 'Bulb C goes out when the switch opens' },
+      ],
+      wireBudget: 2000,
+      flow: true,
+    },
+    metrics: [
+      { id: 'wire', label: 'Wire used', goal: 'min', target: 1600 },
+      { id: 'runs', label: 'Wire runs', goal: 'min', target: 8 },
     ],
   },
 ]
@@ -100,24 +175,24 @@ const BAT = { x: 120, y: 185, plus: { x: 170, y: 135 }, minus: { x: 170, y: 235 
 const wireKey = (a: string, b: string) => [a, b].sort().join('~')
 
 export function CircuitChallenge({ onComplete }: ChallengeProps) {
-  const [roundIndex, setRoundIndex] = useState(0)
-  const round = ROUNDS[roundIndex % ROUNDS.length]
+  const lv = useLevels('circuit', LEVELS)
+  const round = lv.level.setup
 
   const [wires, setWires] = useState<[string, string][]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [switchOn, setSwitchOn] = useState(true)
   const [wonRound, setWonRound] = useState(false)
+  const [showFlow, setShowFlow] = useState(true)
   const completedRef = useRef(false)
 
-  /** Clear the board in the SAME update as the round change, so a render never
-   *  sees wires belonging to parts the new round does not have. */
-  const goToRound = (next: number) => {
+  // Clear the board whenever the level changes, so a render never sees wires
+  // belonging to parts the new level does not have.
+  useEffect(() => {
     setWires([])
     setSelected(null)
     setSwitchOn(true)
     setWonRound(false)
-    setRoundIndex(next)
-  }
+  }, [lv.level.n])
 
   const bulbs = round.parts.filter((p) => p.kind === 'bulb')
   const switches = round.parts.filter((p) => p.kind === 'switch')
@@ -158,17 +233,30 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const p = sim.power[req.id] ?? 0
     return req.want === 'full' ? p >= FULL : p < LIT
   }
-  const allMet = round.requirements.every(met) && !simClosed.short
+  // Total copper on the board, measured wire by wire.
+  const wireLength = Math.round(
+    wires.reduce((sum, [a, b]) => {
+      const pa = terminalPos(a)
+      const pb = terminalPos(b)
+      return pa && pb ? sum + Math.hypot(pb.x - pa.x, pb.y - pa.y) : sum
+    }, 0),
+  )
+  const overWire = round.wireBudget !== null && wireLength > round.wireBudget
+  const allMet = round.requirements.every(met) && !simClosed.short && !overWire
 
   useEffect(() => {
-    if (allMet && !wonRound) {
+    if (!allMet || wonRound) return
+    const timer = setTimeout(() => {
       setWonRound(true)
+      lv.clearLevel(lv.level.metrics ? { wire: wireLength, runs: wires.length } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }
-  }, [allMet, wonRound, onComplete])
+    }, 500)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMet, wonRound, wireLength, wires.length])
 
   const clickTerminal = (id: string) => {
     if (selected === null) {
@@ -196,7 +284,6 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setSelected(null)
     setWonRound(false)
   }
-  const nextRound = () => goToRound(roundIndex + 1)
 
   const allTerminals = [
     BAT_P,
@@ -207,6 +294,11 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {wonRound && <Confetti />}
+
+      <LevelHeader
+        lv={lv}
+        insight={round.flow ? <InsightToggle label="current flow" on={showFlow} onChange={setShowFlow} /> : undefined}
+      />
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-md">
@@ -231,6 +323,20 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
               <g key={key} onClick={() => removeWire(key)} className="cursor-pointer">
                 <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="transparent" strokeWidth="16" />
                 <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#d97706" strokeWidth="5" strokeLinecap="round" />
+                {round.flow && showFlow && !live.short && bulbs.some((bl) => (live.power[bl.id] ?? 0) > LIT) && (
+                  <motion.line
+                    x1={pa.x}
+                    y1={pa.y}
+                    x2={pb.x}
+                    y2={pb.y}
+                    stroke="#fde047"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="4 14"
+                    animate={{ strokeDashoffset: [0, -36] }}
+                    transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
+                  />
+                )}
               </g>
             )
           })}
@@ -355,6 +461,10 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
             That circuit does exactly what was asked. Nice wiring.
           </motion.p>
+        ) : overWire ? (
+          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
+            The wiring works but uses {wireLength} of copper against a budget of {round.wireBudget}. Route it more directly.
+          </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
             {bulbs.some((b) => (live.power[b.id] ?? 0) > LIT && (live.power[b.id] ?? 0) < FULL)
@@ -364,19 +474,18 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
         )}
       </div>
 
+      {round.wireBudget !== null && (
+        <div className="mt-3">
+          <Meter
+            label="Copper used"
+            display={`${wireLength} of ${round.wireBudget}`}
+            fraction={wireLength / round.wireBudget}
+            barClass={overWire ? 'bg-rose-500' : 'bg-emerald-500'}
+          />
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {wonRound && (roundIndex % ROUNDS.length) < ROUNDS.length - 1 && (
-          <Button variant="accent" onClick={nextRound}>
-            Next build
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        )}
-        {wonRound && (roundIndex % ROUNDS.length) === ROUNDS.length - 1 && (
-          <Button variant="accent" onClick={nextRound}>
-            Start over from build 1
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-        )}
         <Button variant="ghost" onClick={undo} disabled={wires.length === 0} aria-label="Undo last wire">
           <Undo2 className="h-4 w-4" />
           Undo
@@ -385,7 +494,31 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
+        <Badge className="ml-auto">{wires.length} runs · {wireLength} copper</Badge>
       </div>
+
+      {lv.level.metrics && (
+        <div className="mt-4">
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={{ wire: wireLength, runs: wires.length }}
+            best={lv.best}
+            scored={wonRound}
+          />
+        </div>
+      )}
+
+      {wonRound && (
+        <LevelComplete
+          lv={lv}
+          message={
+            lv.level.metrics
+              ? `Spec met on ${wireLength} of copper in ${wires.length} runs. There is a leaner layout.`
+              : 'That circuit does exactly what was asked.'
+          }
+          onReplay={reset}
+        />
+      )}
     </Card>
   )
 }

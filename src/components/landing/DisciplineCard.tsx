@@ -5,17 +5,19 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { DifficultyBadge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { masteryFor, TIER_LABEL } from '@/lib/mastery'
+import { cn } from '@/lib/utils'
 import type { Discipline } from '@/lib/types'
 
 interface DisciplineCardProps {
   discipline: Discipline
   /** 0 to 100, read from saved progress. */
-  percent: number
 }
 
-export function DisciplineCard({ discipline, percent }: DisciplineCardProps) {
+export function DisciplineCard({ discipline }: DisciplineCardProps) {
+  const mastery = masteryFor(discipline)
   const Icon = discipline.icon
-  const cta = percent === 0 ? 'Start exploring' : percent === 100 ? 'Explore again' : 'Keep going'
+  const cta = mastery.cleared === 0 ? 'Start exploring' : mastery.tier === 'mastered' ? 'Explore again' : 'Keep going'
 
   return (
     <Link
@@ -34,8 +36,8 @@ export function DisciplineCard({ discipline, percent }: DisciplineCardProps) {
               <Icon className="accent-text h-7 w-7" />
             </span>
             <div className="flex items-center gap-2">
-              {percent === 100 && (
-                <CheckCircle2 aria-label="Completed" className="h-5 w-5 text-emerald-500" />
+              {mastery.tier === 'mastered' && (
+                <CheckCircle2 aria-label="Mastered" className="h-5 w-5 text-emerald-500" />
               )}
               <DifficultyBadge level={discipline.difficulty} />
             </div>
@@ -49,11 +51,31 @@ export function DisciplineCard({ discipline, percent }: DisciplineCardProps) {
           </div>
 
           <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-soft dark:text-stone-400">
-              <span>Explored</span>
-              <span className="tabular-nums">{percent}%</span>
+            <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5',
+                  mastery.tier === 'mastered'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : mastery.tier === 'solid'
+                      ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300'
+                      : mastery.tier === 'explored'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+                        : 'bg-stone-100 text-ink-soft dark:bg-white/10 dark:text-stone-400',
+                )}
+              >
+                {TIER_LABEL[mastery.tier]}
+              </span>
+              <span className="tabular-nums text-ink-soft dark:text-stone-400">
+                {mastery.cleared} / {mastery.total} levels
+              </span>
             </div>
-            <ProgressBar value={percent} label={`${discipline.name} progress`} />
+            {/* The bar tracks levels cleared, so it can no longer read full
+                while the field is untouched. */}
+            <ProgressBar
+              value={Math.round((mastery.cleared / mastery.total) * 100)}
+              label={`${discipline.name} progress`}
+            />
           </div>
 
           <span className="accent-text flex items-center gap-1 font-display text-sm font-bold">

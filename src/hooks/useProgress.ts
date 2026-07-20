@@ -15,12 +15,16 @@ export function useProgress() {
   const [progress, setProgress] = useState<ProgressMap>(() => loadJson(KEY, {}))
 
   const markDone = useCallback((slug: string, step: StepId) => {
-    setProgress((prev) => {
-      if (prev[slug]?.[step]) return prev
-      const next: ProgressMap = { ...prev, [slug]: { ...prev[slug], [step]: true } }
-      saveJson(KEY, next)
-      return next
-    })
+    // Re-read before writing rather than trusting the copy taken at mount.
+    // Writing a stale snapshot back would undo anything saved since then.
+    const latest = loadJson<ProgressMap>(KEY, {})
+    if (latest[slug]?.[step]) {
+      setProgress(latest)
+      return
+    }
+    const next: ProgressMap = { ...latest, [slug]: { ...latest[slug], [step]: true } }
+    saveJson(KEY, next)
+    setProgress(next)
   }, [])
 
   const isDone = useCallback(

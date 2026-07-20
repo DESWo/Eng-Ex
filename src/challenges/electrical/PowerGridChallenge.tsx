@@ -1,22 +1,79 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
-import type { ChallengeProps } from '@/lib/types'
+import { InsightToggle } from '@/components/level/InsightToggle'
+import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
+import { Scorecard } from '@/components/level/Scorecard'
+import { useLevels } from '@/hooks/useLevels'
+import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-/** Each win moves to a new town with less wire or closed routes. */
-const ROUNDS = [
-  // The cheapest possible network costs 455 m of wire, so these budgets force
-  // genuinely efficient routing rather than "connect whatever works".
-  { label: 'Willow Creek', budget: 500, closed: [] as string[] },
-  { label: 'Copper shortage', budget: 475, closed: [] as string[] },
-  // With a-c and e-g washed out, the cheapest network costs 490 m.
-  { label: 'Flood season', budget: 510, closed: ['a|c', 'e|g'] },
+const LOSS_PER_M = 0.15 // percent of supply lost per metre of wire travelled
+
+interface GridSetup {
+  label: string
+  budget: number | null
+  closed: string[]
+  /** Minimum delivery a house needs, or null when any connection counts. */
+  threshold: number | null
+  /** Level 4 on: line load and losses are drawn. */
+  flow: boolean
+  /** Level 5 on: the network must survive any single line failing. */
+  n1: boolean
+  brief: string
+}
+
+const LEVELS: ChallengeLevel<GridSetup>[] = [
+  {
+    n: 1,
+    title: 'Light the town',
+    phase: 'play',
+    concept: 'Everyone needs a path',
+    teach: 'Electricity only reaches a house that has an unbroken run of wire back to the plant. Build routes until every window glows. Copper is free today.',
+    setup: { label: 'Willow Creek', budget: null, closed: [], threshold: null, flow: false, n1: false, brief: 'A new town with no grid at all. Connect every home.' },
+  },
+  {
+    n: 2,
+    title: 'The copper runs short',
+    phase: 'understand',
+    concept: 'Shared trunks beat spokes',
+    teach: 'Wire is priced by the metre now, and running a private line to each house wastes it. Let houses share trunk lines and the same town connects for far less.',
+    setup: { label: 'Copper shortage', budget: 475, closed: [], threshold: null, flow: false, n1: false, brief: 'The same town on a tight reel of wire. The cheapest possible network barely fits.' },
+  },
+  {
+    n: 3,
+    title: 'The far end flickers',
+    phase: 'understand',
+    concept: 'Wires leak',
+    teach: 'Power fades along every metre it travels, so a house at the end of a long daisy-chain gets a brown-out even though it is connected. The SHORTEST network and a network that DELIVERS are not the same thing.',
+    setup: { label: 'The brown-out', budget: 500, closed: [], threshold: 60, flow: false, n1: false, brief: 'The cheapest network from last time now leaves the far houses flickering. Route for delivery, not just length.' },
+  },
+  {
+    n: 4,
+    title: 'Watch the load',
+    phase: 'analyze',
+    concept: 'Flow and losses',
+    teach: 'Turn on the readout. Thicker lines carry more homes, and the warm glow shows where power is being lost. The busiest line is the one whose failure would hurt most, remember it.',
+    setup: { label: 'The brown-out II', budget: 520, closed: [], threshold: 60, flow: true, n1: false, brief: 'The same delivery problem, with the load on every line made visible.' },
+  },
+  {
+    n: 5,
+    title: 'Survive the storm',
+    phase: 'optimize',
+    concept: 'One line will fail',
+    teach: 'A tree is the cheapest network and the worst one: cut any line and everything behind it goes dark. Build loops so every home has a second way back to the plant, and spend as little extra as you can.',
+    setup: { label: 'Storm season', budget: 800, closed: [], threshold: 55, flow: true, n1: true, brief: 'The storm will take one line, and nobody knows which. The town must stay lit anyway.' },
+    metrics: [
+      { id: 'wire', label: 'Wire used', goal: 'min', target: 720, unit: ' m' },
+      { id: 'weakest', label: 'Weakest house gets', goal: 'max', target: 58, unit: '%' },
+      { id: 'lines', label: 'Lines built', goal: 'min', target: 11 },
+    ],
+  },
 ]
 
 interface GridNode {
@@ -62,6 +119,34 @@ const EDGES: { a: string; b: string; cost: number }[] = [
 const edgeId = (e: { a: string; b: string }) => `${e.a}|${e.b}`
 const nodeById = (id: string) => NODES.find((n) => n.id === id)!
 
+/** Shortest wire-distance from the plant to every reachable node. */
+function distances(built: string[]): Record<string, number> {
+  const dist: Record<string, number> = { plant: 0 }
+  const queue: [string, number][] = [['plant', 0]]
+  while (queue.length) {
+    queue.sort((x, y) => x[1] - y[1])
+    const [u, du] = queue.shift()!
+    if (du > (dist[u] ?? Infinity)) continue
+    for (const e of EDGES) {
+      if (!built.includes(edgeId(e))) continue
+      const v = e.a === u ? e.b : e.b === u ? e.a : null
+      if (!v) continue
+      const nd = du + e.cost
+      if (nd < (dist[v] ?? Infinity)) {
+        dist[v] = nd
+        queue.push([v, nd])
+      }
+    }
+  }
+  return dist
+}
+
+/** Percent of full power a house receives, after line losses. */
+const deliveredTo = (built: string[], houseId: string): number => {
+  const d = distances(built)[houseId]
+  return d === undefined ? 0 : Math.max(0, 100 - LOSS_PER_M * d)
+}
+
 /** Which nodes can currently reach the power plant through built wires. */
 function poweredNodes(built: string[]): Set<string> {
   const lit = new Set(['plant'])
@@ -99,37 +184,67 @@ function House({ node, lit }: { node: GridNode; lit: boolean }) {
 }
 
 export function PowerGridChallenge({ onComplete }: ChallengeProps) {
+  const lv = useLevels('power-grid', LEVELS)
+  const round = lv.level.setup
+
   const [built, setBuilt] = useState<string[]>([])
-  const [roundIndex, setRoundIndex] = useState(0)
   const [celebrate, setCelebrate] = useState(false)
+  const [showFlow, setShowFlow] = useState(true)
   const completedRef = useRef(false)
 
-  const round = ROUNDS[roundIndex % ROUNDS.length]
+  useEffect(() => {
+    setBuilt([])
+    setCelebrate(false)
+  }, [lv.level.n])
   const openEdges = EDGES.filter((e) => !round.closed.includes(edgeId(e)))
   const used = openEdges.filter((e) => built.includes(edgeId(e))).reduce((sum, e) => sum + e.cost, 0)
   const lit = useMemo(() => poweredNodes(built), [built])
   const houses = NODES.filter((n) => n.kind === 'house')
-  const litCount = houses.filter((h) => lit.has(h.id)).length
+  const delivery = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const h of houses) map[h.id] = deliveredTo(built, h.id)
+    return map
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [built])
+  const threshold = round.threshold ?? 0
+  const served = (id: string) =>
+    round.threshold === null ? lit.has(id) : delivery[id] >= threshold
+  const litCount = houses.filter((h) => served(h.id)).length
   const allLit = litCount === houses.length
-  const overBudget = used > round.budget
-  const won = allLit && !overBudget
+  const weakest = Math.min(...houses.map((h) => delivery[h.id]))
+  const overBudget = round.budget !== null && used > round.budget
+
+  // Level 5: pull each built line in turn and see whether the town survives.
+  const survivesAnyCut = useMemo(() => {
+    if (!round.n1) return true
+    for (const cut of built) {
+      const rest = built.filter((e) => e !== cut)
+      const ok = houses.every((h) => deliveredTo(rest, h.id) >= threshold)
+      if (!ok) return false
+    }
+    return true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [built, round.n1, threshold])
+
+  const won = allLit && !overBudget && survivesAnyCut
 
   useEffect(() => {
-    if (won && !completedRef.current) {
+    if (!won) return
+    setCelebrate(true)
+    lv.clearLevel(
+      lv.level.metrics
+        ? { wire: used, weakest: Math.round(weakest), lines: built.length }
+        : undefined,
+    )
+    if (!completedRef.current) {
       completedRef.current = true
-      setCelebrate(true)
       onComplete()
     }
-  }, [won, onComplete])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [won])
 
   const toggle = (id: string) => {
     setBuilt((prev) => (prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]))
-  }
-
-  const nextRound = () => {
-    setRoundIndex((i) => i + 1)
-    setBuilt([])
-    setCelebrate(false)
   }
 
   const reset = () => {
@@ -137,14 +252,24 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
     setCelebrate(false)
   }
 
+  /** Homes whose cheapest route to the plant would lose this line. */
+  const loadOf = (id: string): number => {
+    if (!round.flow) return 0
+    const rest = built.filter((e) => e !== id)
+    return houses.filter((h) => delivery[h.id] > 0 && deliveredTo(rest, h.id) < delivery[h.id] - 0.01).length
+  }
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {celebrate && <Confetti />}
 
+      <LevelHeader
+        lv={lv}
+        insight={round.flow ? <InsightToggle label="line load" on={showFlow} onChange={setShowFlow} /> : undefined}
+      />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft dark:text-stone-400">
-          Tap a dashed route to build a power line. Tap it again to remove it.
-        </p>
+        <p className="max-w-sm text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="accent-soft accent-text">{round.label}</Badge>
           <Badge>
@@ -155,7 +280,7 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
               overBudget && 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
             )}
           >
-            Wire: {used} / {round.budget} m
+            Wire: {used}{round.budget !== null ? ` / ${round.budget}` : ''} m
           </Badge>
         </div>
       </div>
@@ -204,8 +329,9 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
                     y1={n1.y}
                     x2={n2.x}
                     y2={n2.y}
-                    stroke="#c4b5fd"
-                    strokeWidth="5"
+                    stroke={round.flow && showFlow && loadOf(id) > 0 ? '#fbbf24' : '#c4b5fd'}
+                    strokeWidth={round.flow && showFlow ? 3 + loadOf(id) * 1.4 : 5}
+                    strokeOpacity={round.flow && showFlow ? 0.55 + Math.min(0.45, loadOf(id) * 0.08) : 1}
                     strokeLinecap="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
@@ -289,9 +415,23 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
             )
           })()}
 
-          {/* houses */}
+          {/* houses: dark, brown-out, or fully lit */}
           {houses.map((h) => (
-            <House key={h.id} node={h} lit={lit.has(h.id)} />
+            <g key={h.id} opacity={lit.has(h.id) && !served(h.id) ? 0.75 : 1}>
+              <House node={h} lit={served(h.id)} />
+              {round.threshold !== null && lit.has(h.id) && (
+                <text
+                  x={h.x}
+                  y={h.y + 44}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="700"
+                  fill={served(h.id) ? '#a7f3d0' : '#fbbf24'}
+                >
+                  {Math.round(delivery[h.id])}%
+                </text>
+              )}
+            </g>
           ))}
         </svg>
       </div>
@@ -304,8 +444,18 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
           >
-            The whole town is glowing! You connected everyone with {round.budget - used} m of wire to spare.
+            The whole town is glowing!{round.budget !== null ? ` ${round.budget - used} m of wire to spare.` : ''}
           </motion.p>
+        )}
+        {!won && allLit && !overBudget && round.n1 && !survivesAnyCut && (
+          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            Everyone is lit today, but cut one of your lines and part of the town goes dark. Every home needs a second route.
+          </p>
+        )}
+        {!won && !allLit && !overBudget && round.threshold !== null && houses.every((h) => lit.has(h.id)) && (
+          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            Every home is connected, but the amber ones are getting a brown-out. Power fades with every metre, so give the far end a shorter route.
+          </p>
         )}
         {allLit && overBudget && (
           <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
@@ -320,17 +470,34 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-2 flex items-center justify-end gap-3">
-        {won && (
-          <Button variant="accent" onClick={nextRound}>
-            Next town
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        )}
         <Button variant="ghost" onClick={reset} aria-label="Remove all wires">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
       </div>
+
+      {lv.level.metrics && (
+        <div className="mt-4">
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={{ wire: used, weakest: Math.round(Math.max(0, weakest)), lines: built.length }}
+            best={lv.best}
+            scored={won}
+          />
+        </div>
+      )}
+
+      {won && (
+        <LevelComplete
+          lv={lv}
+          message={
+            lv.level.metrics
+              ? `Storm-proof on ${used} m of wire. Try trimming a loop.`
+              : 'The whole town glows.'
+          }
+          onReplay={reset}
+        />
+      )}
     </Card>
   )
 }

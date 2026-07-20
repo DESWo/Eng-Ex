@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import {
-  ArrowRight,
   Coffee,
   Flame,
   Lamp,
@@ -20,7 +19,11 @@ import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
-import type { ChallengeProps } from '@/lib/types'
+import { InsightToggle } from '@/components/level/InsightToggle'
+import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
+import { Scorecard } from '@/components/level/Scorecard'
+import { useLevels } from '@/hooks/useLevels'
+import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
@@ -43,62 +46,145 @@ interface BreakerCircuit {
   rating: number
 }
 
-interface OverloadRound {
+interface OverloadSetup {
   label: string
   circuits: BreakerCircuit[]
   appliances: Appliance[]
+  /** Level 5 on: steady load must stay under 80% of each rating. */
+  eightyRule: boolean
+  /** Level 4 on: ghost surge markers on the meters. */
+  surgeBars: boolean
+  brief: string
 }
 
 const surgeExtra = (a: Appliance) => (a.motor ? Math.round(a.watts * SURGE) : 0)
 
-/** Each win is a fuller house on tighter circuits. */
-const ROUNDS: OverloadRound[] = [
+const LEVELS: ChallengeLevel<OverloadSetup>[] = [
   {
-    label: 'Kitchen rush',
-    circuits: [
-      { id: 'A', label: 'Circuit A', rating: 1800 },
-      { id: 'B', label: 'Circuit B', rating: 1800 },
-    ],
-    appliances: [
-      { id: 'heater', label: 'Space heater', watts: 1200, icon: Flame },
-      { id: 'kettle', label: 'Kettle', watts: 1100, icon: Coffee },
-      { id: 'microwave', label: 'Microwave', watts: 700, icon: Microwave },
-      { id: 'toaster', label: 'Toaster', watts: 250, icon: Utensils },
-      { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
-      { id: 'lights', label: 'Lights', watts: 100, icon: Lightbulb },
-    ],
+    n: 1,
+    title: 'Trip the breaker once',
+    phase: 'play',
+    concept: 'Circuits have limits',
+    teach: 'Every circuit has a rating, and pushing past it snaps the breaker off. Plug things in, hit the power, and find out the hard way once. That is what breakers are for.',
+    setup: {
+      label: 'A quiet evening',
+      circuits: [
+        { id: 'A', label: 'Circuit A', rating: 1800 },
+        { id: 'B', label: 'Circuit B', rating: 1800 },
+      ],
+      appliances: [
+        { id: 'kettle', label: 'Kettle', watts: 1100, icon: Coffee },
+        { id: 'microwave', label: 'Microwave', watts: 700, icon: Microwave },
+        { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
+        { id: 'lights', label: 'Lights', watts: 100, icon: Lightbulb },
+      ],
+      eightyRule: false,
+      surgeBars: false,
+      brief: 'A small flat with two circuits. Get everything running at once.',
+    },
   },
   {
-    label: 'Hot afternoon',
-    circuits: [
-      { id: 'A', label: 'Circuit A', rating: 1800 },
-      { id: 'B', label: 'Circuit B', rating: 1800 },
-      { id: 'C', label: 'Circuit C', rating: 1800 },
-    ],
-    appliances: [
-      { id: 'ac', label: 'AC unit', watts: 900, icon: Snowflake, motor: true },
-      { id: 'oven', label: 'Oven', watts: 1200, icon: Flame },
-      { id: 'microwave', label: 'Microwave', watts: 900, icon: Microwave },
-      { id: 'toaster', label: 'Toaster', watts: 800, icon: Utensils },
-      { id: 'fridge', label: 'Fridge', watts: 400, icon: Refrigerator, motor: true },
-      { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
-    ],
+    n: 2,
+    title: 'Spread the load',
+    phase: 'understand',
+    concept: 'Big draws need separating',
+    teach: 'The heater and the kettle together beat any single circuit in the house. From now on WHERE you plug something matters as much as whether you do.',
+    setup: {
+      label: 'Kitchen rush',
+      circuits: [
+        { id: 'A', label: 'Circuit A', rating: 1800 },
+        { id: 'B', label: 'Circuit B', rating: 1800 },
+      ],
+      appliances: [
+        { id: 'heater', label: 'Space heater', watts: 1200, icon: Flame },
+        { id: 'kettle', label: 'Kettle', watts: 1100, icon: Coffee },
+        { id: 'microwave', label: 'Microwave', watts: 700, icon: Microwave },
+        { id: 'toaster', label: 'Toaster', watts: 250, icon: Utensils },
+        { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
+        { id: 'lights', label: 'Lights', watts: 100, icon: Lightbulb },
+      ],
+      eightyRule: false,
+      surgeBars: false,
+      brief: 'Breakfast time, and everything wants power at once.',
+    },
   },
   {
-    label: 'Laundry and dinner',
-    circuits: [
-      { id: 'A', label: 'Circuit A', rating: 2000 },
-      { id: 'B', label: 'Circuit B', rating: 1800 },
-      { id: 'C', label: 'Circuit C', rating: 1600 },
-    ],
-    appliances: [
-      { id: 'dryer', label: 'Dryer', watts: 1400, icon: WashingMachine },
-      { id: 'ac', label: 'AC unit', watts: 800, icon: Snowflake, motor: true },
-      { id: 'oven', label: 'Oven', watts: 1000, icon: Flame },
-      { id: 'fridge', label: 'Fridge', watts: 350, icon: Refrigerator, motor: true },
-      { id: 'airfryer', label: 'Air fryer', watts: 700, icon: Utensils },
-      { id: 'lamp', label: 'Lamp', watts: 250, icon: Lamp },
-    ],
+    n: 3,
+    title: 'The startup kick',
+    phase: 'understand',
+    concept: 'Motors surge',
+    teach: 'Anything with a motor pulls about half as much AGAIN for the instant it starts. A circuit that looks comfortable on steady watts can still snap the moment the fridge kicks in.',
+    setup: {
+      label: 'Hot afternoon',
+      circuits: [
+        { id: 'A', label: 'Circuit A', rating: 1800 },
+        { id: 'B', label: 'Circuit B', rating: 1800 },
+        { id: 'C', label: 'Circuit C', rating: 1800 },
+      ],
+      appliances: [
+        { id: 'ac', label: 'AC unit', watts: 900, icon: Snowflake, motor: true },
+        { id: 'oven', label: 'Oven', watts: 1200, icon: Flame },
+        { id: 'microwave', label: 'Microwave', watts: 900, icon: Microwave },
+        { id: 'toaster', label: 'Toaster', watts: 800, icon: Utensils },
+        { id: 'fridge', label: 'Fridge', watts: 400, icon: Refrigerator, motor: true },
+        { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
+      ],
+      eightyRule: false,
+      surgeBars: false,
+      brief: 'Two motors join the house, and steady watts stop telling the whole story.',
+    },
+  },
+  {
+    n: 4,
+    title: 'See the spike coming',
+    phase: 'analyze',
+    concept: 'Ghost surge markers',
+    teach: 'Turn on the markers. Each meter now shows a pale extension for the startup spike its motors will cause, so you can see a doomed circuit BEFORE you throw the switch.',
+    setup: {
+      label: 'Laundry and dinner',
+      circuits: [
+        { id: 'A', label: 'Circuit A', rating: 2000 },
+        { id: 'B', label: 'Circuit B', rating: 1800 },
+        { id: 'C', label: 'Circuit C', rating: 1600 },
+      ],
+      appliances: [
+        { id: 'dryer', label: 'Dryer', watts: 1400, icon: WashingMachine },
+        { id: 'ac', label: 'AC unit', watts: 800, icon: Snowflake, motor: true },
+        { id: 'oven', label: 'Oven', watts: 1000, icon: Flame },
+        { id: 'fridge', label: 'Fridge', watts: 350, icon: Refrigerator, motor: true },
+        { id: 'airfryer', label: 'Air fryer', watts: 700, icon: Utensils },
+        { id: 'lamp', label: 'Lamp', watts: 250, icon: Lamp },
+      ],
+      eightyRule: false,
+      surgeBars: true,
+      brief: 'The fullest house yet, with the surge markers switched on.',
+    },
+  },
+  {
+    n: 5,
+    title: 'Wire it to code',
+    phase: 'optimize',
+    concept: 'The 80 percent rule',
+    teach: 'Real electrical code says a circuit running for hours should sit under 80 percent of its rating, because breakers and wiring heat up. Passing the peak test is no longer enough: every circuit has to run COOL.',
+    setup: {
+      label: 'Sign-off inspection',
+      circuits: [
+        { id: 'A', label: 'Circuit A', rating: 2000 },
+        { id: 'B', label: 'Circuit B', rating: 2000 },
+        { id: 'C', label: 'Circuit C', rating: 1800 },
+      ],
+      appliances: [
+        { id: 'dryer', label: 'Dryer', watts: 1200, icon: WashingMachine },
+        { id: 'ac', label: 'AC unit', watts: 800, icon: Snowflake, motor: true },
+        { id: 'oven', label: 'Oven', watts: 1000, icon: Flame },
+        { id: 'fridge', label: 'Fridge', watts: 350, icon: Refrigerator, motor: true },
+        { id: 'airfryer', label: 'Air fryer', watts: 700, icon: Utensils },
+        { id: 'lamp', label: 'Lamp', watts: 250, icon: Lamp },
+      ],
+      eightyRule: true,
+      surgeBars: true,
+      brief: 'The inspector wants every circuit under 80 percent, spikes included in the peak test.',
+    },
   },
 ]
 
@@ -141,14 +227,22 @@ function ApplianceChip({
 }
 
 export function OverloadChallenge({ onComplete }: ChallengeProps) {
-  const [roundIndex, setRoundIndex] = useState(0)
+  const lv = useLevels('overload', LEVELS)
+  const round = lv.level.setup
+
   const [assignment, setAssignment] = useState<Record<string, string | null>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
+  const [showSurge, setShowSurge] = useState(true)
   const completedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const round = ROUNDS[roundIndex % ROUNDS.length]
+  useEffect(() => {
+    setAssignment({})
+    setSelectedId(null)
+    setPhase('idle')
+  }, [lv.level.n])
+
   const hasMotors = round.appliances.some((a) => a.motor)
 
   useEffect(() => () => {
@@ -164,6 +258,14 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
 
   const unassigned = round.appliances.filter((a) => !assignment[a.id])
   const tripped = round.circuits.filter((c) => peakOf(c.id) > c.rating)
+  // The 80 percent rule: continuous load has to leave headroom for heat.
+  const overheated = round.eightyRule
+    ? round.circuits.filter((c) => steadyOf(c.id) > c.rating * 0.8)
+    : []
+  const worstSteadyPct = Math.max(
+    ...round.circuits.map((c) => (steadyOf(c.id) / c.rating) * 100),
+  )
+  const minSurgeMargin = Math.min(...round.circuits.map((c) => c.rating - peakOf(c.id)))
 
   const clickAppliance = (applianceId: string) => {
     if (phase === 'testing') return
@@ -184,8 +286,13 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     if (phase === 'testing' || unassigned.length > 0) return
     setPhase('testing')
     timerRef.current = setTimeout(() => {
-      if (tripped.length === 0) {
+      if (tripped.length === 0 && overheated.length === 0) {
         setPhase('passed')
+        lv.clearLevel(
+          lv.level.metrics
+            ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin }
+            : undefined,
+        )
         if (!completedRef.current) {
           completedRef.current = true
           onComplete()
@@ -194,13 +301,6 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
         setPhase('failed')
       }
     }, 900)
-  }
-
-  const nextRound = () => {
-    setRoundIndex((i) => i + 1)
-    setAssignment({})
-    setSelectedId(null)
-    setPhase('idle')
   }
 
   const reset = () => {
@@ -214,6 +314,11 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {phase === 'passed' && <Confetti />}
+
+      <LevelHeader
+        lv={lv}
+        insight={round.surgeBars ? <InsightToggle label="surge markers" on={showSurge} onChange={setShowSurge} /> : undefined}
+      />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p aria-live="polite" className="max-w-md text-sm font-semibold text-ink-soft dark:text-stone-400">
@@ -294,9 +399,18 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
                 display={
                   phase === 'failed' && isTripped
                     ? `${peakOf(circuit.id).toLocaleString('en-US')}W peak`
-                    : `${steady.toLocaleString('en-US')}W`
+                    : round.surgeBars && showSurge && peakOf(circuit.id) > steady
+                      ? `${steady.toLocaleString('en-US')}W, spikes to ${peakOf(circuit.id).toLocaleString('en-US')}W`
+                      : `${steady.toLocaleString('en-US')}W`
                 }
                 fraction={(phase === 'failed' && isTripped ? peakOf(circuit.id) : steady) / circuit.rating}
+                markerFraction={
+                  round.surgeBars && showSurge && peakOf(circuit.id) > steady
+                    ? Math.min(1, peakOf(circuit.id) / circuit.rating)
+                    : round.eightyRule
+                      ? 0.8
+                      : undefined
+                }
                 barClass={
                   isTripped ? 'bg-rose-500' : steady > circuit.rating ? 'bg-rose-500' : steady / circuit.rating > 0.8 ? 'bg-amber-400' : 'bg-emerald-500'
                 }
@@ -329,6 +443,17 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
             The whole house came on and every breaker held. Nice and steady.
           </motion.p>
         )}
+        {phase === 'failed' && !firstTripped && overheated.length > 0 && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+          >
+            Nothing tripped, but {overheated[0].label} is running at{' '}
+            {Math.round((steadyOf(overheated[0].id) / overheated[0].rating) * 100)}% continuously. Code
+            says 80% is the ceiling, because wiring that runs hot for hours is a fire waiting.
+          </motion.p>
+        )}
         {phase === 'failed' && firstTripped && (
           <motion.p
             initial={{ opacity: 0, y: 8 }}
@@ -342,22 +467,38 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        {phase === 'passed' ? (
-          <Button variant="accent" size="lg" onClick={nextRound}>
-            Next house
-            <ArrowRight className="h-5 w-5" />
-          </Button>
-        ) : (
-          <Button variant="accent" size="lg" onClick={powerOn} disabled={phase === 'testing' || unassigned.length > 0}>
-            <Zap className="h-5 w-5" fill="currentColor" />
-            {phase === 'testing' ? 'Testing...' : 'Power on!'}
-          </Button>
-        )}
+        <Button variant="accent" size="lg" onClick={powerOn} disabled={phase === 'testing' || unassigned.length > 0}>
+          <Zap className="h-5 w-5" fill="currentColor" />
+          {phase === 'testing' ? 'Testing...' : 'Power on!'}
+        </Button>
         <Button variant="ghost" onClick={reset} disabled={phase === 'testing'} aria-label="Unplug everything">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
       </div>
+
+      {lv.level.metrics && (
+        <div className="mt-4">
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={{ worst: Math.round(worstSteadyPct), margin: minSurgeMargin }}
+            best={lv.best}
+            scored={phase === 'passed'}
+          />
+        </div>
+      )}
+
+      {phase === 'passed' && (
+        <LevelComplete
+          lv={lv}
+          message={
+            lv.level.metrics
+              ? `Every circuit under code, worst at ${Math.round(worstSteadyPct)}%. Try evening them out.`
+              : 'Every breaker held.'
+          }
+          onReplay={reset}
+        />
+      )}
     </Card>
   )
 }
