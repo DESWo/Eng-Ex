@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +43,8 @@ interface ShieldSetup {
   available: MatId[]
   /** Shielding mass allowed, or null. */
   massBudget: number | null
+  /** Money allowed, or null. */
+  costBudget: number | null
   /** Level 4 on: the beam readout is available. */
   beam: boolean
   brief: string
@@ -53,7 +57,7 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     phase: 'play',
     concept: 'Thickness soaks up rays',
     teach: 'Think lane defense: the rays are the invaders, the technician is the house, and your wall is the only thing planted in the lane. Every centimetre of lead cuts the gamma rays down by the same fraction again, so add lead until nothing red reaches the other side.',
-    setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: null, beam: false, brief: 'A gamma source in the lab needs a shield between it and the technician.' },
+    setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: null, costBudget: null, beam: false, brief: 'A gamma source in the lab needs a shield between it and the technician.' },
   },
   {
     n: 2,
@@ -61,15 +65,15 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     phase: 'understand',
     concept: 'Mass budget',
     teach: 'Lead is wonderfully dense, which is exactly why it is heavy. This lab floor is only rated for so much, so you cannot just keep stacking.',
-    setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: 100, beam: false, brief: 'Same source, but the shield has to sit on an ordinary lab floor.' },
+    setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: 100, costBudget: null, beam: false, brief: 'Same source, but the shield has to sit on an ordinary lab floor.' },
   },
   {
     n: 3,
     title: 'Neutrons too',
     phase: 'understand',
     concept: 'Different rays, different stoppers',
-    teach: 'This source throws neutrons as well, and lead barely touches them. Neutrons are slowed by light atoms like the hydrogen in water and plastic. You will need one material for each problem.',
-    setup: { gammaIn: 800, neutronIn: 800, safeDose: 5, available: MAT_IDS as unknown as MatId[], massBudget: null, beam: false, brief: 'A reactor port leaking both gamma rays and neutrons. Lead alone will not save you here.' },
+    teach: 'This source throws neutrons as well, and lead barely touches them. Neutrons are slowed by light atoms like the hydrogen in water and plastic. You will need one material for each problem, and the port platform only takes 90 kg.',
+    setup: { gammaIn: 800, neutronIn: 800, safeDose: 5, available: MAT_IDS as unknown as MatId[], massBudget: 90, costBudget: null, beam: false, brief: 'A reactor port leaking both gamma rays and neutrons. Lead alone will not save you here.' },
   },
   {
     n: 4,
@@ -77,7 +81,7 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     phase: 'analyze',
     concept: 'Layer by layer',
     teach: 'Turn on the beam readout. Each band shows how much of each kind of radiation is left after that layer. You can see which layer is doing the real work, and which is just adding weight.',
-    setup: { gammaIn: 900, neutronIn: 700, safeDose: 4, available: MAT_IDS as unknown as MatId[], massBudget: null, beam: true, brief: 'A shielded transport flask, with the beam readout switched on.' },
+    setup: { gammaIn: 900, neutronIn: 700, safeDose: 4, available: MAT_IDS as unknown as MatId[], massBudget: 90, costBudget: null, beam: true, brief: 'A shielded transport flask, with the beam readout switched on.' },
   },
   {
     n: 5,
@@ -85,7 +89,7 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     phase: 'optimize',
     concept: 'Dose, mass, and money',
     teach: 'This shield has to travel, so weight costs fuel and lead costs a fortune. Concrete and water are cheap and light but weak. Find the stack that is safe without being a brick of gold.',
-    setup: { gammaIn: 800, neutronIn: 800, safeDose: 5, available: MAT_IDS as unknown as MatId[], massBudget: null, beam: true, brief: 'Design the shipping shield for a medical isotope: safe, light, and affordable.' },
+    setup: { gammaIn: 800, neutronIn: 800, safeDose: 5, available: MAT_IDS as unknown as MatId[], massBudget: 100, costBudget: 120, beam: true, brief: 'Design the shipping shield for a medical isotope: safe, light, and affordable.' },
     metrics: [
       // Tuned by scanning every stack: only a layered shield (a little lead for
       // gamma, plenty of water and polythene for neutrons) clears all three.
@@ -103,11 +107,15 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
   const [thick, setThick] = useState<Record<MatId, number>>({ lead: 0, concrete: 0, water: 0, poly: 0 })
   const [won, setWon] = useState(false)
   const [showBeam, setShowBeam] = useState(true)
+  /** Shown only after a certification attempt, never from live state. */
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setThick({ lead: 0, concrete: 0, water: 0, poly: 0 })
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const layers = setup.available.filter((m) => thick[m] > 0)
@@ -124,30 +132,49 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
   const cost = setup.available.reduce((s, m) => s + MATERIALS[m].costPerCm * thick[m], 0)
 
   const overMass = setup.massBudget !== null && mass > setup.massBudget
-  const solved = dose <= setup.safeDose && !overMass
+  const overCost = setup.costBudget !== null && cost > setup.costBudget
+  const solved = dose <= setup.safeDose && !overMass && !overCost
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setThick({ lead: 0, concrete: 0, water: 0, poly: 0 })
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** The commitment: call the wall done and see if the meter agrees. */
+  const certify = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Safe. Only ${dose.toFixed(2)} is getting through, well under ${setup.safeDose}.` })
       lv.clearLevel(lv.level.metrics ? { dose, mass, cost } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, dose, mass, cost])
-
-  const reset = () => {
-    setThick({ lead: 0, concrete: 0, water: 0, poly: 0 })
-    setWon(false)
+      return
+    }
+    const text = overMass
+      ? `That stack weighs ${Math.round(mass)} kg and the limit is ${setup.massBudget}. Something dense has to go.`
+      : overCost
+        ? `That stack costs $${Math.round(cost)} and the budget is $${setup.costBudget}. Lead is the expensive part.`
+        : neutron > gamma && neutron > setup.safeDose
+          ? `Failed: ${Math.round(neutron)} of neutrons still get through. Dense metal barely slows them, so try something light and hydrogen-rich.`
+          : `Failed: ${dose < 10 ? dose.toFixed(1) : Math.round(dose)} is getting through and safe is ${setup.safeDose} or less.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Out of test runs. The wall is cleared, the meter is reset. Read the beam before you stack this time.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   /** Add or take away one slab of a material. */
-  const addSlab = (m: MatId, delta: number) =>
+  const addSlab = (m: MatId, delta: number) => {
+    setVerdict(null)
     setThick((prev) => ({ ...prev, [m]: Math.max(0, Math.min(MAX_CM, prev[m] + delta)) }))
+  }
 
   /* Scene: source on the left, stacked slabs, technician on the right. */
   const SRC_X = 70
@@ -217,6 +244,13 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
         insight={setup.beam ? <InsightToggle label="beam readout" on={showBeam} onChange={setShowBeam} /> : undefined}
       />
 
+      <Objective
+        goal={`Get the dose to ${setup.safeDose} or less${setup.massBudget !== null ? `, wall under ${setup.massBudget} kg` : ''}${setup.costBudget !== null ? `, under $${setup.costBudget}` : ''}`}
+        status={`getting through now: ${dose < 10 ? dose.toFixed(1) : Math.round(dose)}`}
+        attemptsLeft={att.left}
+        met={won}
+      />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{setup.brief}</p>
         <div className="flex flex-wrap gap-2">
@@ -270,7 +304,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
           })}
 
           {/* technician, ringed red while anything is still getting through */}
-          {solved ? (
+          {won ? (
             <circle cx="720" cy="118" r="42" fill="none" strokeWidth="2.5" strokeDasharray="5 6" className="stroke-emerald-500/80" />
           ) : (
             <motion.circle
@@ -303,24 +337,24 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: only after the player certifies, so the meter is the test */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overMass
-            ? `That stack weighs ${Math.round(mass)} kg and the floor takes ${setup.massBudget}.`
-            : solved
-              ? `Safe. Only ${dose.toFixed(2)} is getting through, well under ${setup.safeDose}.`
-              : neutron > gamma && neutron > setup.safeDose
-                ? `Still ${Math.round(neutron)} of neutrons coming through. Dense metal barely slows them, so try something light and hydrogen-rich.`
-                : `Still ${dose < 10 ? dose.toFixed(1) : Math.round(dose)} getting through. Safe is ${setup.safeDose} or less.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Stack the wall, watch where the dots die, then certify it when you trust it.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -378,6 +412,10 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={certify} disabled={won}>
+          <ShieldCheck className="h-5 w-5" />
+          Certify the shield
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Clear the shield">
           <RotateCcw className="h-4 w-4" />
           Clear

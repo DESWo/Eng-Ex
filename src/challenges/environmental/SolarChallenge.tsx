@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Power, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -126,7 +128,7 @@ const LEVELS: ChallengeLevel<SolarSetup>[] = [
     phase: 'understand',
     concept: 'Making it is not having it',
     teach: 'Here is the catch. You can generate twice what this house uses and still sit in the dark every evening, because the sun sets exactly when everyone gets home. Energy has to be stored to be there when it is wanted.',
-    setup: { battery: true, matchDailyTotal: false, maxUnmet: 1, budget: null, chart: false, brief: 'They generate plenty and the lights keep going off after dinner.' },
+    setup: { battery: true, matchDailyTotal: false, maxUnmet: 1, budget: 9000, chart: false, brief: 'They generate plenty and the lights keep going off after dinner.' },
   },
   {
     n: 4,
@@ -134,7 +136,7 @@ const LEVELS: ChallengeLevel<SolarSetup>[] = [
     phase: 'analyze',
     concept: 'Supply against demand',
     teach: 'Turn on the day readout. The curve is what the panels make, the steps are what the house wants, and the band underneath is the battery filling and emptying. The gap between them at six in the evening is the whole problem.',
-    setup: { battery: true, matchDailyTotal: false, maxUnmet: 1, budget: null, chart: true, brief: 'The same system, hour by hour across a whole day.' },
+    setup: { battery: true, matchDailyTotal: false, maxUnmet: 1, budget: 8500, chart: true, brief: 'The same system, hour by hour across a whole day.' },
   },
   {
     n: 5,
@@ -142,7 +144,7 @@ const LEVELS: ChallengeLevel<SolarSetup>[] = [
     phase: 'optimize',
     concept: 'Never dark, never wasteful',
     teach: 'Batteries are dearer per unit than panels, but panels without storage spill their surplus into nothing. Find the pairing that keeps the house lit without a roof full of capacity that has nowhere to go.',
-    setup: { battery: true, matchDailyTotal: false, maxUnmet: 2, budget: null, chart: true, brief: 'Give the family a system that works and a number they will accept.' },
+    setup: { battery: true, matchDailyTotal: false, maxUnmet: 2, budget: 8000, chart: true, brief: 'Give the family a system that works and a number they will accept.' },
     metrics: [
       { id: 'unmet', label: 'Energy gone without', goal: 'min', target: 0.5, unit: ' kWh' },
       { id: 'cost', label: 'System cost', goal: 'min', target: 7800 },
@@ -160,12 +162,15 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
   const [batteryKwh, setBatteryKwh] = useState(0)
   const [won, setWon] = useState(false)
   const [showChart, setShowChart] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setPanelKw(1)
     setBatteryKwh(0)
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const battery = setup.battery ? batteryKwh : 0
@@ -177,24 +182,38 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
     ? madeEnough && !overBudget
     : r.unmet <= (setup.maxUnmet ?? 0) && !overBudget
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setPanelKw(1)
+    setBatteryKwh(0)
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Flip the house onto the new system and live with the result. */
+  const switchOver = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: 'The system holds. The family runs on sunshine.' })
       lv.clearLevel(lv.level.metrics ? { unmet: r.unmet, cost: r.cost, waste: r.wasted } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, r.unmet, r.cost, r.wasted])
-
-  const reset = () => {
-    setPanelKw(1)
-    setBatteryKwh(0)
-    setWon(false)
+      return
+    }
+    const text = overBudget
+      ? `That system costs $${Math.round(r.cost)} and the family's ceiling is $${setup.budget}.`
+      : setup.matchDailyTotal
+        ? `It only generates ${r.generated.toFixed(1)} kWh and the house uses ${DAILY_DEMAND.toFixed(1)}. More panel.`
+        : `The lights went out: ${r.unmet.toFixed(1)} kWh short across ${r.darkHours} dark hours, and the allowance is ${setup.maxUnmet}. Panels make daytime power; evenings need somewhere to store it.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Out of test switchovers. Fresh roof, empty meter. Look at when the house actually uses power before you buy.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   /* Chart */
@@ -212,6 +231,21 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.chart ? <InsightToggle label="the day" on={showChart} onChange={setShowChart} /> : undefined}
+      />
+
+      <Objective
+        goal={
+          setup.matchDailyTotal
+            ? `Generate the family's ${DAILY_DEMAND.toFixed(1)} kWh a day${setup.budget !== null ? ` on a $${setup.budget.toLocaleString()} budget` : ''}`
+            : `No more than ${setup.maxUnmet} kWh of dark hours${setup.budget !== null ? `, spending at most $${setup.budget.toLocaleString()}` : ''}`
+        }
+        status={
+          setup.matchDailyTotal
+            ? `making ${r.generated.toFixed(1)} kWh now`
+            : `short ${r.unmet.toFixed(1)} kWh now · $${Math.round(r.cost).toLocaleString()}`
+        }
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -275,28 +309,24 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: only after the family actually switches over */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overBudget
-            ? `That system costs ${Math.round(r.cost).toLocaleString()} and the budget is ${setup.budget?.toLocaleString()}.`
-            : setup.matchDailyTotal
-              ? madeEnough
-                ? `Generating ${r.generated.toFixed(1)} kWh a day against ${DAILY_DEMAND.toFixed(1)} used.`
-                : `Only ${r.generated.toFixed(1)} kWh a day, and the house gets through ${DAILY_DEMAND.toFixed(1)}.`
-              : solved
-                ? `Lit all day. ${r.generated.toFixed(1)} kWh generated, ${r.unmet.toFixed(1)} kWh gone without.`
-                : r.generated > DAILY_DEMAND && battery < 4
-                  ? `The panels make ${r.generated.toFixed(1)} kWh, comfortably more than the ${DAILY_DEMAND.toFixed(1)} the house uses, and it is still dark for ${r.darkHours} hours. All that surplus is arriving at noon and there is nowhere to keep it.`
-                  : `${r.unmet.toFixed(1)} kWh gone without across ${r.darkHours} hours.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Size the system, then switch the house over to find out if it holds.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -332,7 +362,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setPanelKw(fitted ? i * TILE_KW : (i + 1) * TILE_KW)}
+                  onClick={() => { setVerdict(null); setPanelKw(fitted ? i * TILE_KW : (i + 1) * TILE_KW) }}
                   aria-pressed={fitted}
                   aria-label={fitted ? `Remove panel ${i + 1}` : `Fit panel ${i + 1}`}
                   className={cn(
@@ -368,7 +398,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setBatteryKwh(fitted ? i * MODULE_KWH : (i + 1) * MODULE_KWH)}
+                    onClick={() => { setVerdict(null); setBatteryKwh(fitted ? i * MODULE_KWH : (i + 1) * MODULE_KWH) }}
                     aria-pressed={fitted}
                     aria-label={fitted ? `Remove battery module ${i + 1}` : `Fit battery module ${i + 1}`}
                     className={cn(
@@ -388,6 +418,10 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={switchOver} disabled={won}>
+          <Power className="h-5 w-5" />
+          Switch the house over
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the system">
           <RotateCcw className="h-4 w-4" />
           Reset

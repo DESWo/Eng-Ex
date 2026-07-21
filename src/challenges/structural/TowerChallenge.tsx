@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw, Wind } from 'lucide-react'
+import { ClipboardCheck, RotateCcw, Wind } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -101,6 +103,8 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
   const [wide, setWide] = useState(false)
   const [wonRound, setWonRound] = useState(false)
   const [showSway, setShowSway] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
@@ -108,6 +112,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
     setDamper(false)
     setWide(false)
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const core = CORES[coreId]
@@ -118,10 +123,12 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
   const swayTop = swayOf(round.wind, stiffness)
   const win = strongEnough && !overBudget
 
-  useEffect(() => {
-    if (!win || wonRound) return
-    const timer = setTimeout(() => {
+  /** Put your name on the drawings and let the storm answer. */
+  const signOff = () => {
+    if (wonRound) return
+    if (win) {
       setWonRound(true)
+      setVerdict({ ok: true, text: 'Rock steady. The storm leans on it and it barely moves.' })
       lv.clearLevel(
         lv.level.metrics ? { cost, sway: swayTop, margin: stiffness - round.wind } : undefined,
       )
@@ -129,16 +136,26 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 800)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [win, wonRound, cost, swayTop, stiffness])
+      return
+    }
+    const text = overBudget
+      ? `Rejected: this design costs $${cost} and the developer capped it at $${round.budget}.`
+      : `It failed the wind test: stiffness ${stiffness} against gusts of ${round.wind}. The top floors whipped around.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Out of wind-tunnel slots. Back to the plain wood core. Compare stiffness per dollar before the next run.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setCoreId('wood')
     setDamper(false)
     setWide(false)
     setWonRound(false)
+    setVerdict(null)
   }
 
   // Sway amplitude grows when wind beats stiffness.
@@ -155,6 +172,13 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.swayReadout ? <InsightToggle label="sway" on={showSway} onChange={setShowSway} /> : undefined}
+      />
+
+      <Objective
+        goal={`Beat wind ${round.wind} with stiffness${round.budget !== null ? ` on a $${round.budget} budget` : ''}`}
+        status={`this design: stiffness ${stiffness} · $${cost}`}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -265,24 +289,22 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         )}
       </div>
 
-      {/* Feedback */}
+      {/* Verdict: the storm only speaks after you sign off */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Rock steady! It barely sways.
-            {round.budget !== null && round.budget - cost >= 2 && (
-              <Badge className="bg-emerald-200 text-emerald-900 dark:bg-emerald-500/25 dark:text-emerald-200">
-                ${round.budget - cost} under budget
-              </Badge>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
             )}
-          </motion.div>
-        ) : overBudget ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget. This design costs more than you are allowed to spend.
+          >
+            {verdict.text}
           </p>
         ) : (
-          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            The tower sways too much in this wind. Its stiffness ({stiffness}) could not stand up to the gusts ({round.wind}).
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Pick a core, add tricks if the budget allows, then sign off the design to face the storm.
           </p>
         )}
       </div>
@@ -298,7 +320,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setCoreId(id)}
+                  onClick={() => { setVerdict(null); setCoreId(id) }}
                   className={cn(
                     'rounded-2xl border-2 p-3 text-left transition-colors duration-200',
                     coreId === id ? 'accent-border accent-soft' : 'border-stone-200 hover:border-stone-300 dark:border-white/10 dark:hover:border-white/25',
@@ -320,7 +342,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setWide((v) => !v)}
+              onClick={() => { setVerdict(null); setWide((v) => !v) }}
               aria-pressed={wide}
               className={cn(
                 'rounded-full border-2 px-4 py-2 font-display text-sm font-bold transition-colors duration-200',
@@ -331,7 +353,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
             </button>
             <button
               type="button"
-              onClick={() => setDamper((v) => !v)}
+              onClick={() => { setVerdict(null); setDamper((v) => !v) }}
               aria-pressed={damper}
               className={cn(
                 'rounded-full border-2 px-4 py-2 font-display text-sm font-bold transition-colors duration-200',
@@ -349,6 +371,10 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={signOff} disabled={wonRound}>
+          <ClipboardCheck className="h-5 w-5" />
+          Sign off the design
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the tower">
           <RotateCcw className="h-4 w-4" />
           Reset
