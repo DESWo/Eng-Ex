@@ -161,7 +161,7 @@ export function DisciplineGrid() {
           Pick your first adventure
         </h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
-          Three core fields, nine challenges, zero tests.
+          Three core fields to start, eight more to unlock, zero tests.
         </p>
       </div>
 

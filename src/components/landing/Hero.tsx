@@ -4,7 +4,7 @@ import { buttonClasses } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 
 const chips = [
-  { icon: Compass, text: '3 fields to explore' },
+  { icon: Compass, text: '11 fields to explore' },
   { icon: Timer, text: 'About 10 minutes each' },
   { icon: HeartHandshake, text: 'No grades, no pressure' },
 ]
