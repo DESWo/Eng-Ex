@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { HardHat, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -63,7 +65,7 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     phase: 'understand',
     concept: 'Differential settlement',
     teach: 'Two columns now, one carrying four times the other. Size each one just to pass its pressure check and both are technically safe, yet the heavy side sinks twice as far and tears the frame apart. Buildings tolerate sinking. They do not tolerate sinking unevenly.',
-    setup: { loads: [300, 1200], maxDiff: 15, budget: null, ground: false, brief: 'A frame on two columns with very different loads. Keep them sinking together.' },
+    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: false, brief: 'A frame on two columns with very different loads. Keep them sinking together.' },
   },
   {
     n: 4,
@@ -71,7 +73,7 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     phase: 'analyze',
     concept: 'Pressure bulbs',
     teach: 'Turn on the ground readout. The stress spreads down into the soil in a bulb under each footing, and the deeper that bulb reaches the more soil is being squeezed. A wider footing pushes less hard and sinks less.',
-    setup: { loads: [300, 1200], maxDiff: 12, budget: null, ground: true, brief: 'The same pair, with what is happening under the ground drawn out.' },
+    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'The same pair, with what is happening under the ground drawn out.' },
   },
   {
     n: 5,
@@ -79,7 +81,7 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     phase: 'optimize',
     concept: 'Cheap, low, and even',
     teach: 'Wide footings sink less and stay even, but concrete and excavation are billed by the square metre. Find the pair that keeps the frame straight without digging half the site out.',
-    setup: { loads: [300, 1200], maxDiff: 15, budget: null, ground: true, brief: 'Sign off the foundation design for the real building.' },
+    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'Sign off the foundation design for the real building.' },
     metrics: [
       { id: 'cost', label: 'Groundworks cost', goal: 'min', target: 1400 },
       { id: 'settle', label: 'Worst settlement', goal: 'min', target: 26, unit: ' mm' },
@@ -96,11 +98,14 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
   const [widths, setWidths] = useState<number[]>([1, 1])
   const [won, setWon] = useState(false)
   const [showGround, setShowGround] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setWidths([1, 1])
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const feet = setup.loads.map((load, i) => {
@@ -123,23 +128,43 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
   const cracked = setup.maxDiff !== null && diff > setup.maxDiff
   const solved = !anyOverloaded && !overBudget && !cracked
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setWidths([1, 1])
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Pour the concrete and let the building settle onto it. */
+  const pour = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({
+        ok: true,
+        text:
+          feet.length > 1
+            ? `Standing straight. Both sides settle within ${diff.toFixed(0)} mm of each other.`
+            : `Solid. ${Math.round(feet[0].press)} kPa on soil that takes ${BEARING}.`,
+      })
       lv.clearLevel(lv.level.metrics ? { cost, settle: worstSettle, diff } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, cost, worstSettle, diff])
-
-  const reset = () => {
-    setWidths([1, 1])
-    setWon(false)
+      return
+    }
+    const text = anyOverloaded
+      ? `Punching through. The soil takes ${BEARING} kPa and that footing is pushing ${Math.round(Math.max(...feet.map((f) => f.press)))} kPa.`
+      : overBudget
+        ? `The groundworks come to ${Math.round(cost)} and the budget is ${setup.budget}.`
+        : `The frame cracked: the heavy side sank ${diff.toFixed(0)} mm further than the light one and it tolerates ${setup.maxDiff} mm. Passing the pressure check is not the same as sinking evenly.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Out of pours. The site is cleared back to narrow pads. Work out the sink difference on paper first: settling is load over width.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   /** Drag a footing edge outwards. Which footing depends on where you grabbed. */
@@ -151,6 +176,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
     }
     const metres = (Math.abs(x - spotsNow[best]) * 2) / 34
     const snapped = Math.round(metres * 4) / 4
+    setVerdict(null)
     setWidths((p) => p.map((w, j) => (j === best ? Math.max(1, Math.min(6, snapped)) : w)))
   })
 
@@ -168,6 +194,17 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.ground ? <InsightToggle label="ground" on={showGround} onChange={setShowGround} /> : undefined}
+      />
+
+      <Objective
+        goal={`Keep every footing under ${BEARING} kPa${setup.maxDiff !== null ? ` and uneven sinking under ${setup.maxDiff} mm` : ''}${setup.budget !== null ? `, spending at most ${setup.budget}` : ''}`}
+        status={
+          feet.length > 1
+            ? `now: ${feet.map((f) => Math.round(f.press) + ' kPa').join(' / ')} · ${diff.toFixed(0)} mm uneven`
+            : `now: ${Math.round(feet[0].press)} kPa`
+        }
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -260,26 +297,24 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: the clay answers only after the pour */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {anyOverloaded
-            ? `Punching through. The soil takes ${BEARING} kPa and that footing is pushing ${Math.round(Math.max(...feet.map((f) => f.press)))} kPa.`
-            : overBudget
-              ? `The groundworks come to ${Math.round(cost)} and the budget is ${setup.budget}.`
-              : cracked
-                ? `Both footings are safe on their own, but the heavy side sinks ${diff.toFixed(0)} mm further than the light one and the frame cannot take more than ${setup.maxDiff} mm. Widen the heavy footing more than its pressure check alone asks for.`
-                : feet.length > 1
-                  ? `Standing straight. Both sides settle within ${diff.toFixed(0)} mm of each other.`
-                  : `Solid. ${Math.round(feet[0].press)} kPa on soil that takes ${BEARING}.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Drag the footing edges to size them, then pour the concrete to see how the building settles.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -313,6 +348,10 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={pour} disabled={won}>
+          <HardHat className="h-5 w-5" />
+          Pour the concrete
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the footings">
           <RotateCcw className="h-4 w-4" />
           Reset

@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Factory, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -139,12 +141,15 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
   const [depth, setDepth] = useState(80)
   const [won, setWon] = useState(false)
   const [showStress, setShowStress] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setShapeId(setup.shapes[0])
     setDepth(80)
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -157,30 +162,43 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
   const tooHeavy = setup.maxKg !== null && kgPerM > setup.maxKg
   const solved = sag <= setup.maxSag && !tooHeavy
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setShapeId(setup.shapes[0])
+    setDepth(80)
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Send the section to the mill and stand under the result. */
+  const order = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Passes. ${sag.toFixed(1)} mm of sag at ${kgPerM.toFixed(0)} kg per metre.` })
       lv.clearLevel(lv.level.metrics ? { sag, mass: kgPerM, cost } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, sag, kgPerM, cost])
-
-  const reset = () => {
-    setShapeId(setup.shapes[0])
-    setDepth(80)
-    setWon(false)
+      return
+    }
+    const text = tooHeavy && sag <= setup.maxSag
+      ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg crane limit. ${setup.shapes.length > 1 ? 'A hollow section gets most of this stiffness for far less metal.' : 'Try a shallower beam.'}`
+      : `It sagged ${sag.toFixed(1)} mm underfoot and the limit is ${setup.maxSag} mm. Depth is what buys stiffness.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The mill cancelled the order. Back to the 80 mm blank. Depth cubes into stiffness: work out roughly what you need first.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   /** Drag the top edge of the section to make the beam deeper. */
   const { bind } = useSvgDrag((_x, y) => {
     // The section is centred on CY, so half the height is the distance dragged.
     const mm = Math.round(((150 - y) * 2) / 0.62 / 10) * 10
+    setVerdict(null)
     setDepth(Math.max(80, Math.min(300, mm)))
   })
 
@@ -208,6 +226,13 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.stress ? <InsightToggle label="stress" on={showStress} onChange={setShowStress} /> : undefined}
+      />
+
+      <Objective
+        goal={`Sag ${setup.maxSag} mm or less${setup.maxKg !== null ? `, beam under ${setup.maxKg} kg/m` : ''}`}
+        status={`this section: ${sag.toFixed(1)} mm · ${kgPerM.toFixed(0)} kg/m`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -312,22 +337,24 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: only after the section is ordered */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {solved
-            ? `Passes. ${sag.toFixed(1)} mm of sag at ${kgPerM.toFixed(0)} kg per metre.`
-            : tooHeavy && sag <= setup.maxSag
-              ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg limit. ${setup.shapes.length > 1 ? 'A hollow section gets most of this stiffness for far less metal.' : 'Try a shallower beam.'}`
-              : `Sagging ${sag.toFixed(1)} mm, and the limit is ${setup.maxSag} mm.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Shape the section, then order it from the mill to see how the span holds up.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -360,7 +387,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setShapeId(id)}
+                  onClick={() => { setVerdict(null); setShapeId(id) }}
                   aria-pressed={active}
                   className={cn(
                     'rounded-2xl px-4 py-2.5 text-left font-display text-sm font-semibold transition-colors duration-200',
@@ -382,6 +409,10 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={order} disabled={won}>
+          <Factory className="h-5 w-5" />
+          Order the section
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the beam">
           <RotateCcw className="h-4 w-4" />
           Reset
