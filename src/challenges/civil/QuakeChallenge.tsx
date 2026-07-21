@@ -7,9 +7,11 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -154,9 +156,15 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
         onComplete()
       }
     } else {
+      if (att.spend()) {
+        reset()
+        att.refill()
+      }
       setPhase('failed')
     }
   }
+
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
 
   const shake = () => {
     if (busy || overBudget) return
@@ -187,6 +195,12 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.drift ? <InsightToggle label="drift" on={showDrift} onChange={setShowDrift} /> : undefined}
+      />
+
+      <Objective
+        goal={`Stand through a magnitude-${Math.round(round.magnitude / 6)} shake${round.budget !== null ? ` for ${round.budget.toLocaleString()} or less` : ''}${round.maxSway !== null ? `, swaying no more than ${round.maxSway}` : ''}`}
+        attemptsLeft={att.left}
+        met={phase === 'passed'}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

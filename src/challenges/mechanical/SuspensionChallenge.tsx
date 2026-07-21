@@ -7,9 +7,11 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -86,7 +88,7 @@ const LEVELS: ChallengeLevel<RideSetup>[] = [
     phase: 'understand',
     concept: 'Resonance',
     teach: 'Corrugations hit the wheels at a steady rhythm, and if that rhythm matches the spring’s own bounce the shakes ADD UP instead of cancelling. The firm spring that won level 2 resonates here and shakes itself apart. Going SOFTER detunes it.',
-    setup: { label: 'The corrugated track', mass: 700, cargoNote: 'empty van', maxHarsh: null, roadHz: 1.9, maxAmp: 0.8, sagMatters: false, curve: false, brief: 'A washboard gravel road with bumps at a steady rhythm. Strength is not what wins here.' },
+    setup: { label: 'The corrugated track', mass: 700, cargoNote: 'empty van', maxHarsh: null, roadHz: 1.9, maxAmp: 0.8, sagMatters: false, curve: true, brief: 'A washboard gravel road with bumps at a steady rhythm. Strength is not what wins here.' },
   },
   {
     n: 4,
@@ -119,6 +121,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
   const [springId, setSpringId] = useState<SpringId>('stiff')
   const [dampers, setDampers] = useState(0)
   const [phase, setPhase] = useState<'garage' | 'driving' | 'passed' | 'failed'>('garage')
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
   const [showCurve, setShowCurve] = useState(true)
   const completedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -156,6 +159,10 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
           onComplete()
         }
       } else {
+        if (att.spend()) {
+          reset()
+          att.refill()
+        }
         setPhase('failed')
       }
     }, 2200)
@@ -197,6 +204,18 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.curve ? <InsightToggle label="response curve" on={showCurve} onChange={setShowCurve} /> : undefined}
+      />
+
+      <Objective
+        goal={
+          round.roadHz !== null
+            ? `Body shake ${round.maxAmp} or less on a road drumming at ${round.roadHz} Hz${round.sagMatters ? ', loaded, without bottoming out' : ''}`
+            : round.sagMatters
+              ? `Ride smooth (harshness ${round.maxHarsh} or less) without the load bottoming out`
+              : `Ride smooth: harshness ${round.maxHarsh} or less`
+        }
+        attemptsLeft={att.left}
+        met={phase === 'passed'}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

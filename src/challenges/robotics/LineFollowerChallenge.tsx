@@ -7,9 +7,11 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -235,6 +237,7 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
   const [speed, setSpeed] = useState(4)
   const [result, setResult] = useState<RunResult | null>(null)
   const [running, setRunning] = useState(false)
+  const att = useAttempts(lv.level.n === 1 ? null : 4, lv.level.n)
   const [runId, setRunId] = useState(0)
   const [won, setWon] = useState(false)
   const [showTrace, setShowTrace] = useState(true)
@@ -285,7 +288,13 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       setRunning(false)
-      if (!run.ok) return
+      if (!run.ok) {
+        if (att.spend()) {
+          reset()
+          att.refill()
+        }
+        return
+      }
       setWon(true)
       lv.clearLevel(
         lv.level.metrics ? { time: run.ticks, wobble: run.wobble, battery: run.battery } : undefined,
@@ -317,6 +326,12 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
         insight={
           setup.trace ? <InsightToggle label="error trace" on={showTrace} onChange={setShowTrace} /> : undefined
         }
+      />
+
+      <Objective
+        goal={`Tune the bot so it follows the line to the finish without losing it${setup.damping ? ' (gain steers, damping calms the weave)' : ''}`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
