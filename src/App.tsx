@@ -3,6 +3,7 @@ import { MotionConfig } from 'framer-motion'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { LandingPage } from '@/pages/LandingPage'
 import { DisciplinePage } from '@/pages/DisciplinePage'
 import { AboutPage } from '@/pages/AboutPage'
@@ -43,9 +44,28 @@ function App() {
     // reducedMotion="user" softens animations for people who prefer less motion.
     <MotionConfig reducedMotion="user">
       <ScrollToTop />
-      <ProfileProvider>
-        <Shell />
-      </ProfileProvider>
+      <ErrorBoundary
+        fallback={() => (
+          <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+            <h1 className="font-display text-2xl font-bold">Something went wrong.</h1>
+            <p className="max-w-md text-ink-soft dark:text-stone-400">
+              Sorry about that. A reload almost always fixes it, and your progress is
+              saved on this device.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-full bg-ink px-6 py-2.5 font-display font-semibold text-white dark:bg-white dark:text-ink"
+            >
+              Reload the page
+            </button>
+          </div>
+        )}
+      >
+        <ProfileProvider>
+          <Shell />
+        </ProfileProvider>
+      </ErrorBoundary>
     </MotionConfig>
   )
 }

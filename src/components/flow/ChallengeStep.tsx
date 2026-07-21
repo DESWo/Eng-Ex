@@ -4,6 +4,7 @@ import { ArrowRight, Check, PartyPopper, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { challengeRegistry } from '@/challenges/registry'
 import { useLevelCounts } from '@/hooks/useLevelCounts'
 import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
@@ -123,17 +124,35 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
       </div>
 
       {ChallengeComponent ? (
-        // Games are lazy chunks; the fallback shows while one downloads.
-        <Suspense
-          fallback={
-            <Card className="flex h-64 animate-pulse items-center justify-center text-ink-soft dark:text-stone-400">
-              Setting up the lab…
+        // Keyed by game so a chunk that failed to download only marks THIS
+        // game broken; picking another challenge still works.
+        <ErrorBoundary
+          key={active.id}
+          fallback={() => (
+            <Card className="space-y-4 p-8 text-center">
+              <p className="font-display font-semibold">This game did not load.</p>
+              <p className="text-sm text-ink-soft dark:text-stone-400">
+                That usually means the app was updated while this tab was open. A quick
+                reload picks up the new version; your progress is saved.
+              </p>
+              <Button variant="accent" onClick={() => window.location.reload()}>
+                Reload the page
+              </Button>
             </Card>
-          }
+          )}
         >
-          {/* Keyed so switching challenges gives each one a fresh start. */}
-          <ChallengeComponent key={active.id} onComplete={handleComplete} />
-        </Suspense>
+          {/* Games are lazy chunks; the fallback shows while one downloads. */}
+          <Suspense
+            fallback={
+              <Card className="flex h-64 animate-pulse items-center justify-center text-ink-soft dark:text-stone-400">
+                Setting up the lab…
+              </Card>
+            }
+          >
+            {/* Keyed so switching challenges gives each one a fresh start. */}
+            <ChallengeComponent key={active.id} onComplete={handleComplete} />
+          </Suspense>
+        </ErrorBoundary>
       ) : (
         <Card className="p-8 text-center text-ink-soft dark:text-stone-400">
           This challenge is still being built. Check back soon!
