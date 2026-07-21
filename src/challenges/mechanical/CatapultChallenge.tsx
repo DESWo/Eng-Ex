@@ -125,7 +125,63 @@ const FIRE_MIN = 16 // release closer than this and the sling just relaxes
  * its front face below this height smashes straight into it, so flat direct
  * shots work as well as lobs dropped on the roof.
  */
-const FORT_H_M = 5 // fort height in metres
+const FORT_H_M = 8 // fort height in metres (covers the whole stacked structure)
+
+/** Angry-Birds-style materials, each a distinct look. */
+const BLOCK_STYLE = {
+  wood: { fill: '#c89b6b', stroke: '#a87c4e' },
+  stone: { fill: '#9aa7b5', stroke: '#79808d' },
+  glass: { fill: 'rgba(56,189,248,0.4)', stroke: 'rgba(56,189,248,0.85)' },
+} as const
+type BlockMat = keyof typeof BLOCK_STYLE
+
+interface FortBlock {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  mat: BlockMat
+  shape?: 'roof' | 'flag'
+}
+
+/**
+ * A little fortress of stacked blocks, built relative to its centre `cx` and
+ * the ground line `g`. Legs hold up a plank deck, a hut of stone walls guards
+ * a glass loot crate under a peaked roof, and a side stack of crates leans
+ * alongside. Knocking any of it down wins.
+ */
+function buildFort(cx: number, g: number): FortBlock[] {
+  return [
+    { id: 'leg-l', x: cx - 26, y: g - 16, w: 7, h: 16, mat: 'wood' },
+    { id: 'leg-r', x: cx + 19, y: g - 16, w: 7, h: 16, mat: 'wood' },
+    { id: 'deck', x: cx - 30, y: g - 22, w: 60, h: 6, mat: 'wood' },
+    { id: 'wall-l', x: cx - 28, y: g - 40, w: 8, h: 18, mat: 'stone' },
+    { id: 'wall-r', x: cx + 20, y: g - 40, w: 8, h: 18, mat: 'stone' },
+    { id: 'loot', x: cx - 9, y: g - 38, w: 18, h: 16, mat: 'glass' },
+    { id: 'lintel', x: cx - 31, y: g - 45, w: 62, h: 5, mat: 'wood' },
+    { id: 'roof', x: cx - 31, y: g - 56, w: 62, h: 11, mat: 'stone', shape: 'roof' },
+    { id: 'crate', x: cx + 34, y: g - 16, w: 17, h: 16, mat: 'stone' },
+    { id: 'box', x: cx + 36, y: g - 30, w: 13, h: 14, mat: 'wood' },
+    { id: 'flag', x: cx - 1, y: g - 70, w: 2, h: 14, mat: 'wood', shape: 'flag' },
+  ]
+}
+
+/** A stable knock-down trajectory for one block (no re-randomising per frame). */
+function blockScatter(index: number, block: FortBlock, g: number) {
+  const rand = (n: number) => {
+    const s = Math.sin(index * 12.9898 + n * 78.233) * 43758.5453
+    return s - Math.floor(s)
+  }
+  const aboveGround = g - (block.y + block.h)
+  const dir = rand(1) < 0.28 ? -1 : 1 // the boulder comes from the left, so mostly rightward
+  return {
+    x: dir * (16 + rand(2) * 46),
+    y: aboveGround * 0.55 + rand(3) * 16, // higher blocks fall further into the pile
+    rot: (rand(4) - 0.5) * 220,
+    delay: (aboveGround / 60) * 0.12 + rand(5) * 0.05, // taller pieces topple a touch later
+  }
+}
 
 interface Shot {
   xs: number[]
@@ -476,49 +532,57 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             </g>
           )}
 
-          {/* the fort: knock it down by dropping on the roof or smashing the face */}
+          {/* the fort: an Angry-Birds-style block stack, knocked down on a hit */}
           <rect x={zoneX} y={GROUND_Y - 5} width={zoneW} height="10" rx="5" style={{ fill: 'var(--accent)' }} opacity="0.85" />
-          {(() => {
+          {buildFort(targetX, GROUND_Y).map((b, i) => {
             const smashed = result?.verdict === 'hit'
-            const spring = { type: 'spring' as const, stiffness: 130, damping: 13 }
-            const piece = (
-              key: string,
-              fly: { x: number; y: number; rot: number },
-              children: React.ReactNode,
-            ) => (
+            const s = blockScatter(i, b, GROUND_Y)
+            const style = BLOCK_STYLE[b.mat]
+            let body: React.ReactNode
+            if (b.shape === 'roof') {
+              // A peaked stone roof spanning the hut walls.
+              body = (
+                <path
+                  d={`M${b.x} ${b.y + b.h} L${b.x + b.w / 2} ${b.y} L${b.x + b.w} ${b.y + b.h} Z`}
+                  fill={style.fill}
+                  stroke={style.stroke}
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              )
+            } else if (b.shape === 'flag') {
+              body = (
+                <g>
+                  <line x1={b.x} y1={b.y} x2={b.x} y2={b.y + b.h} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
+                  <path d={`M${b.x} ${b.y} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
+                </g>
+              )
+            } else {
+              body = (
+                <>
+                  <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="2" fill={style.fill} stroke={style.stroke} strokeWidth="1.5" />
+                  {/* wood grain / glass shine, a little texture per material */}
+                  {b.mat === 'wood' && b.w > 20 && (
+                    <line x1={b.x + 3} y1={b.y + b.h / 2} x2={b.x + b.w - 3} y2={b.y + b.h / 2} stroke={style.stroke} strokeWidth="1" opacity="0.6" />
+                  )}
+                  {b.mat === 'glass' && (
+                    <line x1={b.x + 4} y1={b.y + 3} x2={b.x + 4} y2={b.y + b.h - 3} stroke="white" strokeWidth="2" opacity="0.5" strokeLinecap="round" />
+                  )}
+                </>
+              )
+            }
+            return (
               <motion.g
-                key={key}
-                animate={smashed ? { x: fly.x, y: fly.y, rotate: fly.rot } : { x: 0, y: 0, rotate: 0 }}
-                transition={spring}
+                key={b.id}
+                animate={smashed ? { x: s.x, y: s.y, rotate: s.rot } : { x: 0, y: 0, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 120, damping: 12, delay: smashed ? s.delay : 0 }}
                 style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
               >
-                {children}
+                {body}
               </motion.g>
             )
-            return (
-              <g>
-                {piece('tl', { x: -24, y: 6, rot: -75 }, (
-                  <rect x={targetX - 27} y={GROUND_Y - 34} width="13" height="34" rx="2" className="fill-stone-500 dark:fill-stone-400" />
-                ))}
-                {piece('tr', { x: 26, y: 8, rot: 80 }, (
-                  <rect x={targetX + 14} y={GROUND_Y - 34} width="13" height="34" rx="2" className="fill-stone-500 dark:fill-stone-400" />
-                ))}
-                {piece('wall', { x: 10, y: 14, rot: 38 }, (
-                  <rect x={targetX - 15} y={GROUND_Y - 22} width="30" height="22" rx="2" className="fill-stone-400 dark:fill-stone-500" />
-                ))}
-                {piece('roof', { x: -8, y: -20, rot: -50 }, (
-                  <rect x={targetX - 29} y={GROUND_Y - 40} width="58" height="7" rx="3" className="fill-stone-600 dark:fill-stone-300" />
-                ))}
-                {piece('flag', { x: -4, y: 30, rot: -120 }, (
-                  <g>
-                    <line x1={targetX} y1={GROUND_Y - 40} x2={targetX} y2={GROUND_Y - 56} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
-                    <path d={`M${targetX} ${GROUND_Y - 56} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
-                  </g>
-                ))}
-              </g>
-            )
-          })()}
-          <text x={targetX} y={GROUND_Y - 66} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
+          })}
+          <text x={targetX} y={GROUND_Y - 78} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
             {round.target} m
           </text>
 
