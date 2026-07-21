@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { ArrowUpFromLine, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -98,7 +100,7 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     phase: 'optimize',
     concept: 'Speed eats your margin',
     teach: 'You set the lift speed too. Snatching it up fast means the jar throws its own weight around and needs far more grip, which pushes you towards the crush line. Fast, safe, and gentle pull against each other.',
-    setup: { payload: PAYLOADS.jar, pad: null, accel: null, window: true, brief: 'The line wants jars moved quickly, without breakages, on a gripper that is not wearing itself out.' },
+    setup: { payload: PAYLOADS.jar, pad: null, accel: null, window: false, brief: 'The line wants jars moved quickly, without breakages, on a gripper that is not wearing itself out.' },
     metrics: [
       { id: 'time', label: 'Lift time', goal: 'min', target: 12 },
       { id: 'margin', label: 'Safety margin', goal: 'max', target: 20 },
@@ -130,6 +132,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
     setPadId(setup.pad ?? 'rubber')
     setAccel(setup.accel ?? 3)
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -144,25 +147,42 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const margin = Math.min(grip - slip, crush - grip)
   const liftTime = 60 / (2 + a)
 
-  useEffect(() => {
-    if (!held || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Actually lift the item. Slip and crush only reveal themselves in the air. */
+  const lift = () => {
+    if (won) return
+    if (held) {
       setWon(true)
+      setVerdict({ ok: true, text: `Held safely, with ${Math.round(margin)} of margin on the tighter side.` })
       lv.clearLevel(lv.level.metrics ? { time: liftTime, margin, grip } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 700)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [held, won, liftTime, margin, grip])
+      return
+    }
+    const text = impossible
+      ? `These pads cannot do it: the item starts breaking at ${Math.round(crush)} before it stops slipping at ${Math.round(slip)}. Try a different pad.`
+      : grip < slip
+        ? `It slipped out on the way up. This setup needs at least ${Math.round(slip)} of grip.`
+        : `Crushed it. Anything over ${Math.round(crush)} is too much here.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The bin of broken stock is full. Line reset. Slip depends on weight, pad, and speed; crush only on the item. Think it through.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setGrip(30)
     setPadId(setup.pad ?? 'rubber')
     setAccel(setup.accel ?? 3)
     setWon(false)
+    setVerdict(null)
   }
 
   /** Drag along the force bar to squeeze harder or softer. */
@@ -200,6 +220,13 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.window ? <InsightToggle label="force window" on={showWindow} onChange={setShowWindow} /> : undefined}
+      />
+
+      <Objective
+        goal={`Lift the ${setup.payload.label.toLowerCase()} without slipping or crushing`}
+        status={`grip set to ${grip}`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -308,22 +335,22 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            state === 'held'
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {impossible
-            ? `These pads cannot do it. The ${obj.label.toLowerCase()} starts breaking at ${Math.round(crush)} before it even stops slipping at ${Math.round(slip)}. Try a different pad.`
-            : state === 'slipping'
-              ? `Slipping. It needs at least ${Math.round(slip)} of grip with these pads.`
-              : state === 'crushed'
-                ? `Crushed it. Anything over ${Math.round(crush)} is too much for the ${obj.label.toLowerCase()}.`
-                : `Held safely, with ${Math.round(margin)} of margin on the tighter side.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Set the grip, then lift. Slip and crush only show themselves in the air.
+          </p>
+        )}
       </div>
 
       {/* Pad picker */}
@@ -388,6 +415,10 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={lift} disabled={won}>
+          <ArrowUpFromLine className="h-5 w-5" />
+          Lift it
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the gripper">
           <RotateCcw className="h-4 w-4" />
           Reset
