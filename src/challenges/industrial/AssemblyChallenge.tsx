@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Minus, Plus, Package, RotateCcw } from 'lucide-react'
+import { ArrowRight, Minus, Plus, Package, Play, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -107,6 +109,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setAssigned({})
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const workersOn = (id: string) => assigned[id] ?? 1
@@ -125,21 +128,36 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   )
   const win = rate >= round.targetRate && spare >= 0
 
-  useEffect(() => {
-    if (!win || wonRound) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Start the shift and hold the line to its promised rate. */
+  const startShift = () => {
+    if (wonRound) return
+    if (win) {
       setWonRound(true)
+      setVerdict({ ok: true, text: `The line is humming! You hit ${rate}/min by feeding the bottleneck.` })
       lv.clearLevel(lv.level.metrics ? { workers: used, util: utilization, rate } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 600)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [win, wonRound, used, utilization, rate])
+      return
+    }
+    const text = spare < 0
+      ? `You have assigned ${used} workers and the roster is ${round.workers}.`
+      : `The shift managed ${rate}/min against a promised ${round.targetRate}/min. ${bottleneck.name} set the pace: a line only moves as fast as its slowest station.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The shift supervisor sent everyone home. One worker per station again. Find the slowest station on paper before staffing.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const change = (id: string, delta: number) => {
+    setVerdict(null)
     setAssigned((prev) => {
       const current = prev[id] ?? 1
       const next = Math.max(1, Math.min(MAX_PER_STATION, current + delta))
@@ -151,6 +169,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   const reset = () => {
     setAssigned({})
     setWonRound(false)
+    setVerdict(null)
   }
 
   const maxTime = Math.max(...round.stations.map((s) => s.baseTime))
@@ -162,6 +181,13 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.wip ? <InsightToggle label="piles" on={showWip} onChange={setShowWip} /> : undefined}
+      />
+
+      <Objective
+        goal={`Hit ${round.targetRate} units/min with ${round.workers} workers`}
+        status={`current pace: ${rate}/min · ${spare} spare worker${spare === 1 ? '' : 's'}`}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -176,7 +202,9 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
         <div className="flex min-w-max items-stretch gap-2">
           {round.stations.map((s, i) => {
             const time = timeOf(s)
-            const isBottleneck = s.id === bottleneck.id
+            // Desmond's complaint: the game highlighted the answer. The slow
+            // station only gets flagged once the WIP-piles insight is unlocked.
+            const isBottleneck = round.wip && showWip && s.id === bottleneck.id
             return (
               <div key={s.id} className="flex items-center gap-2">
                 <div
@@ -273,18 +301,29 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            The line is humming! You hit {rate}/min by feeding the bottleneck.
-          </motion.p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Right now the line makes {rate}/min. A line can only move as fast as its slowest station.
+            Read each station's seconds-per-item, place your workers, then start the shift.
           </p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={startShift} disabled={wonRound}>
+          <Play className="h-5 w-5" fill="currentColor" />
+          Start the shift
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the line">
           <RotateCcw className="h-4 w-4" />
           Reset

@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { CalendarCheck, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -104,6 +106,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setZoneOf(START)
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const walk = ITEMS.reduce((s, it, i) => s + it.picks * ZONES[zoneOf[i]].distance, 0)
@@ -114,23 +117,43 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
   const overEffort = setup.maxEffort !== null && effort > setup.maxEffort
   const solved = !overWalk && !overEffort
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Lock the layout in and run a picking day against it. */
+  const runDay = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({
+        ok: true,
+        text: setup.weighted
+          ? `Good layout. ${effort} of carrying work, ${walk} of walking.`
+          : `Good layout. ${walk} of walking a day.`,
+      })
       lv.clearLevel(lv.level.metrics ? { effort, walk, front: frontTrips } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, effort, walk, frontTrips])
+      return
+    }
+    const text = overWalk
+      ? `Pickers covered ${walk} against an allowance of ${setup.maxWalk}. Busier products need to be closer.`
+      : `That day cost ${effort} of carrying work against a target of ${setup.maxEffort}. Look at what the heavy products cost from where they sit.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The pickers filed a grievance. Original layout restored. Multiply picks by distance for each product before moving anything.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setZoneOf(START)
     setWon(false)
+    setVerdict(null)
   }
 
   const countIn = (z: number) => zoneOf.filter((v) => v === z).length
@@ -161,6 +184,13 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
         insight={setup.readout ? <InsightToggle label="work per product" on={showReadout} onChange={setShowReadout} /> : undefined}
       />
 
+      <Objective
+        goal={`${setup.maxWalk !== null ? `Walking under ${setup.maxWalk}` : ''}${setup.maxWalk !== null && setup.maxEffort !== null ? ' and ' : ''}${setup.maxEffort !== null ? `carrying work under ${setup.maxEffort}` : ''}`}
+        status={`this layout: ${walk} walking${setup.weighted ? ` · ${effort} carrying` : ''}`}
+        attemptsLeft={att.left}
+        met={won}
+      />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{setup.brief}</p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
@@ -186,7 +216,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
                   <button
                     key={z.name}
                     type="button"
-                    onClick={() => place(i, zi)}
+                    onClick={() => { setVerdict(null); place(i, zi) }}
                     aria-pressed={zoneOf[i] === zi}
                     className={cn(
                       'rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-200',
@@ -217,22 +247,22 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overWalk
-            ? `Pickers are covering ${walk} and the shift allows ${setup.maxWalk}. Busier products need to be closer.`
-            : overEffort
-              ? `That is ${effort} of carrying work against a target of ${setup.maxEffort}. Look at what the heavy products cost from where they are sitting now.`
-              : setup.weighted
-                ? `Good layout. ${effort} of carrying work, ${walk} of walking.`
-                : `Good layout. ${walk} of walking a day.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Arrange the aisles, then run a picking day against the layout.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -257,6 +287,10 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={runDay} disabled={won}>
+          <CalendarCheck className="h-5 w-5" />
+          Run a picking day
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the layout">
           <RotateCcw className="h-4 w-4" />
           Reset
