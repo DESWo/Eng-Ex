@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { memberKey, solveTruss, type SolveOutcome, type TrussJoint } from '@/challenges/civil/truss'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -63,7 +64,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Every beam costs',
     teach: 'Timber is billed by the length now. The sprawling bridge that worked when it was free suddenly prices itself out, so every beam has to earn its place.',
-    setup: { label: 'The loaded semi', load: 10, budget: 9000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
+    setup: { label: 'The loaded semi', load: 10, budget: 10500, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
   },
   {
     n: 3,
@@ -71,7 +72,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Spend strength where it goes',
     teach: 'Steel is more than twice the price but far stronger. No all-wood bridge can carry this load on budget, so the trick is steel only on the few beams doing the hardest work and wood everywhere else.',
-    setup: { label: 'The tank convoy', load: 16, budget: 13000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
+    setup: { label: 'The tank convoy', load: 16, budget: 15000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
   },
   {
     n: 4,
@@ -79,7 +80,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'analyze',
     concept: 'Tension and compression',
     teach: 'Turn on the force view. Every beam is either being stretched or squashed as the truck rolls over, and the solver knows which. Stretched beams are pulled apart, squashed ones can buckle, and buckling gives out sooner, which is why the two are drawn apart.',
-    setup: { label: 'The loaded semi', load: 14, budget: 13000, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
+    setup: { label: 'The loaded semi', load: 14, budget: 14500, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
   },
   {
     n: 5,
@@ -87,7 +88,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'optimize',
     concept: 'Strong, stiff, and cheap',
     teach: 'The heaviest truck yet, on a budget all-steel cannot meet. A cheap bridge wobbles and a stiff one overspends, so the scorecard tracks how far the deck sags: carry the load, keep it lean, and stiffen it if you can.',
-    setup: { label: 'The heavy hauler', load: 20, budget: 19000, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'Sign off the bridge that goes out to tender: strong, stiff, and no more expensive than it has to be.' },
+    setup: { label: 'The heavy hauler', load: 20, budget: 21000, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'Sign off the bridge that goes out to tender: strong, stiff, and no more expensive than it has to be.' },
     metrics: [
       { id: 'cost', label: 'Build cost', goal: 'min', target: 16000 },
       { id: 'sag', label: 'Deck sag', goal: 'min', target: 18, unit: ' px' },
@@ -442,6 +443,12 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         insight={round.forces ? <InsightToggle label="forces" on={showForces} onChange={setShowForces} /> : undefined}
       />
 
+      <Objective
+        goal={`Carry the ${round.load} t ${round.label.toLowerCase()} across${round.budget !== null ? ` for $${round.budget.toLocaleString()} or less` : ''}`}
+        status={`the road ${deckComplete ? 'reaches across' : 'does not reach across yet'}`}
+        met={won}
+      />
+
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
@@ -665,11 +672,17 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         {phase === 'failed' && !sagFailed && failMode === 'tension' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
             Snap! The red beam was pulled apart under {Math.abs(Math.round(test?.force[test.outcome!.worst!.key] ?? 0))} of tension.
+            {round.materials.length > 1 && test?.outcome?.worst && materialOf(test.outcome.worst.key) === 'wood'
+              ? ' It is wood: steel takes more than twice the pull.'
+              : ' Add another load path so no single beam carries this much.'}
           </motion.p>
         )}
         {phase === 'failed' && !sagFailed && failMode === 'compression' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
             Crunch! The red beam buckled under {Math.abs(Math.round(test?.force[test.outcome!.worst!.key] ?? 0))} of compression. Squeezed beams give out sooner than stretched ones.
+            {round.materials.length > 1 && test?.outcome?.worst && materialOf(test.outcome.worst.key) === 'wood'
+              ? ' That one is wood: swap it to steel or shorten it with a joint.'
+              : ' Shorter beams and more triangles spread the squeeze.'}
           </motion.p>
         )}
         {phase === 'build' && overBudget && (
