@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { Play, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -136,7 +138,7 @@ const LEVELS: ChallengeLevel<QualitySetup>[] = [
     phase: 'understand',
     concept: 'Checking is not free',
     teach: 'Every gate means somebody checking every unit that reaches it. You cannot afford one after every station, so the ones you keep have to earn their place.',
-    setup: { maxEscaped: 60, inspectBudget: 3000, maxTotal: null, readout: false, brief: 'The same line, now with a real quality budget attached to it.' },
+    setup: { maxEscaped: 60, inspectBudget: 2000, maxTotal: null, readout: false, brief: 'The same line, now with a real quality budget attached to it.' },
   },
   {
     n: 3,
@@ -162,8 +164,8 @@ const LEVELS: ChallengeLevel<QualitySetup>[] = [
     teach: 'Inspect everywhere and you catch everything but pay for it. Inspect nowhere and customers pay instead. Find the plan that keeps all three numbers down at once.',
     setup: { maxEscaped: 60, inspectBudget: null, maxTotal: null, readout: true, brief: 'Sign off the quality plan this line will run to.' },
     metrics: [
-      { id: 'escaped', label: 'Reached customers', goal: 'min', target: 40 },
-      { id: 'inspect', label: 'Inspection cost', goal: 'min', target: 1600 },
+      { id: 'escaped', label: 'Reached customers', goal: 'min', target: 20 },
+      { id: 'inspect', label: 'Inspection cost', goal: 'min', target: 2600 },
       { id: 'waste', label: 'Wasted work', goal: 'min', target: 6600 },
     ],
   },
@@ -182,6 +184,7 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setGates([false, false, false, false])
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const r = runLine(gates)
@@ -189,10 +192,15 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
   const overTotal = setup.maxTotal !== null && r.total > setup.maxTotal
   const solved = r.escaped <= setup.maxEscaped && !overBudget && !overTotal
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Run the shift with the quality plan as it stands. */
+  const runShift = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Good plan. ${Math.round(r.escaped)} escapes, ${Math.round(r.total)} total cost of quality.` })
       lv.clearLevel(
         lv.level.metrics ? { escaped: r.escaped, inspect: r.inspectCost, waste: r.waste } : undefined,
       )
@@ -200,17 +208,34 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, r.escaped, r.inspectCost, r.waste])
+      return
+    }
+    const text = r.escaped > setup.maxEscaped
+      ? `${Math.round(r.escaped)} faulty units reached customers. Anything over ${setup.maxEscaped} is too many.`
+      : overBudget
+        ? `Inspection cost ${Math.round(r.inspectCost)} against a budget of ${setup.inspectBudget}. You cannot staff that many desks.`
+        : onlyEndGate
+          ? `Everything was caught, but quality cost ${Math.round(r.total)}: you binned finished units with the electronics already fitted. Check them earlier.`
+          : `Quality cost ${Math.round(r.total)} all in, and the target is ${setup.maxTotal}.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The plant manager suspended testing. Desks removed. Follow one defect down the belt and ask where it gets expensive.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setGates([false, false, false, false])
     setWon(false)
+    setVerdict(null)
   }
 
-  const toggle = (i: number) => setGates((g) => g.map((v, j) => (j === i ? !v : v)))
+  const toggle = (i: number) => {
+    setVerdict(null)
+    setGates((g) => g.map((v, j) => (j === i ? !v : v)))
+  }
   const onlyEndGate = gates[3] && !gates[0] && !gates[1] && !gates[2]
 
   return (
@@ -220,6 +245,13 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.readout ? <InsightToggle label="defect flow" on={showReadout} onChange={setShowReadout} /> : undefined}
+      />
+
+      <Objective
+        goal={`At most ${setup.maxEscaped} faulty units reaching customers${setup.inspectBudget !== null ? `, inspection under ${setup.inspectBudget}` : ''}${setup.maxTotal !== null ? `, total quality cost under ${setup.maxTotal}` : ''}`}
+        status={`this plan: ${Math.round(r.escaped)} escapes · ${Math.round(r.total)} total`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -413,26 +445,24 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: the shift has to actually run before anyone counts escapes */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {r.escaped > setup.maxEscaped
-            ? `${Math.round(r.escaped)} faulty units reached customers. Anything over ${setup.maxEscaped} is too many.`
-            : overBudget
-              ? `Inspection is costing ${Math.round(r.inspectCost)} and the budget is ${setup.inspectBudget}.`
-              : overTotal
-                ? onlyEndGate
-                  ? `Everything is caught, but quality is costing ${Math.round(r.total)}. You are binning finished units that already have the electronics fitted. Check them earlier.`
-                  : `Quality is costing ${Math.round(r.total)} all in, and the target is ${setup.maxTotal}.`
-                : `Good plan. ${Math.round(r.escaped)} escapes, ${Math.round(r.total)} total cost of quality.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Place your desks, then run the shift and let a thousand units find every gap in the plan.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -457,6 +487,10 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={runShift} disabled={won}>
+          <Play className="h-5 w-5" fill="currentColor" />
+          Run the shift
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Remove all inspections">
           <RotateCcw className="h-4 w-4" />
           Clear

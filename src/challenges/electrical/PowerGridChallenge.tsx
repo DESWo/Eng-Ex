@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { Zap, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -51,7 +53,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     phase: 'understand',
     concept: 'Wires leak',
     teach: 'Power fades along every metre it travels, so a house at the end of a long daisy-chain gets a brown-out even though it is connected. The SHORTEST network and a network that DELIVERS are not the same thing.',
-    setup: { label: 'The brown-out', budget: 500, closed: [], threshold: 60, flow: false, n1: false, brief: 'The cheapest network from last time now leaves the far houses flickering. Route for delivery, not just length.' },
+    setup: { label: 'The brown-out', budget: 520, closed: [], threshold: 60, flow: false, n1: false, brief: 'The cheapest network from last time now leaves the far houses flickering. Route for delivery, not just length.' },
   },
   {
     n: 4,
@@ -59,7 +61,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     phase: 'analyze',
     concept: 'Flow and losses',
     teach: 'Turn on the readout. Thicker lines carry more homes, and the warm glow shows where power is being lost. The busiest line is the one whose failure would hurt most, remember it.',
-    setup: { label: 'The brown-out II', budget: 520, closed: [], threshold: 60, flow: true, n1: false, brief: 'The same delivery problem, with the load on every line made visible.' },
+    setup: { label: 'The brown-out II', budget: 540, closed: [], threshold: 60, flow: true, n1: false, brief: 'The same delivery problem, with the load on every line made visible.' },
   },
   {
     n: 5,
@@ -67,7 +69,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     phase: 'optimize',
     concept: 'One line will fail',
     teach: 'A tree is the cheapest network and the worst one: cut any line and everything behind it goes dark. Build loops so every home has a second way back to the plant, and spend as little extra as you can.',
-    setup: { label: 'Storm season', budget: 800, closed: [], threshold: 55, flow: true, n1: true, brief: 'The storm will take one line, and nobody knows which. The town must stay lit anyway.' },
+    setup: { label: 'Storm season', budget: 850, closed: [], threshold: 55, flow: true, n1: true, brief: 'The storm will take one line, and nobody knows which. The town must stay lit anyway.' },
     metrics: [
       { id: 'wire', label: 'Wire used', goal: 'min', target: 720, unit: ' m' },
       { id: 'weakest', label: 'Weakest house gets', goal: 'max', target: 58, unit: '%' },
@@ -195,6 +197,8 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setBuilt([])
     setCelebrate(false)
+    setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
   const openEdges = EDGES.filter((e) => !round.closed.includes(edgeId(e)))
   const used = openEdges.filter((e) => built.includes(edgeId(e))).reduce((sum, e) => sum + e.cost, 0)
@@ -226,30 +230,59 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [built, round.n1, threshold])
 
-  const won = allLit && !overBudget && survivesAnyCut
+  const solvedNow = allLit && !overBudget && survivesAnyCut
 
-  useEffect(() => {
-    if (!won) return
-    setCelebrate(true)
-    lv.clearLevel(
-      lv.level.metrics
-        ? { wire: used, weakest: Math.round(weakest), lines: built.length }
-        : undefined,
-    )
-    if (!completedRef.current) {
-      completedRef.current = true
-      onComplete()
+  const [wonRound, setWonRound] = useState(false)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Throw the main breaker and see what the town thinks. */
+  const energize = () => {
+    if (wonRound) return
+    if (solvedNow) {
+      setWonRound(true)
+      setCelebrate(true)
+      setVerdict({ ok: true, text: `The whole town is glowing!${round.budget !== null ? ` ${round.budget - used} m of wire to spare.` : ''}` })
+      lv.clearLevel(
+        lv.level.metrics
+          ? { wire: used, weakest: Math.round(weakest), lines: built.length }
+          : undefined,
+      )
+      if (!completedRef.current) {
+        completedRef.current = true
+        onComplete()
+      }
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [won])
+    const text =
+      allLit && !overBudget && round.n1 && !survivesAnyCut
+        ? 'Everyone is lit today, but the storm test cut one line and part of the town went dark. Every home needs a second route.'
+        : !allLit && round.threshold !== null && houses.every((h) => lit.has(h.id))
+          ? 'Every home is connected, but the far ones got a brown-out. Power fades with every metre, so give the far end a shorter route.'
+          : allLit && overBudget
+            ? `Every home is lit, but ${used} m of wire is over the ${round.budget} m reel.`
+            : !allLit
+              ? `${houses.length - litCount} home${houses.length - litCount === 1 ? ' is' : 's are'} still dark.`
+              : 'The grid failed its acceptance test.'
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The utility pulled the crew. Poles bare again. Sketch the shortest routes that still deliver before rebuilding.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const toggle = (id: string) => {
+    setVerdict(null)
     setBuilt((prev) => (prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]))
   }
 
   const reset = () => {
     setBuilt([])
     setCelebrate(false)
+    setWonRound(false)
+    setVerdict(null)
   }
 
   /** Homes whose cheapest route to the plant would lose this line. */
@@ -266,6 +299,13 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.flow ? <InsightToggle label="line load" on={showFlow} onChange={setShowFlow} /> : undefined}
+      />
+
+      <Objective
+        goal={`Light every home${round.threshold !== null ? ` with delivery ${round.threshold}% or better` : ''}${round.budget !== null ? ` on ${round.budget} m of wire` : ''}${round.n1 ? ', and survive losing any one line' : ''}`}
+        status={`${litCount} of ${houses.length} homes served · ${used} m used`}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -438,38 +478,29 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        {won && (
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
           >
-            The whole town is glowing!{round.budget !== null ? ` ${round.budget - used} m of wire to spare.` : ''}
-          </motion.p>
-        )}
-        {!won && allLit && !overBudget && round.n1 && !survivesAnyCut && (
-          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Everyone is lit today, but cut one of your lines and part of the town goes dark. Every home needs a second route.
+            {verdict.text}
           </p>
-        )}
-        {!won && !allLit && !overBudget && round.threshold !== null && houses.every((h) => lit.has(h.id)) && (
-          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Every home is connected, but the amber ones are getting a brown-out. Power fades with every metre, so give the far end a shorter route.
-          </p>
-        )}
-        {allLit && overBudget && (
-          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Every home is lit, but you used more wire than the budget allows.
-          </p>
-        )}
-        {!allLit && overBudget && (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Out of wire, and some homes are still dark.
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            String the lines, then energize the grid for the acceptance test.
           </p>
         )}
       </div>
 
       <div className="mt-2 flex items-center justify-end gap-3">
+        <Button variant="accent" size="lg" onClick={energize} disabled={wonRound}>
+          <Zap className="h-5 w-5" />
+          Energize the grid
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Remove all wires">
           <RotateCcw className="h-4 w-4" />
           Reset
@@ -482,12 +513,12 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
             metrics={lv.level.metrics}
             values={{ wire: used, weakest: Math.round(Math.max(0, weakest)), lines: built.length }}
             best={lv.best}
-            scored={won}
+            scored={wonRound}
           />
         </div>
       )}
 
-      {won && (
+      {wonRound && (
         <LevelComplete
           lv={lv}
           message={
