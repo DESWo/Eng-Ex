@@ -119,7 +119,7 @@ const LEVELS: ChallengeLevel<OrbitSetup>[] = [
     title: 'Which way is up?',
     phase: 'play',
     concept: 'Forwards, not upwards',
-    teach: 'To climb, the obvious move is to fire the engine downwards and push yourself up. Try it, and watch what happens to the other side of your orbit. Then try firing forwards instead.',
+    teach: 'If you have played a space-program game, this is its most famous lesson. To climb, the obvious move is to fire the engine downwards and push yourself up. Try it, and watch what happens to the other side of your orbit. Then try firing forwards instead.',
     setup: { target: 1.4, tolKm: 400, secondBurn: false, maxE: null, fuel: null, dirs: ['prograde', 'radial', 'retrograde'], readout: false, brief: 'Your satellite is parked low. Get the far side of its orbit out to the marked ring.' },
   },
   {

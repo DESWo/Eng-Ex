@@ -43,7 +43,7 @@ const LEVELS: ChallengeLevel<BeamSetup>[] = [
     title: 'Level it out',
     phase: 'play',
     concept: 'Weight times distance',
-    teach: 'A heavy crate close in can be balanced by a light one far out. Slide your counterweight until the beam sits flat.',
+    teach: 'It is the playground seesaw, played precisely. A heavy crate close in can be balanced by a light one far out. Slide your counterweight until the beam sits flat.',
     setup: {
       crates: [{ weight: 30, pos: -6 }],
       notches: ALL_MARKS,

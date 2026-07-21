@@ -109,7 +109,7 @@ const LEVELS: ChallengeLevel<SolarSetup>[] = [
     title: 'Cover the bill',
     phase: 'play',
     concept: 'Panels make what the sun gives',
-    teach: 'A panel only produces while the sun is on it, so its rating is not what it makes in a day. Add enough panels to generate as much energy as this house gets through.',
+    teach: 'Lay it out like the farm in a farming game: every tile has to earn its keep. A panel only produces while the sun is on it, so its rating is not what it makes in a day. Add enough panels to generate as much energy as this house gets through.',
     setup: { battery: false, matchDailyTotal: true, maxUnmet: null, budget: null, chart: false, brief: 'A family wants to generate as much electricity as they use.' },
   },
   {

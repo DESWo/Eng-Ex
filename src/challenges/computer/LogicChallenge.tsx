@@ -61,7 +61,7 @@ const LEVELS: ChallengeLevel<LogicSetup>[] = [
     title: 'Two keys',
     phase: 'play',
     concept: 'AND against OR',
-    teach: 'A gate is a rule about switches. AND wants both on, OR settles for either. Pick the gate that matches the story and flip the switches to check yourself.',
+    teach: 'If you have ever wired switches in a block-building game, you have met gates. A gate is a rule about switches. AND wants both on, OR settles for either. Pick the gate that matches the story and flip the switches to check yourself.',
     setup: { label: 'Safe unlock', goal: 'The safe opens only when BOTH keys are turned at once.', truth: [false, false, false, true], options: ['AND', 'OR'], inverter: false, table: false, verify: false, brief: 'A bank safe with two key holders.' },
   },
   {

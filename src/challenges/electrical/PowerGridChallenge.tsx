@@ -34,7 +34,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     title: 'Light the town',
     phase: 'play',
     concept: 'Everyone needs a path',
-    teach: 'Electricity only reaches a house that has an unbroken run of wire back to the plant. Build routes until every window glows. Copper is free today.',
+    teach: 'Think subway-map puzzle: clean routes, nothing wasted. Electricity only reaches a house that has an unbroken run of wire back to the plant. Build routes until every window glows. Copper is free today.',
     setup: { label: 'Willow Creek', budget: null, closed: [], threshold: null, flow: false, n1: false, brief: 'A new town with no grid at all. Connect every home.' },
   },
   {

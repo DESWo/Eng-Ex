@@ -54,7 +54,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     title: 'Triangles hold',
     phase: 'play',
     concept: 'Shapes that keep their shape',
-    teach: 'Build a road across the gap and send the van over. A square frame folds flat under load, but a triangle cannot change shape without changing the length of a beam, so triangles are what hold bridges up.',
+    teach: 'It is the bridge-builder game you already know, running on a real solver. Build a road across the gap and send the van over. A square frame folds flat under load, but a triangle cannot change shape without changing the length of a beam, so triangles are what hold bridges up.',
     setup: { label: 'The delivery van', load: 6, budget: null, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A van needs to cross the river. Materials are free, so just get it across.' },
   },
   {

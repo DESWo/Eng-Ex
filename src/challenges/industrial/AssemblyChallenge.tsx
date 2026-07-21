@@ -53,7 +53,7 @@ const LEVELS: ChallengeLevel<AssemblySetup>[] = [
     title: 'Staff the line',
     phase: 'play',
     concept: 'Workers speed a station up',
-    teach: 'Items move down the line one station at a time, and every worker you add to a station splits its work. Hit the target rate. There are plenty of people on shift today.',
+    teach: 'Run it like a kitchen-rush game: stations, hand-offs, and one station always drowning. Items move down the line one station at a time, and every worker you add to a station splits its work. Hit the target rate. There are plenty of people on shift today.',
     setup: { label: 'Toy car factory', stations: TOY.slice(0, 3), workers: 10, targetRate: 5, wip: false, brief: 'A short line with staff to spare. Get it up to speed.' },
   },
   {

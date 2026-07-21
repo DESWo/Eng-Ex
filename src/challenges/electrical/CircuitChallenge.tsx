@@ -56,7 +56,7 @@ const LEVELS: ChallengeLevel<CircuitSetup>[] = [
     title: 'First light',
     phase: 'play',
     concept: 'Electricity needs a loop',
-    teach: 'Current only flows around an unbroken loop: out of the battery, through the bulb, and back. Wire it up and make it glow.',
+    teach: 'It is the wiring sandbox from every block-building game, with real electrons. Current only flows around an unbroken loop: out of the battery, through the bulb, and back. Wire it up and make it glow.',
     setup: {
       label: 'First light',
       brief: 'Wire the bulb to the battery so it lights up.',

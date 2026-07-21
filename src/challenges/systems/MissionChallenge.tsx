@@ -38,7 +38,7 @@ const LEVELS: ChallengeLevel<MissionSetup>[] = [
     title: 'Fit it together',
     phase: 'play',
     concept: 'A satellite is a team',
-    teach: 'Deal out mass blocks to the subsystems. Science instruments earn the mission its keep and the comms antenna phones the results home, so give each what its goal asks for.',
+    teach: 'This is the rocket-builder menu from every space-program game, and the mass budget is just as cruel. Deal out mass blocks to the subsystems. Science instruments earn the mission its keep and the comms antenna phones the results home, so give each what its goal asks for.',
     setup: { label: 'Weather satellite', brief: 'Take pictures and send them home. The rocket has room to spare today.', massBudget: 160, powerPerScience: 1.2, goals: { science: 20, comms: 15 }, powerCheck: false, thermalCheck: false, flows: false },
   },
   {

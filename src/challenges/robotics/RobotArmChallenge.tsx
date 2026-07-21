@@ -114,11 +114,11 @@ interface ArmSetup {
 const LEVELS: ChallengeLevel<ArmSetup>[] = [
   {
     n: 1,
-    title: 'Grab the part',
+    title: 'Grab the prize',
     phase: 'play',
     concept: 'The arm follows your hand',
-    teach: 'Drag the gripper straight to the part. You are moving a point, and the arm works out for itself what angle each joint needs. That calculation is what robot controllers do thousands of times a second.',
-    setup: { targets: [{ x: 270, y: 200 }], limits: false, flip: false, envelope: false, brief: 'A part is sitting on the bench. Drag the gripper onto it.' },
+    teach: 'It is the arcade claw machine, wearing its true name: a robot arm. Drag the claw straight onto the prize. You move a point, and the arm works out for itself what angle each joint needs, the calculation real robot controllers run thousands of times a second.',
+    setup: { targets: [{ x: 270, y: 200 }], limits: false, flip: false, envelope: false, brief: 'A plush prize sits on the cabinet floor. Drag the claw onto it.' },
   },
   {
     n: 2,
@@ -126,7 +126,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'understand',
     concept: 'Limits and reach',
     teach: 'Real joints do not spin freely. This shoulder cannot swing below the bench and the elbow cannot fold flat, so some points the maths says are reachable simply are not.',
-    setup: { targets: [{ x: 450, y: 140 }], limits: true, flip: false, envelope: false, brief: 'A part right out at the edge of what this arm can do.' },
+    setup: { targets: [{ x: 450, y: 140 }], limits: true, flip: false, envelope: false, brief: 'A prize right out at the edge of what this claw can do.' },
   },
   {
     n: 3,
@@ -134,7 +134,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'understand',
     concept: 'Elbow up or elbow down',
     teach: 'Almost every point can be reached two ways, with the elbow bent up or bent down. They put the gripper in exactly the same place while the arm occupies completely different space, and here only one of them misses the shelf.',
-    setup: { targets: [{ x: 298, y: 170 }], shelf: { x: 345, top: 200 }, limits: true, flip: true, envelope: false, brief: 'The part is behind a shelf. The gripper can reach it, but can the arm?' },
+    setup: { targets: [{ x: 298, y: 170 }], shelf: { x: 345, top: 200 }, limits: true, flip: true, envelope: false, brief: 'The prize is behind a stack of boxes. The claw can reach it, but can the arm?' },
   },
   {
     n: 4,
@@ -142,7 +142,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'analyze',
     concept: 'The workspace',
     teach: 'Turn on the readout. The shaded ring is every point this arm can physically touch, and the ghost shows the other elbow solution for wherever you are now. Notice the hole in the middle: it cannot fold tightly enough to reach its own base.',
-    setup: { targets: [{ x: 470, y: 160 }], shelf: { x: 345, top: 220 }, limits: true, flip: true, envelope: true, brief: 'The same cell, with the arm workspace drawn out.' },
+    setup: { targets: [{ x: 470, y: 160 }], shelf: { x: 345, top: 220 }, limits: true, flip: true, envelope: true, brief: 'The same cabinet, with the arm workspace drawn out.' },
   },
   {
     n: 5,
@@ -159,7 +159,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
       limits: true,
       flip: true,
       envelope: true,
-      brief: 'A pick-and-place cycle the robot will repeat all day.',
+      brief: 'Three prizes, one clean run: the pick-and-place cycle a factory arm repeats all day.',
     },
     metrics: [
       { id: 'travel', label: 'Joint travel', goal: 'min', target: 420, unit: '°' },
@@ -290,14 +290,14 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{setup.brief}</p>
         {setup.targets.length > 1 && (
           <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
-            Part {Math.min(reached.length + 1, setup.targets.length)} of {setup.targets.length}
+            Prize {Math.min(reached.length + 1, setup.targets.length)} of {setup.targets.length}
           </Badge>
         )}
       </div>
 
       {/* Scene */}
       <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
-        <svg viewBox="0 0 800 340" className="w-full" role="img" aria-label="Robot arm scene" {...bind}>
+        <svg viewBox="0 0 800 340" className="w-full" role="img" aria-label="Claw machine scene" {...bind}>
           {/* level 4 overlay: everywhere the arm can physically touch */}
           {setup.envelope && showEnvelope && (
             <>
@@ -310,40 +310,59 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
 
           <line x1="0" y1="312" x2="800" y2="312" strokeWidth="4" className="stroke-stone-300 dark:stroke-stone-600" />
 
+          {/* a stack of prize boxes the arm must not sweep through */}
           {setup.shelf && (
-            <rect
-              x={setup.shelf.x - 11}
-              y={setup.shelf.top}
-              width="22"
-              height={BASE_Y + 12 - setup.shelf.top}
-              rx="3"
-              className={pose.blocked ? 'fill-rose-400' : 'fill-stone-400 dark:fill-stone-600'}
-            />
+            <g className={pose.blocked ? 'fill-rose-400' : 'fill-amber-300/90 dark:fill-amber-700'}>
+              {(() => {
+                const boxes = []
+                let y = BASE_Y + 12
+                let n = 0
+                while (y - 26 >= setup.shelf!.top - 2) {
+                  y -= 26
+                  boxes.push(<rect key={n} x={setup.shelf!.x - 11} y={y} width="22" height="24" rx="3" />)
+                  boxes.push(
+                    <line
+                      key={`r${n}`}
+                      x1={setup.shelf!.x}
+                      y1={y}
+                      x2={setup.shelf!.x}
+                      y2={y + 24}
+                      strokeWidth="4"
+                      className={pose.blocked ? 'stroke-rose-500' : 'stroke-amber-400 dark:stroke-amber-600'}
+                    />,
+                  )
+                  n++
+                }
+                return boxes
+              })()}
+            </g>
           )}
 
-          {/* parts waiting, and the one you are on */}
+          {/* plush prizes waiting, and the one you are going for */}
           {setup.targets.map((t, i) => {
             const done = reached.includes(i)
             const active = i === nextIndex
+            const tone = done ? '#22c55e' : ['#fb7185', '#38bdf8', '#fbbf24'][i % 3]
             return (
               <g key={i}>
                 {active && (
                   <circle cx={t.x} cy={t.y} r={REACH_TOLERANCE + 6} fill="none" strokeDasharray="4 5" strokeWidth="2" style={{ stroke: 'var(--accent)' }} opacity="0.6" />
                 )}
-                <motion.rect
-                  x={t.x - 11}
-                  y={t.y - 11}
-                  width="22"
-                  height="22"
-                  rx="4"
-                  animate={{ scale: active && dist <= REACH_TOLERANCE * 3 ? [1, 1.15, 1] : 1 }}
+                <motion.g
+                  animate={{ scale: active && dist <= REACH_TOLERANCE * 3 ? [1, 1.12, 1] : 1 }}
                   transition={{ duration: 0.5, repeat: active && dist <= REACH_TOLERANCE * 3 ? Infinity : 0 }}
-                  style={{
-                    transformBox: 'fill-box',
-                    transformOrigin: 'center',
-                    fill: done ? '#22c55e' : active ? '#38bdf8' : '#94a3b8',
-                  }}
-                />
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                  opacity={done ? 0.55 : 1}
+                >
+                  {/* a small teddy: ears, head, body */}
+                  <circle cx={t.x - 6} cy={t.y - 9} r="3.5" fill={tone} />
+                  <circle cx={t.x + 6} cy={t.y - 9} r="3.5" fill={tone} />
+                  <circle cx={t.x} cy={t.y - 4} r="8" fill={tone} />
+                  <ellipse cx={t.x} cy={t.y + 8} rx="9" ry="8" fill={tone} />
+                  <ellipse cx={t.x} cy={t.y + 9} rx="4.5" ry="4" className="fill-white/60" />
+                  <circle cx={t.x - 3} cy={t.y - 5} r="1.2" className="fill-ink" />
+                  <circle cx={t.x + 3} cy={t.y - 5} r="1.2" className="fill-ink" />
+                </motion.g>
               </g>
             )
           })}
@@ -394,10 +413,17 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
             tabIndex={0}
             onKeyDown={nudge}
             role="application"
-            aria-label="Gripper position. Use the arrow keys to move it."
+            aria-label="Claw position. Use the arrow keys to move it."
             className={cn('cursor-grab outline-none', dragging ? 'fill-ink/15 dark:fill-white/20' : 'fill-ink/5 dark:fill-white/10')}
           />
           <circle cx={aim.x} cy={aim.y} r="16" fill="none" strokeWidth="1.5" strokeDasharray="3 4" className="stroke-ink/30 dark:stroke-white/30" />
+
+          {/* the cabinet: glass shine and an arcade frame, drawn over everything */}
+          <g className="pointer-events-none">
+            <line x1="120" y1="30" x2="40" y2="130" strokeWidth="10" strokeLinecap="round" className="stroke-white/20 dark:stroke-white/10" />
+            <line x1="160" y1="30" x2="96" y2="110" strokeWidth="5" strokeLinecap="round" className="stroke-white/20 dark:stroke-white/10" />
+            <rect x="6" y="6" width="788" height="328" rx="16" fill="none" strokeWidth="12" className="stroke-rose-400/90 dark:stroke-rose-500/80" />
+          </g>
         </svg>
       </div>
 
@@ -415,17 +441,17 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
         >
           {allDone
             ? setup.targets.length > 1
-              ? `Cycle complete. ${Math.round(travel)}° of joint travel.`
-              : 'Grabbed it. The arm solved its own angles.'
+              ? `All prizes won. ${Math.round(travel)}° of joint travel.`
+              : 'Prize won! The arm solved its own angles.'
             : pose.blocked
-              ? `The gripper is in the right place but the arm is going through the shelf.${setup.flip ? ' Try bending the elbow the other way.' : ''}`
+              ? `The claw is in the right place but the arm is going through the boxes.${setup.flip ? ' Try bending the elbow the other way.' : ''}`
               : pose.outOfLimits
-                ? 'That pose is past what the joints can hold. The shoulder cannot swing below the bench and the elbow cannot fold flat.'
+                ? 'That pose is past what the joints can hold. The shoulder cannot swing below the floor and the elbow cannot fold flat.'
                 : onTarget
                   ? 'Locked on, hold steady.'
                   : dist <= REACH_TOLERANCE * 3
                     ? 'Nearly on it.'
-                    : 'Drag the gripper onto the part.'}
+                    : 'Drag the claw onto the prize.'}
         </p>
       </div>
 
@@ -440,7 +466,7 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
             Elbow {elbowUp ? 'up' : 'down'}, flip it
           </button>
         )}
-        <Button variant="ghost" onClick={reset} aria-label="Reset the arm">
+        <Button variant="ghost" onClick={reset} aria-label="Reset the claw">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
@@ -466,7 +492,7 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
           message={
             lv.level.metrics
               ? `${Math.round(travel)}° of travel with ${flips} elbow ${flips === 1 ? 'flip' : 'flips'}. Try a tidier route.`
-              : 'Nicely picked.'
+              : 'Prize secured.'
           }
           onReplay={reset}
         />

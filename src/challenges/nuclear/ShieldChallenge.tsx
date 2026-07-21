@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -51,7 +52,7 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     title: 'Block the beam',
     phase: 'play',
     concept: 'Thickness soaks up rays',
-    teach: 'Every centimetre of lead cuts the gamma rays down by the same fraction again, so the dose falls away fast. Add lead until the meter reads safe.',
+    teach: 'Think lane defense: the rays are the invaders, the technician is the house, and your wall is the only thing planted in the lane. Every centimetre of lead cuts the gamma rays down by the same fraction again, so add lead until nothing red reaches the other side.',
     setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: null, beam: false, brief: 'A gamma source in the lab needs a shield between it and the technician.' },
   },
   {
@@ -150,9 +151,62 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
 
   /* Scene: source on the left, stacked slabs, technician on the right. */
   const SRC_X = 70
+  const TECH_X = 708
   const totalCm = setup.available.reduce((s, m) => s + thick[m], 0)
   const pxPerCm = totalCm > 0 ? Math.min(9, 460 / totalCm) : 9
-  let cursor = 150
+
+  // Where each layer sits, shared by the slab art and the particle lanes.
+  const wall: { m: MatId; x: number; w: number }[] = []
+  {
+    let cx = 150
+    for (const m of layers) {
+      const w = thick[m] * pxPerCm
+      wall.push({ m, x: cx, w })
+      cx += w
+    }
+  }
+  // Remount the streams whenever the wall changes so every dot re-samples.
+  const wallKey = layers.map((m) => `${m}${thick[m]}`).join('-') || 'open'
+
+  /**
+   * One lane of radiation, lane-defense style. Each dot stands for a slice of
+   * the beam; where it dies is read off the real attenuation curve, so a weak
+   * wall visibly lets dots through to the technician (those fly red).
+   */
+  const lane = (kind: 'gamma' | 'neutron', laneY: number, strength: number, color: string) => {
+    if (strength <= 0) return null
+    const N = 12
+    const dots = []
+    for (let i = 0; i < N; i++) {
+      const u = (i + 0.5) / N // the survival fraction this dot represents
+      let S = 1
+      let endX = TECH_X - 18
+      let absorbed = false
+      for (const { m, x, w } of wall) {
+        const muPx = MATERIALS[m][kind] / pxPerCm
+        const Sout = S * Math.exp(-muPx * w)
+        if (Sout <= u) {
+          endX = x + Math.log(S / u) / muPx
+          absorbed = true
+          break
+        }
+        S = Sout
+      }
+      dots.push({ endX, absorbed, delay: (i * 2.4) / N })
+    }
+    return dots.map((d, i) => (
+      <motion.circle
+        key={`${wallKey}-${kind}-${i}`}
+        r="3.2"
+        cy={laneY + ((i % 3) - 1) * 5}
+        fill={d.absorbed ? color : '#f43f5e'}
+        initial={{ cx: SRC_X + 26, opacity: 0 }}
+        animate={{ cx: [SRC_X + 26, d.endX, d.endX], opacity: [0.85, 0.85, 0] }}
+        transition={{ duration: 2.4, times: [0, 0.92, 1], delay: d.delay, repeat: Infinity, ease: 'linear' }}
+        className="pointer-events-none"
+      />
+    ))
+  }
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -183,14 +237,12 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
             Source
           </text>
 
-          {/* the beam, thinning as it passes through each slab */}
-          <rect x={SRC_X + 24} y="112" width={126} height="16" className="fill-amber-400/60" />
+          {/* the horde: gamma up top, neutrons below, absorbed inside the wall */}
+          {lane('gamma', setup.neutronIn > 0 ? 106 : 118, setup.gammaIn, '#a78bfa')}
+          {lane('neutron', 134, setup.neutronIn, '#2dd4bf')}
 
           {/* slabs */}
-          {layers.map((m, i) => {
-            const w = thick[m] * pxPerCm
-            const x = cursor
-            cursor += w
+          {wall.map(({ m, x, w }, i) => {
             const after = steps[i]
             const frac = (after.gamma + after.neutron) / Math.max(1, setup.gammaIn + setup.neutronIn)
             return (
@@ -217,7 +269,21 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
             )
           })}
 
-          {/* technician */}
+          {/* technician, ringed red while anything is still getting through */}
+          {solved ? (
+            <circle cx="720" cy="118" r="42" fill="none" strokeWidth="2.5" strokeDasharray="5 6" className="stroke-emerald-500/80" />
+          ) : (
+            <motion.circle
+              cx="720"
+              cy="118"
+              r="42"
+              fill="none"
+              strokeWidth="2.5"
+              className="stroke-rose-500"
+              animate={{ opacity: [0.75, 0.2, 0.75] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            />
+          )}
           <g transform="translate(720 96)">
             <circle cx="0" cy="0" r="13" className="fill-stone-500 dark:fill-stone-400" />
             <rect x="-11" y="17" width="22" height="42" rx="9" className="fill-stone-500 dark:fill-stone-400" />

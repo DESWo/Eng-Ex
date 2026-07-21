@@ -65,7 +65,7 @@ const LEVELS: ChallengeLevel<OverloadSetup>[] = [
     title: 'Trip the breaker once',
     phase: 'play',
     concept: 'Circuits have limits',
-    teach: 'Every circuit has a rating, and pushing past it snaps the breaker off. Plug things in, hit the power, and find out the hard way once. That is what breakers are for.',
+    teach: 'It is a block-fitting puzzle where the blocks are appliances and the box is the breaker. Every circuit has a rating, and pushing past it snaps the breaker off. Plug things in, hit the power, and find out the hard way once. That is what breakers are for.',
     setup: {
       label: 'A quiet evening',
       circuits: [

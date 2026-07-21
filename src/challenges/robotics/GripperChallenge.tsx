@@ -65,7 +65,7 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     title: 'Pick it up',
     phase: 'play',
     concept: 'Grip enough to hold',
-    teach: 'Squeeze too gently and the can slides straight out of the gripper. Turn the grip up until it holds.',
+    teach: 'It is the steady-hand buzzer game, played with real force. Squeeze too gently and the can slides straight out of the gripper. Turn the grip up until it holds.',
     setup: { payload: PAYLOADS.can, pad: 'rubber', accel: 2, window: false, brief: 'A warehouse gripper needs to lift a soup can off the belt.' },
   },
   {

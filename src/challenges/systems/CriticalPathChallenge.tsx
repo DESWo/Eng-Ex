@@ -84,7 +84,7 @@ const LEVELS: ChallengeLevel<PathSetup>[] = [
     title: 'Pull the date in',
     phase: 'play',
     concept: 'Paying to go faster',
-    teach: 'Put more people on a task and it finishes sooner, for a price. Shorten something until the project lands inside the deadline.',
+    teach: 'Plan it like a speedrun route: only the longest chain matters. Put more people on a task and it finishes sooner, for a price. Shorten something until the project lands inside the deadline.',
     setup: { deadline: 14, budget: null, readout: false, brief: 'A robot build is running two days late before it has even started.' },
   },
   {

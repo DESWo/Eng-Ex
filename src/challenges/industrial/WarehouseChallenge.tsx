@@ -50,7 +50,7 @@ const LEVELS: ChallengeLevel<SlotSetup>[] = [
     title: 'Put the busy stuff close',
     phase: 'play',
     concept: 'Trips times distance',
-    teach: 'A product picked forty times a day is walked to forty times a day. Move the busiest products to the front aisle and watch the walking fall.',
+    teach: 'It is a tidying game scored in footsteps. A product picked forty times a day is walked to forty times a day. Move the busiest products to the front aisle and watch the walking fall.',
     setup: { maxWalk: 280, maxEffort: null, weighted: false, readout: false, brief: 'Pickers are walking miles in this warehouse. Rearrange the aisles.' },
   },
   {

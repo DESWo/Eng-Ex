@@ -94,7 +94,7 @@ const LEVELS: ChallengeLevel<QualitySetup>[] = [
     title: 'Nobody is checking',
     phase: 'play',
     concept: 'An inspection catches defects',
-    teach: 'Right now every faulty unit walks out of the door and a customer finds it. Put an inspection somewhere on the line and watch the escapes fall.',
+    teach: 'It plays like an inspection-desk game, and the twist is where the desk goes. Right now every faulty unit walks out of the door and a customer finds it. Put an inspection somewhere on the line and watch the escapes fall.',
     setup: { maxEscaped: 60, inspectBudget: null, maxTotal: null, readout: false, brief: 'A toy factory is shipping faulty units and only hearing about it from complaints.' },
   },
   {

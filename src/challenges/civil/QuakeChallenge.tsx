@@ -53,7 +53,7 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     title: 'Ride it out',
     phase: 'play',
     concept: 'Stiffer survives',
-    teach: 'A quake shakes the ground and the building has to keep up. Pick a frame and add braces until it can take the tremor. Money is no object today.',
+    teach: 'It is the wobbling block-tower party game, played for keeps. A quake shakes the ground and the building has to keep up. Pick a frame and add braces until it can take the tremor. Money is no object today.',
     setup: { label: 'Magnitude 5 tremor', magnitude: 18, budget: null, isolationOffered: false, drift: false, maxSway: null, brief: 'A small tremor is due. Make the tower strong enough to stand through it.' },
   },
   {

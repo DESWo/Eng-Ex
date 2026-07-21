@@ -87,7 +87,7 @@ const LEVELS: ChallengeLevel<StormSetup>[] = [
     title: 'Hold the storm',
     phase: 'play',
     concept: 'A pond buys time',
-    teach: 'Rain arrives far faster than the drain can swallow it, so the extra has to wait somewhere. Dig a pond big enough to hold the surge until the pipe catches up.',
+    teach: 'It is city-builder zoning, with real rain. Rain arrives far faster than the drain can swallow it, so the extra has to wait somewhere. Dig a pond big enough to hold the surge until the pipe catches up.',
     setup: { surfaces: false, maxOverflow: 0, budget: null, chart: false, brief: 'A car park floods the road every time it rains hard.' },
   },
   {

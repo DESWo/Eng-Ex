@@ -49,7 +49,7 @@ const LEVELS: ChallengeLevel<ReactorSetup>[] = [
     title: 'Rods out, power up',
     phase: 'play',
     concept: 'Rods are the throttle',
-    teach: 'Control rods soak up the reaction. Haul the bank out and power climbs, push it in and power dies. Meet the demand band and keep the core out of the red.',
+    teach: 'Play it like a virtual pet that can melt. Control rods soak up the reaction. Haul the bank out and power climbs, push it in and power dies. Meet the demand band and keep the core out of the red.',
     setup: { label: 'Quiet night shift', band: [480, 580], phases: null, phaseTicks: 0, pumpsDraw: false, lag: false, chart: false, brief: 'The night city needs a steady trickle. Bring the reactor up to meet it.' },
   },
   {

@@ -953,8 +953,8 @@ export const disciplines: Discipline[] = [
     challenges: [
       {
         id: 'robot-arm',
-        title: 'Robot Arm',
-        goal: 'Reach the target',
+        title: 'Claw Machine',
+        goal: 'Win every prize',
         why: [
         {
           icon: Move,

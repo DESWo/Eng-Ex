@@ -69,7 +69,7 @@ const LEVELS: ChallengeLevel<RideSetup>[] = [
     title: 'Soak the pothole',
     phase: 'play',
     concept: 'Springs swallow bumps',
-    teach: 'A spring lets the wheel jump over the pothole while the body glides on. The stiffer the spring, the more of that hit reaches your spine. Pick one and take the test drive.',
+    teach: 'It is the suspension upgrade screen from a hill-climb driving game, with the physics switched on. A spring lets the wheel jump over the pothole while the body glides on. The stiffer the spring, the more of that hit reaches your spine. Pick one and take the test drive.',
     setup: { label: 'Pothole alley', mass: 700, cargoNote: 'empty van', maxHarsh: 10, roadHz: null, maxAmp: 99, sagMatters: false, curve: false, brief: 'A delivery van on a road full of potholes. Make it ride, not buck.' },
   },
   {

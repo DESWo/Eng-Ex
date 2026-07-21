@@ -32,7 +32,7 @@ const LEVELS: ChallengeLevel<BinarySetup>[] = [
     title: 'Count in bulbs',
     phase: 'play',
     concept: 'Place values double',
-    teach: 'Each bulb is worth twice the one to its right: 1, 2, 4, 8 and so on. Switch on the bulbs that add up to the reading.',
+    teach: 'It is a lights puzzle with a secret: each bulb is worth twice the one to its right, 1, 2, 4, 8 and so on. Switch on the bulbs that add up to the reading.',
     setup: { target: 22, width: 8, signed: false, places: false, brief: 'A sensor sends its reading as a row of on-or-off signals. Set the bulbs to match.' },
   },
   {

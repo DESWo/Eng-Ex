@@ -46,7 +46,7 @@ const LEVELS: ChallengeLevel<RedundancySetup>[] = [
     title: 'One of everything',
     phase: 'play',
     concept: 'Spares raise the odds',
-    teach: 'Every subsystem has to survive for the mission to work, so the odds multiply and land lower than any single part. Fly a spare of something and watch the number climb.',
+    teach: 'Pick your loadout like a monster-catching team: you cannot bring everything. Every subsystem has to survive for the mission to work, so the odds multiply and land lower than any single part. Fly a spare of something and watch the number climb.',
     setup: { minReliability: 88.5, maxMass: null, readout: false, brief: 'A probe with one of each subsystem. Mission control is not happy with its odds.' },
   },
   {

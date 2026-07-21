@@ -61,7 +61,7 @@ const LEVELS: ChallengeLevel<LineSetup>[] = [
     title: 'Follow the line',
     phase: 'play',
     concept: 'Steering strength',
-    teach: 'The bot sees how far it has drifted off the line and steers back. Turn the steering strength up until it can hold a gentle curve.',
+    teach: 'Tune it like a racing kart before a time trial. The bot sees how far it has drifted off the line and steers back. Turn the steering strength up until it can hold a gentle curve.',
     setup: {
       track: TRACKS.easy,
       lane: 60,

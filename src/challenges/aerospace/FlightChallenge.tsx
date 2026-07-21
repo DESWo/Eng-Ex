@@ -59,7 +59,7 @@ const LEVELS: ChallengeLevel<FlightSetup>[] = [
     title: 'Straight and level',
     phase: 'play',
     concept: 'Lift fights weight',
-    teach: 'Two controls: throttle for speed, and the nose angle. Lift comes from both. Find any combination where lift matches weight and the plane holds the line.',
+    teach: 'Every flight sim starts on this exact screen. Two controls: throttle for speed, and the nose angle. Lift comes from both. Find any combination where lift matches weight and the plane holds the line.',
     setup: { label: 'Calm morning hop', weight: 100, gust: 0, fuelCap: null, chooseCargo: false, forces: false, brief: 'A light plane on a calm morning. Just hold the dashed line.' },
   },
   {
