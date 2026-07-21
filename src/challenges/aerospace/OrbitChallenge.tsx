@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { SatelliteDish, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -201,6 +203,7 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
     // Levels that still offer the choice start on the tempting wrong answer.
     setDir(setup.dirs.length > 1 ? 'radial' : 'prograde')
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -222,24 +225,50 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
     // Level 5 has no altitude window, but still needs a genuine orbit.
     (lv.level.metrics ? apoKm >= 1500 : true)
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Radio mission control that the satellite is where they asked. */
+  const confirmOrbit = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({
+        ok: true,
+        text: setup.secondBurn
+          ? `Mission control confirms: parked. High point ${Math.round(apoKm).toLocaleString()} km, low point ${Math.round(periKm).toLocaleString()} km.`
+          : `Mission control confirms: the high point reaches ${Math.round(apoKm).toLocaleString()} km, right on the ring.`,
+      })
       lv.clearLevel(lv.level.metrics ? { fuel, round: orbit.e, alt: apoKm } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 600)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, fuel, orbit.e, apoKm])
+      return
+    }
+    const text = orbit.fail
+      ? 'That is not a stable orbit yet. Look at where the path actually goes.'
+      : overFuel
+        ? `Over the fuel budget by ${Math.round(fuel - (setup.fuel ?? 0))} m/s.`
+        : setup.secondBurn && orbit.e > (setup.maxE ?? 1)
+          ? `It touches ${Math.round(apoKm).toLocaleString()} km but falls back to ${Math.round(periKm).toLocaleString()} km. Reaching the ring is not staying at it.`
+          : apoKm < targetKm
+            ? `High point ${Math.round(apoKm).toLocaleString()} km, still ${Math.round(targetKm - apoKm).toLocaleString()} km short of the ring.`
+            : `High point ${Math.round(apoKm).toLocaleString()} km, past the ring by ${Math.round(apoKm - targetKm).toLocaleString()} km.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Mission control ordered a full abort back to the parking orbit. Think about which part of the orbit each burn moves.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setBurn1(0)
     setBurn2(0)
     setWon(false)
+    setVerdict(null)
   }
 
   const transfer = ellipsePoints(R_START, Math.max(R_START, orbit.rApo), orbit.omega)
@@ -253,6 +282,17 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.readout ? <InsightToggle label="orbit readout" on={showReadout} onChange={setShowReadout} /> : undefined}
+      />
+
+      <Objective
+        goal={
+          lv.level.metrics
+            ? `Park as high and round as the tank allows (a real orbit, apoapsis 1500 km up)`
+            : `Get the orbit's far side to the dashed ring at ${Math.round(targetKm).toLocaleString()} km${setup.maxE !== null ? ' and make it stay there (round orbit)' : ''}${setup.fuel !== null ? `, within ${setup.fuel} m/s of fuel` : ''}`
+        }
+        status={`far side now: ${orbit.fail ? 'no stable orbit' : Math.round(apoKm).toLocaleString() + ' km'} · ${Math.round(fuel)} m/s spent`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -351,36 +391,48 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {orbit.fail === 'escape'
-            ? 'Too much. The satellite escaped Earth entirely and is on its way to nowhere.'
-            : orbit.fail === 'crash'
-              ? burnDir === 'radial'
-                ? `Pushing outwards barely lifted the far side to ${Math.round(apoKm).toLocaleString()} km, and it dragged the near side down into the ground. Height is not what you were missing.`
-                : burnDir === 'retrograde'
-                  ? 'Slowing down dropped the far side of your orbit straight into the planet.'
-                  : 'The low point ended up inside the atmosphere. That is a re-entry, not an orbit.'
-              : orbit.fail === 'no-burn'
-                ? 'Nothing yet. Fire the engine and watch which part of the orbit moves.'
-                : overFuel
-                  ? `Over budget by ${Math.round(fuel - (setup.fuel ?? 0))} m/s. There is only so much in the tank.`
-                  : solved
-                    ? setup.secondBurn
-                      ? `Parked. High point ${Math.round(apoKm).toLocaleString()} km, low point ${Math.round(periKm).toLocaleString()} km.`
-                      : `The high point reaches ${Math.round(apoKm).toLocaleString()} km, right on the ring.`
-                    : setup.secondBurn && orbit.e > (setup.maxE ?? 1)
-                      ? `The orbit touches ${Math.round(apoKm).toLocaleString()} km but drops back to ${Math.round(periKm).toLocaleString()} km. Burn again at the top to lift the low side.`
-                      : apoKm < targetKm
-                        ? `High point only ${Math.round(apoKm).toLocaleString()} km. Still short of the ring.`
-                        : `High point ${Math.round(apoKm).toLocaleString()} km, past the ring.`}
-        </p>
+        {verdict ? (
+          <p
+            className={
+              verdict.ok
+                ? 'rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
+            }
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              solved
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+            )}
+          >
+            {orbit.fail === 'escape'
+              ? 'Too much. The satellite escaped Earth entirely and is on its way to nowhere.'
+              : orbit.fail === 'crash'
+                ? burnDir === 'radial'
+                  ? `Pushing outwards barely lifted the far side to ${Math.round(apoKm).toLocaleString()} km, and it dragged the near side down into the ground. Height is not what you were missing.`
+                  : burnDir === 'retrograde'
+                    ? 'Slowing down dropped the far side of your orbit straight into the planet.'
+                    : 'The low point ended up inside the atmosphere. That is a re-entry, not an orbit.'
+                : orbit.fail === 'no-burn'
+                  ? 'Nothing yet. Fire the engine and watch which part of the orbit moves.'
+                  : overFuel
+                    ? `Over budget by ${Math.round(fuel - (setup.fuel ?? 0))} m/s. There is only so much in the tank.`
+                    : solved
+                      ? setup.secondBurn
+                        ? `Parked. High point ${Math.round(apoKm).toLocaleString()} km, low point ${Math.round(periKm).toLocaleString()} km.`
+                        : `The high point reaches ${Math.round(apoKm).toLocaleString()} km, right on the ring.`
+                      : setup.secondBurn && orbit.e > (setup.maxE ?? 1)
+                        ? `The orbit touches ${Math.round(apoKm).toLocaleString()} km but drops back to ${Math.round(periKm).toLocaleString()} km. Burn again at the top to lift the low side.`
+                        : apoKm < targetKm
+                          ? `High point only ${Math.round(apoKm).toLocaleString()} km. Still short of the ring.`
+                          : `High point ${Math.round(apoKm).toLocaleString()} km, past the ring.`}
+          </p>
+        )}
       </div>
 
       {setup.fuel !== null && (
@@ -405,7 +457,7 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => setDir(d.id)}
+                  onClick={() => { setVerdict(null); setDir(d.id) }}
                   aria-pressed={active}
                   className={cn(
                     'rounded-2xl px-4 py-2.5 text-left font-display text-sm font-semibold transition-colors duration-200',
@@ -473,6 +525,10 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={confirmOrbit} disabled={won}>
+          <SatelliteDish className="h-5 w-5" />
+          Confirm the orbit
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the burns">
           <RotateCcw className="h-4 w-4" />
           Reset

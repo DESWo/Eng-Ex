@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { RotateCcw } from 'lucide-react'
+import { Rocket, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -172,6 +174,7 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
     setShapeId(setup.shape ?? 'rounded')
     setShieldCm(setup.shield ?? 6)
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -181,10 +184,15 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
   const overG = setup.gLimit !== null && f.peakG > setup.gLimit
   const solved = !f.fail && !overG
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Commit to the entry corridor. The capsule only flies once per call. */
+  const beginEntry = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Home safe. Peak ${f.peakG.toFixed(1)} g, peak heating ${Math.round(f.peakQ)} W/cm², ${f.minutes.toFixed(1)} minutes of descent.` })
       lv.clearLevel(
         lv.level.metrics ? { peakG: f.peakG, mass: f.shieldMass, peakQ: f.peakQ } : undefined,
       )
@@ -192,16 +200,28 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, f.peakG, f.shieldMass, f.peakQ])
+      return
+    }
+    const text = f.fail === 'skip'
+      ? 'Too shallow. The capsule skipped off the atmosphere like a stone and is heading for deep space.'
+      : f.fail === 'burnt'
+        ? `Shield burned through: it soaked ${Math.round(f.totalQ).toLocaleString()} of heat and could only take ${Math.round(f.capacity).toLocaleString()}.`
+        : `The crew blacked out at ${f.peakG.toFixed(1)} g against a limit of ${setup.gLimit}. Ease the angle back.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Mission control waved off the entry. Fresh capsule on the pad. Steeper means hotter and harder; find the corridor first.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setAngle(1)
     setShapeId(setup.shape ?? 'rounded')
     setShieldCm(setup.shield ?? 6)
     setWon(false)
+    setVerdict(null)
   }
 
   /** Drag the approach line to change how steeply you come in. */
@@ -246,6 +266,13 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.traces ? <InsightToggle label="descent traces" on={showTraces} onChange={setShowTraces} /> : undefined}
+      />
+
+      <Objective
+        goal={`Bring the capsule home: no skip, shield intact${setup.gLimit !== null ? `, crew under ${setup.gLimit} g` : ''}`}
+        status={`this corridor: ${angle.toFixed(1)}° · ${shield} cm shield`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -330,22 +357,22 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {f.fail === 'skip'
-            ? 'Too shallow. The capsule skipped straight back out of the atmosphere and is heading for deep space.'
-            : f.fail === 'burnt'
-              ? `Shield burned through. It soaked up ${Math.round(f.totalQ).toLocaleString()} of heat and can only take ${Math.round(f.capacity).toLocaleString()}.`
-              : overG
-                ? `Survived, but at ${f.peakG.toFixed(1)} g the crew blacked out. Ease the angle back.`
-                : `Home safe. Peak ${f.peakG.toFixed(1)} g, peak heating ${Math.round(f.peakQ)} W/cm², ${f.minutes.toFixed(1)} minutes of descent.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Set the approach angle, shape, and shield, then commit to the entry.
+          </p>
+        )}
       </div>
 
       <div className="mt-3">
@@ -417,6 +444,10 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={beginEntry} disabled={won}>
+          <Rocket className="h-5 w-5" />
+          Begin re-entry
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the entry">
           <RotateCcw className="h-4 w-4" />
           Reset

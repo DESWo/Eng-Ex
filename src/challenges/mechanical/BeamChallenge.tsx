@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -183,7 +184,7 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 800)
+    }, 1500)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balanced, wonRound, weight, reach, shift])
@@ -237,6 +238,11 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
             <InsightToggle label="moments" on={showMoments} onChange={setShowMoments} />
           ) : undefined
         }
+      />
+
+      <Objective
+        goal={`Hold the beam level for a moment (net twist within ${round.tolerance})`}
+        met={wonRound}
       />
 
       <p className="mb-4 text-sm text-ink-soft dark:text-stone-400">

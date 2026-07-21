@@ -7,6 +7,7 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -168,7 +169,7 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 900)
+    }, 1600)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, wonRound, cargo, burn, angle])
@@ -197,6 +198,12 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.forces ? <InsightToggle label="forces" on={showForces} onChange={setShowForces} /> : undefined}
+      />
+
+      <Objective
+        goal={`Hold the plane level${round.fuelCap !== null ? ` burning at most ${round.fuelCap}` : ''}${round.chooseCargo ? ', cargo aboard' : ''}`}
+        status={`now: ${status}${round.fuelCap !== null ? ` · burn ${burn}` : ''}`}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
