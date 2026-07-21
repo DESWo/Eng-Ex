@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { LogIn, LogOut } from 'lucide-react'
+import { LogIn, LogOut, Save } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SignInDialog } from '@/components/auth/SignInDialog'
+import { SaveDialog } from '@/components/auth/SaveDialog'
 import { useProfile } from '@/hooks/useProfile'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,7 @@ const tabClass = (isActive: boolean) =>
 export function Navbar() {
   const { profile, signOut } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
 
   return (
     <>
@@ -41,6 +43,16 @@ export function Navbar() {
             <NavLink to="/about" className={({ isActive }) => tabClass(isActive)}>
               About
             </NavLink>
+
+            <button
+              type="button"
+              onClick={() => setSaveOpen(true)}
+              title="Back up or restore your progress"
+              className={cn(tabClass(false), 'flex items-center gap-1.5')}
+            >
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline">Backup</span>
+            </button>
 
             {profile ? (
               <div className="flex items-center gap-1">
@@ -76,6 +88,7 @@ export function Navbar() {
       </header>
 
       <SignInDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
     </>
   )
 }
