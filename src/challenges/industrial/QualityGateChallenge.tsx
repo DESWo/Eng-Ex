@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw, Search } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
@@ -23,6 +24,38 @@ const STATIONS = [
   { name: 'Paint', defect: 0.12, value: 12 },
   { name: 'Electronics', defect: 0.04, value: 40 },
   { name: 'Pack', defect: 0.01, value: 6 },
+]
+
+/* ------------------- inspection-desk scene (SVG px) ------------------- */
+const SCENE_W = 900
+const SCENE_H = 300
+const BELT_Y = 205
+const ST_W = 150
+const ST_H = 80
+const ST_Y = 108
+const UNIT_START = 12
+const SPEED = 165 // px per second, so every unit moves at one belt speed
+/** Station i sits here; the desk slot for gate i sits just after it. */
+const stationX = (i: number) => 30 + i * 205
+const boothX = (i: number) => stationX(i) + ST_W + 26
+const CUSTOMER_X = 866
+
+/**
+ * A handful of units to watch, mixed to roughly match the station spoil rates
+ * (about a quarter go bad). Each one carries the station that ruined it, so
+ * what you see on the belt is what the maths above is actually counting.
+ */
+const SAMPLE: { defectAt: number | null }[] = [
+  { defectAt: null },
+  { defectAt: 0 },
+  { defectAt: null },
+  { defectAt: null },
+  { defectAt: 1 },
+  { defectAt: null },
+  { defectAt: null },
+  { defectAt: 2 },
+  { defectAt: null },
+  { defectAt: null },
 ]
 
 interface LineResult {
@@ -194,50 +227,190 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">{UNITS} units a shift</Badge>
       </div>
 
-      {/* The line */}
-      <div className="rounded-2xl bg-stone-100/80 p-4 dark:bg-white/5">
-        <div className="flex flex-wrap items-stretch gap-2">
+      {/* The line, drawn as an inspection desk you place on a conveyor */}
+      <p className="mb-2 text-xs text-ink-soft dark:text-stone-500">
+        Click a gap in the line to put an inspection desk there. Faulty units get stamped and
+        binned at the first desk they reach; the rest walk out to customers.
+      </p>
+      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+        <svg
+          viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
+          className="w-full"
+          role="img"
+          aria-label="Production line with inspection desks"
+        >
+          {/* conveyor */}
+          <rect x="10" y={BELT_Y} width={SCENE_W - 20} height="12" rx="6" className="fill-stone-300 dark:fill-white/15" />
+          {Array.from({ length: 44 }, (_, i) => (
+            <rect key={i} x={18 + i * 20} y={BELT_Y + 3} width="9" height="6" rx="3" className="fill-stone-400/70 dark:fill-white/10" />
+          ))}
+
+          {/* stations */}
           {STATIONS.map((s, i) => {
             const st = r.perStation[i]
+            const x = stationX(i)
             return (
-              <div key={s.name} className="flex flex-1 items-stretch gap-2" style={{ minWidth: 150 }}>
-                <div className="flex-1 rounded-2xl bg-white p-3 dark:bg-white/5">
-                  <p className="font-display text-sm font-bold">{s.name}</p>
-                  <p className="text-xs text-ink-soft dark:text-stone-400">
-                    adds {s.value} · spoils {(s.defect * 100).toFixed(0)}%
-                  </p>
-                  {setup.readout && showReadout && (
-                    <p className="mt-1.5 text-xs font-semibold text-rose-600 dark:text-rose-300">
-                      {Math.round(st.made)} go bad here
-                      <span className="block text-ink-soft dark:text-stone-400">
-                        worth {st.valueAtRisk} each by now
-                      </span>
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => toggle(i)}
-                    aria-pressed={gates[i]}
-                    className={cn(
-                      'mt-2 flex w-full items-center justify-center gap-1.5 rounded-full px-2 py-1.5 font-display text-xs font-bold transition-colors duration-200',
-                      gates[i]
-                        ? 'accent-bg text-white shadow-clay'
-                        : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/10 dark:text-stone-400',
-                    )}
-                  >
-                    <Search className="h-3.5 w-3.5" />
-                    {gates[i] ? 'Inspecting' : 'Inspect here'}
-                  </button>
-                  {gates[i] && setup.readout && showReadout && (
-                    <p className="mt-1 text-center text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                      bins {Math.round(st.scrapped)} units
-                    </p>
-                  )}
-                </div>
-              </div>
+              <g key={s.name}>
+                <rect x={x} y={ST_Y} width={ST_W} height={ST_H} rx="12" className="fill-white dark:fill-white/10" />
+                <rect x={x} y={ST_Y} width={ST_W} height="6" rx="3" className="fill-stone-300 dark:fill-white/20" />
+                <text x={x + 12} y={ST_Y + 28} fontSize="15" fontWeight="700" className="fill-ink font-display dark:fill-stone-100">
+                  {s.name}
+                </text>
+                <text x={x + 12} y={ST_Y + 48} fontSize="12" className="fill-ink-soft font-display dark:fill-stone-400">
+                  adds {s.value} · spoils {(s.defect * 100).toFixed(0)}%
+                </text>
+                {setup.readout && showReadout && (
+                  <>
+                    <text x={x + 12} y={ST_Y + 66} fontSize="12" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
+                      {Math.round(st.made)} spoil here
+                    </text>
+                    <text x={x + ST_W - 12} y={ST_Y + 66} textAnchor="end" fontSize="11" className="fill-ink-soft font-display dark:fill-stone-400">
+                      worth {st.valueAtRisk}
+                    </text>
+                  </>
+                )}
+                {/* legs down to the belt */}
+                <rect x={x + 20} y={ST_Y + ST_H} width="8" height={BELT_Y - ST_Y - ST_H} className="fill-stone-300 dark:fill-white/15" />
+                <rect x={x + ST_W - 28} y={ST_Y + ST_H} width="8" height={BELT_Y - ST_Y - ST_H} className="fill-stone-300 dark:fill-white/15" />
+              </g>
             )
           })}
-        </div>
+
+          {/* inspection desks: the actual decision */}
+          {gates.map((on, i) => {
+            const cx = boothX(i)
+            const st = r.perStation[i]
+            return (
+              <g
+                key={`booth-${i}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={on}
+                aria-label={`${on ? 'Remove' : 'Add'} an inspection desk after ${STATIONS[i].name}`}
+                onClick={() => toggle(i)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggle(i)
+                  }
+                }}
+                className="cursor-pointer outline-none"
+              >
+                <rect x={cx - 26} y={ST_Y + 10} width="52" height={BELT_Y - ST_Y + 10} fill="transparent" />
+                {on ? (
+                  <g>
+                    {/* desk, lamp, and the stamp coming down */}
+                    <rect x={cx - 22} y={BELT_Y - 46} width="44" height="46" rx="6" style={{ fill: 'var(--accent)' }} opacity="0.9" />
+                    <rect x={cx - 26} y={BELT_Y - 52} width="52" height="9" rx="4" style={{ fill: 'var(--accent)' }} />
+                    <circle cx={cx} cy={BELT_Y - 74} r="7" className="fill-emerald-400" />
+                    <motion.g
+                      animate={{ y: [0, 9, 0] }}
+                      transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.5, ease: 'easeInOut' }}
+                    >
+                      <rect x={cx - 11} y={BELT_Y - 40} width="22" height="7" rx="2" className="fill-white/90" />
+                      <rect x={cx - 4} y={BELT_Y - 48} width="8" height="9" rx="2" className="fill-white/70" />
+                    </motion.g>
+                    <text x={cx} y={BELT_Y + 22} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink font-display dark:fill-stone-100">
+                      DESK
+                    </text>
+                    {setup.readout && showReadout && (
+                      <text x={cx} y={BELT_Y + 38} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-emerald-700 font-display dark:fill-emerald-300">
+                        bins {Math.round(st.scrapped)}
+                      </text>
+                    )}
+                  </g>
+                ) : (
+                  <g>
+                    <rect
+                      x={cx - 20}
+                      y={BELT_Y - 42}
+                      width="40"
+                      height="42"
+                      rx="6"
+                      fill="none"
+                      strokeWidth="2"
+                      strokeDasharray="5 5"
+                      className="stroke-stone-400 dark:stroke-white/25"
+                    />
+                    <path
+                      d={`M${cx - 8} ${BELT_Y - 21} h16 M${cx} ${BELT_Y - 29} v16`}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="stroke-stone-400 dark:stroke-white/30"
+                    />
+                    <text x={cx} y={BELT_Y + 22} textAnchor="middle" fontSize="11" className="fill-ink-soft font-display dark:fill-stone-500">
+                      add desk
+                    </text>
+                  </g>
+                )}
+              </g>
+            )
+          })}
+
+          {/* the customer door at the end of the line */}
+          <g>
+            <rect x={CUSTOMER_X - 26} y={BELT_Y - 62} width="52" height="62" rx="8" className="fill-stone-200 dark:fill-white/10" />
+            <path d={`M${CUSTOMER_X - 30} ${BELT_Y - 62} L${CUSTOMER_X} ${BELT_Y - 84} L${CUSTOMER_X + 30} ${BELT_Y - 62} Z`} className="fill-stone-300 dark:fill-white/15" />
+            <text x={CUSTOMER_X} y={BELT_Y + 22} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink font-display dark:fill-stone-100">
+              customers
+            </text>
+            <text
+              x={CUSTOMER_X}
+              y={BELT_Y + 38}
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="700"
+              className={r.escaped <= setup.maxEscaped ? 'fill-emerald-700 font-display dark:fill-emerald-300' : 'fill-rose-600 font-display dark:fill-rose-300'}
+            >
+              {Math.round(r.escaped)} faulty
+            </text>
+          </g>
+
+          {/* units riding the belt, each ending where the maths says it ends */}
+          {SAMPLE.map((u, i) => {
+            const caughtAt = u.defectAt === null ? -1 : gates.findIndex((on, gi) => on && gi >= u.defectAt!)
+            const rejected = caughtAt !== -1
+            const endX = rejected ? boothX(caughtAt) : CUSTOMER_X - 34
+            const travel = (endX - UNIT_START) / SPEED
+            const duration = travel + (rejected ? 0.5 : 0)
+            const travelFrac = travel / duration
+            const spoilFrac =
+              u.defectAt === null
+                ? null
+                : Math.min(0.97, (stationX(u.defectAt) + ST_W - UNIT_START) / SPEED / duration)
+            const timing = {
+              duration,
+              delay: i * 0.42,
+              repeat: Infinity,
+              repeatDelay: 0.25,
+              ease: 'linear' as const,
+            }
+            return (
+              <motion.g
+                key={`unit-${i}`}
+                initial={{ x: UNIT_START, y: 0, opacity: 1 }}
+                animate={
+                  rejected
+                    ? { x: [UNIT_START, endX, endX], y: [0, 0, 52], opacity: [1, 1, 0] }
+                    : { x: [UNIT_START, endX], y: 0, opacity: 1 }
+                }
+                transition={rejected ? { ...timing, times: [0, travelFrac, 1] } : timing}
+              >
+                <rect x="-9" y={BELT_Y - 20} width="18" height="18" rx="4" className="fill-amber-400" />
+                {spoilFrac !== null && (
+                  <motion.g
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0, 1, 1] }}
+                    transition={{ ...timing, times: [0, spoilFrac, Math.min(1, spoilFrac + 0.02), 1] }}
+                  >
+                    <rect x="-9" y={BELT_Y - 20} width="18" height="18" rx="4" className="fill-rose-500" />
+                    <path d={`M-4 ${BELT_Y - 15} l8 8 M4 ${BELT_Y - 15} l-8 8`} strokeWidth="2" strokeLinecap="round" className="stroke-white" />
+                  </motion.g>
+                )}
+              </motion.g>
+            )
+          })}
+        </svg>
       </div>
 
       {/* Verdict */}

@@ -33,7 +33,7 @@ Three depths of anchoring:
 | Trim for Flight | Flight sims | hook |
 | Re-entry | (its own stone-skipping metaphor already lands) | - |
 | Assembly Line | Overcooked kitchen-rush flow | hook |
-| Quality Gate | Papers, Please inspection desk | hook |
+| Quality Gate | Papers, Please inspection desk (place the desk, watch units get stamped and binned) | deep |
 | Warehouse Layout | Unpacking / tidying games, scored in footsteps | hook |
 | Line Follower | Kart-racer time-trial tuning | hook |
 | Safe Grip | Operation steady-hand buzzer game | hook |
@@ -51,10 +51,8 @@ Three depths of anchoring:
 
 ## Upgrade candidates (hook -> deep)
 
-1. **Quality Gate**: an actual stamp interaction (APPROVE / REJECT) at the
-   inspection desk, Papers-Please style.
-2. **Don't Trip**: appliances as draggable blocks that visually fill each
+1. **Don't Trip**: appliances as draggable blocks that visually fill each
    breaker column, Tetris-style.
-3. **Shake Proof / Sky High**: exaggerated wobble animation and a
+2. **Shake Proof / Sky High**: exaggerated wobble animation and a
    block-tower art style.
-4. **Assembly Line**: stations drawn as kitchen counters with order tickets.
+3. **Assembly Line**: stations drawn as kitchen counters with order tickets.
