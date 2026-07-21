@@ -589,7 +589,9 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
           {/* level 4 overlay: where this shot would land, before firing */}
           {preview && (
             <polyline
-              points={preview.xs.map((x, i) => `${x},${preview.ys[i]}`).join(' ')}
+              // Only the first stretch of the arc: the landing stays a secret
+              // until the boulder actually flies.
+              points={preview.xs.slice(0, 15).map((x, i) => `${x},${preview.ys[i]}`).join(' ')}
               fill="none"
               className="stroke-ink-soft dark:stroke-stone-400"
               strokeWidth="2"

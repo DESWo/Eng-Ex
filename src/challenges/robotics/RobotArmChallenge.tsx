@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { Grab, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -18,7 +20,8 @@ const L1 = 95 // upper arm length (px)
 const L2 = 85 // forearm length (px)
 const BASE_X = 400
 const BASE_Y = 300
-const REACH_TOLERANCE = 18 // how close the gripper must get (px)
+const REACH_TOLERANCE = 14 // how close the gripper must get (px)
+const GRAB_RADIUS = 46 // you must grab the claw itself to drag it (px)
 const SHOULDER_MIN = 5
 const SHOULDER_MAX = 175
 const ELBOW_MIN = 20 // cannot fold the forearm flat against the upper arm
@@ -182,8 +185,14 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
   const [flips, setFlips] = useState(0)
   const [won, setWon] = useState(false)
   const [showEnvelope, setShowEnvelope] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  /** Coins in the slot: each failed grab eats one, arcade rules. */
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
   const completedRef = useRef(false)
   const lastPose = useRef<{ shoulder: number; elbow: number } | null>(null)
+  // A drag gesture only moves the claw if it started ON the claw.
+  const gestureLive = useRef(false)
+  const gestureGrabbed = useRef(false)
 
   useEffect(() => {
     setAim({ x: 300, y: 250 })
@@ -193,6 +202,7 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
     setPeakTorque(0)
     setFlips(0)
     setWon(false)
+    setVerdict(null)
     lastPose.current = null
   }, [lv.level.n])
 
@@ -216,31 +226,45 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
   const dist = Math.hypot(pose.handX - target.x, pose.handY - target.y)
   const onTarget = usable && dist <= REACH_TOLERANCE
 
-  useEffect(() => {
-    if (!onTarget || nextIndex >= setup.targets.length) return
-    const timer = setTimeout(() => setReached((r) => (r.length === nextIndex ? [...r, nextIndex] : r)), 450)
-    return () => clearTimeout(timer)
-  }, [onTarget, nextIndex, setup.targets.length])
-
   const allDone = reached.length >= setup.targets.length
 
-  useEffect(() => {
-    if (!allDone || won) return
-    const timer = setTimeout(() => {
-      setWon(true)
-      lv.clearLevel(
-        lv.level.metrics ? { travel, torque: peakTorque, flips } : undefined,
-      )
-      if (!completedRef.current) {
-        completedRef.current = true
-        onComplete()
+  /** Drop the claw. Arcade rules: it closes on whatever is exactly under it. */
+  const grab = () => {
+    if (won || allDone) return
+    if (onTarget) {
+      const nowReached = [...reached, nextIndex]
+      setReached(nowReached)
+      if (nowReached.length >= setup.targets.length) {
+        setWon(true)
+        setVerdict({ ok: true, text: setup.targets.length > 1 ? 'Cycle complete. Every prize in the chute.' : 'Got it! The claw closed right on the prize.' })
+        lv.clearLevel(
+          lv.level.metrics ? { travel, torque: peakTorque, flips } : undefined,
+        )
+        if (!completedRef.current) {
+          completedRef.current = true
+          onComplete()
+        }
+      } else {
+        setVerdict({ ok: true, text: `Prize ${nowReached.length} of ${setup.targets.length} in the chute. Next one.` })
       }
-    }, 500)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDone, won, travel, peakTorque, flips])
+      return
+    }
+    const text = !usable
+      ? pose.blocked
+        ? 'The claw closed on air: the arm is fouling the shelf in this pose. Try the other elbow.'
+        : 'The claw closed on air: the joints cannot actually hold that pose.'
+      : `The claw closed on air, ${Math.round(dist)} px off the prize.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Out of coins. The machine resets with a wink. Line the claw up properly before you drop it.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
+    setVerdict(null)
     setAim({ x: 300, y: 250 })
     setElbowUp(true)
     setReached([])
@@ -251,9 +275,17 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
     lastPose.current = null
   }
 
-  const { dragging, bind } = useSvgDrag((x, y) => {
+  const { dragging, bind } = useSvgDrag((x, y, done) => {
     if (won) return
-    setAim({ x: Math.max(40, Math.min(760, x)), y: Math.max(20, Math.min(BASE_Y + 6, y)) })
+    if (!gestureLive.current) {
+      // First sample of a new gesture: it counts only if it starts on the claw.
+      gestureLive.current = true
+      gestureGrabbed.current = Math.hypot(x - pose.handX, y - pose.handY) <= GRAB_RADIUS
+    }
+    if (gestureGrabbed.current) {
+      setAim({ x: Math.max(40, Math.min(760, x)), y: Math.max(20, Math.min(BASE_Y + 6, y)) })
+    }
+    if (done) gestureLive.current = false
   })
 
   const nudge = (e: React.KeyboardEvent) => {
@@ -284,6 +316,13 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.envelope ? <InsightToggle label="workspace" on={showEnvelope} onChange={setShowEnvelope} /> : undefined}
+      />
+
+      <Objective
+        goal={setup.targets.length > 1 ? `Pick up all ${setup.targets.length} prizes, in order, one clean grab each` : 'Line the claw up on the prize and drop it: one clean grab'}
+        status={`prizes in the chute: ${reached.length} of ${setup.targets.length}`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -429,30 +468,30 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            won || allDone
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : usable
-                ? 'bg-stone-100 text-ink-soft dark:bg-white/5 dark:text-stone-300'
-                : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {allDone
-            ? setup.targets.length > 1
-              ? `All prizes won. ${Math.round(travel)}° of joint travel.`
-              : 'Prize won! The arm solved its own angles.'
-            : pose.blocked
-              ? `The claw is in the right place but the arm is going through the boxes.${setup.flip ? ' Try bending the elbow the other way.' : ''}`
-              : pose.outOfLimits
-                ? 'That pose is past what the joints can hold. The shoulder cannot swing below the floor and the elbow cannot fold flat.'
-                : onTarget
-                  ? 'Locked on, hold steady.'
-                  : dist <= REACH_TOLERANCE * 3
-                    ? 'Nearly on it.'
-                    : 'Drag the claw onto the prize.'}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : pose.blocked ? (
+          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            The arm is going through the boxes.{setup.flip ? ' Try bending the elbow the other way.' : ''}
+          </p>
+        ) : pose.outOfLimits ? (
+          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            That pose is past what the joints can hold. The shoulder cannot swing below the floor and the elbow cannot fold flat.
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Grab the claw itself to steer it. Judge the drop by eye, arcade rules: no meter tells you when you are lined up.
+          </p>
+        )}
       </div>
 
       {/* Controls: a discrete pose choice, not a dial */}
@@ -466,6 +505,10 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
             Elbow {elbowUp ? 'up' : 'down'}, flip it
           </button>
         )}
+        <Button variant="accent" size="lg" onClick={grab} disabled={won}>
+          <Grab className="h-5 w-5" />
+          Drop the claw
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the claw">
           <RotateCcw className="h-4 w-4" />
           Reset
