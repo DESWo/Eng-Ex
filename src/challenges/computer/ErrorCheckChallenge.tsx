@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Radio, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -168,6 +170,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setCheckBits(setup.checkBits ?? 0)
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -181,10 +184,27 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
     : r.silentRate + r.counts.resent / PACKETS
   const solved = lostRate <= setup.maxSilent && !overBudget
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  /** Three commissioning runs per level, then the protocol is wiped. */
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const reset = () => {
+    setCheckBits(setup.checkBits ?? 0)
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Commission the link and let a night of traffic judge the protocol. */
+  const commission = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({
+        ok: true,
+        text: setup.canResend
+          ? `Link is trustworthy. ${(lostRate * 100).toFixed(1)}% slipping through unnoticed, ${(r.throughput * 100).toFixed(0)}% of the channel carrying real data.`
+          : `Solid. ${r.counts.corrected} packets were repaired right at the probe, and only ${(lostRate * 100).toFixed(1)}% were lost.`,
+      })
       lv.clearLevel(
         lv.level.metrics
           ? { silent: r.silentRate * 100, through: r.throughput * 100, check: bits }
@@ -194,14 +214,24 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, r.silentRate, r.throughput, bits])
-
-  const reset = () => {
-    setCheckBits(setup.checkBits ?? 0)
-    setWon(false)
+      return
+    }
+    const text = overBudget
+      ? `That packet is ${packetSize} bits and the link only carries ${setup.budget}.`
+      : bits === 0
+        ? `${r.counts.silent} packets arrived corrupted and nothing flagged a single one.`
+        : !setup.canResend && r.counts.corrected === 0
+          ? `${(lostRate * 100).toFixed(0)}% of the data is gone. The receiver can tell those packets broke, but out here it cannot ask again, so spotting the error is not enough.`
+          : bits < 3
+            ? `Still ${(lostRate * 100).toFixed(1)}% slipping through: two flips in one packet cancel out and sneak past. The target is ${(setup.maxSilent * 100).toFixed(1)}%.`
+            : `Still ${(lostRate * 100).toFixed(1)}% getting lost against a target of ${(setup.maxSilent * 100).toFixed(1)}%.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The mission pulled the plug on testing. Protocol wiped. Think about what each check bit buys before rebuilding.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   const COLS = 20
@@ -213,6 +243,13 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.stream ? <InsightToggle label="packet stream" on={showStream} onChange={setShowStream} /> : undefined}
+      />
+
+      <Objective
+        goal={`${setup.canResend ? 'Silent errors' : 'Lost data'} at ${(setup.maxSilent * 100).toFixed(1)}% or less${setup.budget !== null ? `, packets within ${setup.budget} bits` : ''}`}
+        status={`this protocol: ${(lostRate * 100).toFixed(1)}% · ${packetSize}-bit packets`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -244,7 +281,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
                 key={`c${i}`}
                 type="button"
                 disabled={setup.checkBits !== null}
-                onClick={() => setCheckBits(filled ? i : i + 1)}
+                onClick={() => { setVerdict(null); setCheckBits(filled ? i : i + 1) }}
                 aria-pressed={filled}
                 aria-label={filled ? `Remove check bit ${i + 1}` : `Add check bit ${i + 1}`}
                 className={cn(
@@ -295,30 +332,24 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
         )}
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: the link is only judged once commissioned */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overBudget
-            ? `That packet is ${packetSize} bits and the link only carries ${setup.budget}.`
-            : solved
-              ? setup.canResend
-                ? `Link is trustworthy. ${(lostRate * 100).toFixed(1)}% slipping through unnoticed, ${(r.throughput * 100).toFixed(0)}% of the channel carrying real data.`
-                : `Solid. ${r.counts.corrected} packets were repaired right at the probe, and only ${(lostRate * 100).toFixed(1)}% were lost.`
-              : bits === 0
-                ? `${r.counts.silent} packets arrived corrupted and nothing flagged a single one.`
-                : !setup.canResend && r.counts.corrected === 0
-                  ? `${(lostRate * 100).toFixed(0)}% of the data is gone. The receiver can tell those packets broke, but out here it cannot ask for them again, so spotting the error is not enough.`
-                  : bits < 3
-                    ? `Still ${(lostRate * 100).toFixed(1)}% slipping through. Errors are being spotted, but two flips in one packet can cancel out and sneak past.`
-                    : `Still ${(lostRate * 100).toFixed(1)}% getting lost. Try more protection.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Choose how many check bits ride along, then commission the link to see what a night of traffic does to it.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -338,6 +369,10 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={commission} disabled={won}>
+          <Radio className="h-5 w-5" />
+          Commission the link
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the protocol">
           <RotateCcw className="h-4 w-4" />
           Reset

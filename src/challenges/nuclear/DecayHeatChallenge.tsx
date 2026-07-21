@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { BookCheck, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -106,11 +108,14 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
   const [picks, setPicks] = useState<ModeId[]>(['off', 'off', 'off'])
   const [won, setWon] = useState(false)
   const [showCurve, setShowCurve] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setPicks(['off', 'off', 'off'])
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   // Walk the day forwards, block by block.
@@ -129,23 +134,35 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
   const melted = peak > setup.limit
   const solved = !melted && !overBattery
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setPicks(['off', 'off', 'off'])
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Hand the procedure to the operators and live the next 24 hours. */
+  const runProcedure = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Safe. Peak ${Math.round(peak)}°C, and the core is down to ${Math.round(temp)}°C after a day.` })
       lv.clearLevel(lv.level.metrics ? { peak, battery, final: temp } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, peak, battery, temp])
-
-  const reset = () => {
-    setPicks(['off', 'off', 'off'])
-    setWon(false)
+      return
+    }
+    const text = melted
+      ? `Fuel damage. The core reached ${Math.round(peak)}°C, past the ${setup.limit}°C line. Decay heat is fiercest in the first hours.`
+      : `The batteries died mid-shift: that plan needs ${Math.round(battery)} kWh and the bank holds ${setup.battery}.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The drill is over and the core is back at the start. Read the heat curve: spend your power where the heat actually is.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   const maxBar = 60
@@ -159,6 +176,13 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.curve ? <InsightToggle label="decay curve" on={showCurve} onChange={setShowCurve} /> : undefined}
+      />
+
+      <Objective
+        goal={`Keep the fuel under ${setup.limit}°C for 24 hours${setup.battery !== null ? ` on ${setup.battery} kWh of battery` : ''}`}
+        status={`this plan peaks at ${Math.round(peak)}°C · ${Math.round(battery)} kWh`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -223,22 +247,24 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: the day only plays out once the procedure is handed over */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {melted
-            ? `Fuel damage. The core reached ${Math.round(peak)}°C, past the ${setup.limit}°C line.`
-            : overBattery
-              ? `The batteries died. That plan needs ${Math.round(battery)} kWh and you have ${setup.battery}.`
-              : `Safe. Peak ${Math.round(peak)}°C, and the core is down to ${Math.round(temp)}°C after a day.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Assign a cooling mode to each block of the day, then run the procedure to see the whole 24 hours.
+          </p>
+        )}
       </div>
 
       {setup.battery !== null && (
@@ -266,7 +292,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setPicks((p) => p.map((v, j) => (j === i ? m : v)))}
+                    onClick={() => { setVerdict(null); setPicks((p) => p.map((v, j) => (j === i ? m : v))) }}
                     aria-pressed={active}
                     className={cn(
                       'rounded-2xl px-4 py-2 text-left font-display text-sm font-semibold transition-colors duration-200',
@@ -286,6 +312,10 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={runProcedure} disabled={won}>
+          <BookCheck className="h-5 w-5" />
+          Run the procedure
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the plan">
           <RotateCcw className="h-4 w-4" />
           Reset

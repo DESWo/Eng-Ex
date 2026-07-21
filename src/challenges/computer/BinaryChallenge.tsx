@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Send, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -89,6 +91,7 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
     setWidth(setup.width ?? 8)
     setBits(Array(MAX_BITS).fill(false))
     setWon(false)
+    setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -112,26 +115,45 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
 
   const solved = value === setup.target
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  /** Guessing costs: three sends per level, then the board wipes. */
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const reset = () => {
+    setBits(Array(MAX_BITS).fill(false))
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Commit the pattern down the wire. */
+  const send = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `The receiver read ${setup.target}. Sent in ${w} bits.` })
       lv.clearLevel(lv.level.metrics ? { width: w, headroom, lit: litCount } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 600)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, w, headroom, litCount])
-
-  const reset = () => {
-    setBits(Array(MAX_BITS).fill(false))
-    setWon(false)
+      return
+    }
+    const text = !fits
+      ? `${w} bulbs only reach ${maxMagnitude}${setup.signed ? ' either way' : ''}, and you need ${Math.abs(setup.target)}. Add another bulb.`
+      : `The receiver read ${value}, not ${setup.target}. ${value < setup.target ? 'Too low.' : 'Too high.'}`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Line reset, bulbs dark. Work the number out in powers of two before the next send.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
-  const toggle = (place: number) => setBits((b) => b.map((v, j) => (j === place ? !v : v)))
+  const toggle = (place: number) => {
+    setVerdict(null)
+    setBits((b) => b.map((v, j) => (j === place ? !v : v)))
+  }
 
   /** Click an empty socket to wire up more signal lines, or a bulb to pull them out. */
   const setWidthTo = (nextWidth: number) => {
@@ -149,6 +171,13 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.places ? <InsightToggle label="place values" on={showPlaces} onChange={setShowPlaces} /> : undefined}
+      />
+
+      <Objective
+        goal={`Light the bulbs so the wire carries exactly ${setup.target}`}
+        status={`${litCount} lit`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -237,25 +266,31 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
         )}
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: the receiver only reads what you actually send */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {solved
-            ? `That is ${setup.target}, sent in ${w} bits.`
-            : !fits
-              ? `${w} bulbs only reach ${maxMagnitude}${setup.signed ? ' either way' : ''}, and you need ${Math.abs(setup.target)}. Add another bulb.`
-              : `Currently reading ${value}. ${value < setup.target ? 'Too low.' : 'Too high.'}`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Each bulb is worth its place value. Set the pattern, then send it down the wire.
+          </p>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={send} disabled={won}>
+          <Send className="h-5 w-5" />
+          Send the number
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Switch all the bulbs off">
           <RotateCcw className="h-4 w-4" />
           All off
