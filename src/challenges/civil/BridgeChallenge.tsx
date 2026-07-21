@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw, Truck, Undo2 } from 'lucide-react'
+import { Eraser, Hammer, RotateCcw, Truck, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
@@ -119,6 +119,11 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const [beams, setBeams] = useState<{ key: string; material: MaterialId }[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [material, setMaterial] = useState<MaterialId>('wood')
+  const [tool, setToolState] = useState<'build' | 'remove'>('build')
+  /** Where the pointer is hovering on the grid, for the placement preview. */
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+  /** Snapshots taken before every change, so undo covers removals too. */
+  const [history, setHistory] = useState<{ joints: TrussJoint[]; beams: { key: string; material: MaterialId }[] }[]>([])
   const [phase, setPhase] = useState<Phase>('build')
   const [test, setTest] = useState<TestResult | null>(null)
   const [runId, setRunId] = useState(0)
@@ -207,51 +212,108 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     fn()
   }
 
+  const setTool = (next: 'build' | 'remove') => {
+    if (busy) return
+    setToolState(next)
+    setSelected(null)
+    setHover(null)
+  }
+
   const snap = (v: number, min: number, max: number) =>
     Math.max(min, Math.min(max, Math.round(v / GRID) * GRID))
 
-  const handleCanvasClick = (event: React.MouseEvent<SVGRectElement>) => {
-    if (busy) return
+  /** Pointer event -> snapped grid coordinates in viewBox space. */
+  const svgPoint = (event: { clientX: number; clientY: number }) => {
     const svg = svgRef.current
-    if (!svg) return
+    if (!svg) return null
     const rect = svg.getBoundingClientRect()
-    const x = snap(((event.clientX - rect.left) / rect.width) * VIEW_W, MIN_X, MAX_X)
-    const y = snap(((event.clientY - rect.top) / rect.height) * VIEW_H, MIN_Y, MAX_Y)
-    const id = jointId(x, y)
+    return {
+      x: snap(((event.clientX - rect.left) / rect.width) * VIEW_W, MIN_X, MAX_X),
+      y: snap(((event.clientY - rect.top) / rect.height) * VIEW_H, MIN_Y, MAX_Y),
+    }
+  }
+
+  const pushHistory = () =>
+    setHistory((prev) => [...prev.slice(-49), { joints, beams }])
+
+  /** True if this joint still matters once `remaining` are the only beams. */
+  const touchedBy = (id: string, remaining: { key: string }[]) =>
+    remaining.some((b) => b.key.split('|').includes(id))
+
+  const handleCanvasClick = (event: React.MouseEvent<SVGRectElement>) => {
+    if (busy || tool !== 'build') return
+    const p = svgPoint(event)
+    if (!p) return
+    const id = jointId(p.x, p.y)
 
     if (selected === id) {
       setSelected(null)
       return
     }
 
+    const from = selected ? jointAt(selected) : null
+    const exists = joints.some((j) => j.id === id)
+    const len = from ? Math.hypot(p.x - from.x, p.y - from.y) : 0
+    const key = from && selected ? memberKey(selected, id) : null
+
+    // Too far for one beam: hop the chain to an existing joint, but never
+    // drop a stranded new joint (the preview line shows red out there).
+    if (from && len > MAX_LEN) {
+      if (exists) edit(() => setSelected(id))
+      return
+    }
+
+    const addsBeam = key !== null && !beamKeys.includes(key)
+    if (!exists || addsBeam) pushHistory()
     edit(() => {
-      setJoints((prev) => (prev.some((j) => j.id === id) ? prev : [...prev, { id, x, y }]))
-      if (selected) {
-        const from = jointAt(selected)
-        const key = memberKey(selected, id)
-        const len = from ? Math.hypot(x - from.x, y - from.y) : 0
-        if (from && len <= MAX_LEN && !beamKeys.includes(key)) {
-          setBeams((prev) => [...prev, { key, material }])
-        }
-      }
+      if (!exists) setJoints((prev) => [...prev, { id, x: p.x, y: p.y }])
+      if (addsBeam && key) setBeams((prev) => [...prev, { key, material }])
       setSelected(id)
     })
   }
 
-  const removeBeam = (key: string) => edit(() => setBeams((prev) => prev.filter((b) => b.key !== key)))
-
-  const undo = () =>
+  const removeBeam = (key: string) => {
+    if (busy || tool !== 'remove') return
+    pushHistory()
+    const nextBeams = beams.filter((b) => b.key !== key)
     edit(() => {
-      setBeams((prev) => prev.slice(0, -1))
+      setBeams(nextBeams)
+      // Sweep away joints the removed beam was the last to touch.
+      setJoints((prev) => prev.filter((j) => j.fixed || touchedBy(j.id, nextBeams)))
+    })
+  }
+
+  const removeJoint = (id: string) => {
+    if (busy || tool !== 'remove') return
+    pushHistory()
+    const nextBeams = beams.filter((b) => !b.key.split('|').includes(id))
+    edit(() => {
+      setBeams(nextBeams)
+      setJoints((prev) =>
+        prev.filter((j) => j.id !== id && (j.fixed || touchedBy(j.id, nextBeams))),
+      )
+    })
+  }
+
+  const undo = () => {
+    const last = history[history.length - 1]
+    if (!last) return
+    edit(() => {
+      setJoints(last.joints)
+      setBeams(last.beams)
+      setHistory((prev) => prev.slice(0, -1))
       setSelected(null)
     })
+  }
 
-  const reset = () =>
+  const reset = () => {
+    if (beams.length > 0 || joints.length > 2) pushHistory()
     edit(() => {
       setJoints([ANCHOR_L, ANCHOR_R])
       setBeams([])
       setSelected(null)
     })
+  }
 
   /* ---------- testing ---------- */
   const capsFor = (key: string) => {
@@ -384,7 +446,9 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         <div>
           <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
           <p className="mt-1 text-xs text-ink-soft dark:text-stone-500">
-            Click to drop joints and chain beams. Click a beam to delete it. The road must reach across at anchor height.
+            {tool === 'build'
+              ? 'Click to drop a joint and chain beams from the glowing one. Click the glowing joint to let go. The road must reach across at anchor height.'
+              : 'Click a beam to take it out. Clicking a joint removes it and every beam on it.'}
           </p>
         </div>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
@@ -393,7 +457,36 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Build canvas */}
-      <div className="overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
+      <div className="relative overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
+        {/* Tool switch, right where the building happens. */}
+        <div className="absolute left-3 top-3 z-10 flex gap-1 rounded-full bg-white/85 p-1 shadow-sm backdrop-blur dark:bg-stone-900/85">
+          <button
+            type="button"
+            onClick={() => setTool('build')}
+            aria-pressed={tool === 'build'}
+            disabled={busy}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-150',
+              tool === 'build' ? 'accent-bg text-white' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
+            )}
+          >
+            <Hammer className="h-3.5 w-3.5" />
+            Build
+          </button>
+          <button
+            type="button"
+            onClick={() => setTool('remove')}
+            aria-pressed={tool === 'remove'}
+            disabled={busy}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-150',
+              tool === 'remove' ? 'bg-rose-500 text-white' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
+            )}
+          >
+            <Eraser className="h-3.5 w-3.5" />
+            Remove
+          </button>
+        </div>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -405,7 +498,19 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           <path d={`M0 ${ROAD_Y} h${LEFT_X} v${VIEW_H - ROAD_Y} H0 Z`} className="fill-emerald-300 dark:fill-emerald-950" />
           <path d={`M${VIEW_W} ${ROAD_Y} h-${VIEW_W - RIGHT_X} v${VIEW_H - ROAD_Y} H${VIEW_W} Z`} className="fill-emerald-300 dark:fill-emerald-950" />
 
-          <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="transparent" onClick={handleCanvasClick} className={busy ? '' : 'cursor-crosshair'} />
+          <rect
+            x="0"
+            y="0"
+            width={VIEW_W}
+            height={VIEW_H}
+            fill="transparent"
+            onClick={handleCanvasClick}
+            onPointerMove={(e) => {
+              if (!busy && tool === 'build') setHover(svgPoint(e))
+            }}
+            onPointerLeave={() => setHover(null)}
+            className={busy || tool !== 'build' ? '' : 'cursor-crosshair'}
+          />
 
           {gridDots.map(({ x, y }) => (
             <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" className="pointer-events-none fill-stone-400/40 dark:fill-white/15" />
@@ -421,9 +526,17 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
             const pa = pos(a)
             const pb = pos(b)
             const isRoad = roadBeams.includes(key)
+            const removable = tool === 'remove' && !busy
             return (
-              <g key={key} onClick={(e) => { e.stopPropagation(); removeBeam(key) }} className={busy ? '' : 'cursor-pointer'}>
-                <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="transparent" strokeWidth="14" />
+              // In build mode beams ignore the pointer entirely, so a click
+              // near one always places or selects instead of deleting.
+              <g
+                key={key}
+                onClick={(e) => { e.stopPropagation(); removeBeam(key) }}
+                className={cn('group', removable && 'cursor-pointer')}
+                pointerEvents={removable ? 'auto' : 'none'}
+              >
+                <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="transparent" strokeWidth="18" />
                 <line
                   x1={pa.x}
                   y1={pa.y}
@@ -432,19 +545,80 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                   stroke={beamColor(key)}
                   strokeWidth={beamWidth(key, isRoad)}
                   strokeLinecap="round"
+                  className={removable ? 'transition-opacity group-hover:opacity-30' : undefined}
                 />
+                {removable && (
+                  <line
+                    x1={pa.x}
+                    y1={pa.y}
+                    x2={pb.x}
+                    y2={pb.y}
+                    stroke="#f43f5e"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray="7 5"
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                )}
               </g>
             )
           })}
 
+          {/* Placement preview: where the next joint lands, and the beam it would chain. */}
+          {tool === 'build' && !busy && hover && (() => {
+            const from = selected ? jointAt(selected) : null
+            const tooFar = from ? Math.hypot(hover.x - from.x, hover.y - from.y) > MAX_LEN : false
+            return (
+              <g className="pointer-events-none">
+                {from && (
+                  <line
+                    x1={from.x}
+                    y1={from.y}
+                    x2={hover.x}
+                    y2={hover.y}
+                    stroke={tooFar ? '#f43f5e' : '#22c55e'}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="8 6"
+                    opacity="0.8"
+                  />
+                )}
+                <circle
+                  cx={hover.x}
+                  cy={hover.y}
+                  r="7"
+                  fill="none"
+                  stroke={tooFar ? '#f43f5e' : '#22c55e'}
+                  strokeWidth="2.5"
+                  opacity="0.9"
+                />
+                {tooFar && (
+                  <text x={hover.x} y={hover.y - 14} textAnchor="middle" className="fill-rose-500 font-display text-[13px] font-bold">
+                    too far for one beam
+                  </text>
+                )}
+              </g>
+            )
+          })()}
+
           {joints.map((j) => {
             const p = pos(j.id)
             const isSelected = selected === j.id
+            const removable = tool === 'remove' && !busy && !j.fixed
             return (
-              <g key={j.id} className="pointer-events-none">
+              <g
+                key={j.id}
+                onClick={(e) => { e.stopPropagation(); removeJoint(j.id) }}
+                className={cn('group', removable ? 'cursor-pointer' : 'pointer-events-none')}
+                pointerEvents={removable ? 'auto' : 'none'}
+              >
                 {j.fixed && <path d={`M${p.x - 15} ${p.y + 18} L${p.x} ${p.y} L${p.x + 15} ${p.y + 18} Z`} className="fill-stone-500 dark:fill-stone-400" />}
+                {removable && <circle cx={p.x} cy={p.y} r="14" fill="transparent" />}
                 <circle cx={p.x} cy={p.y} r={isSelected ? 8 : 6} className={isSelected ? 'fill-[var(--accent)]' : 'fill-stone-600 dark:fill-stone-300'} stroke="white" strokeWidth="2.5" />
                 {isSelected && <circle cx={p.x} cy={p.y} r="13" fill="none" style={{ stroke: 'var(--accent)' }} strokeWidth="2" strokeDasharray="4 4" />}
+                {removable && (
+                  <circle cx={p.x} cy={p.y} r="12" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="4 4" className="opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
               </g>
             )
           })}
@@ -578,7 +752,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           <Truck className="h-5 w-5" />
           {busy ? 'Crossing...' : 'Send the truck'}
         </Button>
-        <Button variant="ghost" onClick={undo} disabled={busy || beams.length === 0} aria-label="Undo last beam">
+        <Button variant="ghost" onClick={undo} disabled={busy || history.length === 0} aria-label="Undo last change">
           <Undo2 className="h-4 w-4" />
           Undo
         </Button>

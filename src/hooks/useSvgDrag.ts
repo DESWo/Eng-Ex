@@ -33,7 +33,12 @@ export function useSvgDrag(onMove: (x: number, y: number, done: boolean) => void
     (e: React.PointerEvent<SVGSVGElement>) => {
       const p = toViewBox(e.clientX, e.clientY)
       if (!p) return
-      svgRef.current?.setPointerCapture(e.pointerId)
+      try {
+        svgRef.current?.setPointerCapture(e.pointerId)
+      } catch {
+        // A pointer that is already gone (fast tap) cannot be captured; the
+        // drag still works, it just stops tracking outside the element.
+      }
       setDragging(true)
       handler.current(p.x, p.y, false)
     },

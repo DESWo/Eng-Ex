@@ -48,7 +48,7 @@ const LEVELS: ChallengeLevel<CatapultSetup>[] = [
     title: 'First shot',
     phase: 'play',
     concept: 'Angle and power',
-    teach: 'Drag the arrow out of the catapult and let go. A longer arrow throws harder, a higher one throws steeper. Fire as many times as you like.',
+    teach: 'Grab the boulder and pull the sling back, like a certain bird game. Pull farther to throw harder, pull lower to throw steeper, and let go to fire. Shoot as many times as you like.',
     setup: { target: 65, tolerance: 6, wind: 0, wall: null, shotLimit: null, chooseAmmo: false, vectors: false },
   },
   {
@@ -108,17 +108,18 @@ const LEVELS: ChallengeLevel<CatapultSetup>[] = [
 
 /* ------------------- scene constants (SVG pixels) ------------------- */
 const GROUND_Y = 370
-const ORIGIN_X = 70
+const ORIGIN_X = 90
 const PX_PER_M = 6.6
 const BOULDER_R = 9
 /**
- * You aim by dragging the launch arrow out of the catapult. The arrow IS the
- * launch velocity, so level 4 splitting it into a forward part and an upward
- * part is literally splitting the thing you just drew.
+ * You aim like a slingshot: grab the boulder, pull it back and down, and let
+ * go. The launch velocity is exactly opposite your pull, so level 4 splitting
+ * it into a forward part and an upward part still splits the thing you drew.
  */
 const AIM_X = ORIGIN_X
 const AIM_Y = GROUND_Y - 44
-const MAX_PULL = 200 // arrow length at full power
+const MAX_PULLBACK = 80 // sling stretch at full power
+const FIRE_MIN = 16 // release closer than this and the sling just relaxes
 
 interface Shot {
   xs: number[]
@@ -126,6 +127,9 @@ interface Shot {
   duration: number
   distance: number
   hitWall: boolean
+  /** Where the boulder was released from, so the flight starts in the sling. */
+  fromX?: number
+  fromY?: number
 }
 
 type Verdict = 'short' | 'far' | 'hit' | 'wall'
@@ -149,6 +153,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
   const [shotId, setShotId] = useState(0)
   const [attempts, setAttempts] = useState(0)
   const [result, setResult] = useState<{ distance: number; verdict: Verdict } | null>(null)
+  const [impact, setImpact] = useState<{ x: number; y: number; id: number } | null>(null)
   const [celebrate, setCelebrate] = useState(false)
   const [pendingLaunch, setPendingLaunch] = useState(false)
   const [beat, setBeat] = useState(false)
@@ -171,6 +176,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     setAmmoId('medium')
     setShot(null)
     setResult(null)
+    setImpact(null)
     setAttempts(0)
     setCelebrate(false)
     setBeat(false)
@@ -233,23 +239,28 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     }
   }
 
-  /** Drag out of the catapult: longer is more power, higher is a steeper throw. */
+  /**
+   * Pull the boulder back to aim, slingshot style. The pull is the mirror of
+   * the launch: farther back is more power, lower down is a steeper throw.
+   */
   const aim = (x: number, y: number, done: boolean) => {
     if (flying || outOfShots) return
-    const dx = x - AIM_X
-    const dy = AIM_Y - y
-    const dist = Math.hypot(dx, dy)
-    if (dist < 8) return
-    const deg = Math.max(15, Math.min(75, (Math.atan2(dy, dx) * 180) / Math.PI))
-    setAngle(Math.round(deg))
-    setPower(Math.round(Math.min(100, (dist / MAX_PULL) * 100)))
-    if (done && dist > 16) setPendingLaunch(true)
+    const back = AIM_X - x // how far behind the fork
+    const down = y - AIM_Y // how far below it
+    const dist = Math.hypot(back, down)
+    if (back > 0 && dist >= 6) {
+      const deg = Math.max(15, Math.min(75, (Math.atan2(down, back) * 180) / Math.PI))
+      setAngle(Math.round(deg))
+      setPower(Math.round(Math.min(100, (dist / MAX_PULLBACK) * 100)))
+    }
+    // Letting go with a real stretch fires; a tiny one just relaxes the sling.
+    if (done && back > 0 && dist >= FIRE_MIN) setPendingLaunch(true)
   }
   const { dragging, bind } = useSvgDrag(aim)
 
   const launch = () => {
     if (flying || outOfShots) return
-    const nextShot = simulate(angle, power, ammoId)
+    const nextShot = { ...simulate(angle, power, ammoId), fromX: pullX, fromY: pullY }
     const id = shotId + 1
     setShot(nextShot)
     setShotId(id)
@@ -265,6 +276,11 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     if (handledShotRef.current === id) return
     handledShotRef.current = id
     setFlying(false)
+    setImpact({
+      x: landed.xs[landed.xs.length - 1],
+      y: Math.min(landed.ys[landed.ys.length - 1] + BOULDER_R, GROUND_Y),
+      id,
+    })
     const usedShots = attempts + 1
     setAttempts(usedShots)
     const diff = landed.distance - round.target
@@ -307,6 +323,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     setAttempts(0)
     setResult(null)
     setShot(null)
+    setImpact(null)
     setCelebrate(false)
     setBeat(false)
   }
@@ -322,10 +339,13 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     e.preventDefault()
   }
 
-  // Where the sling sits for the current aim.
-  const pullLen = (power / 100) * MAX_PULL
-  const pullX = AIM_X + Math.cos((angle * Math.PI) / 180) * pullLen
-  const pullY = AIM_Y - Math.sin((angle * Math.PI) / 180) * pullLen
+  // Where the boulder sits in the stretched sling: mirror of the launch direction.
+  const pullLen = (power / 100) * MAX_PULLBACK
+  const pullX = AIM_X - Math.cos((angle * Math.PI) / 180) * pullLen
+  const pullY = AIM_Y + Math.sin((angle * Math.PI) / 180) * pullLen
+  // The two prongs of the fork the elastic bands anchor to.
+  const FORK_BACK = { x: ORIGIN_X - 10, y: AIM_Y - 6 }
+  const FORK_FRONT = { x: ORIGIN_X + 10, y: AIM_Y - 10 }
 
   const showTip = attempts >= 3 && !beat
   const wallX = round.wall ? ORIGIN_X + round.wall.distance * PX_PER_M : 0
@@ -352,7 +372,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-soft dark:text-stone-400">
-          Set the angle and power, then launch. Land the boulder on the enemy camp.
+          Pull the boulder back, let it fly, and land it on the enemy camp.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {round.shotLimit !== null && (
@@ -429,11 +449,16 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             </g>
           )}
 
-          {/* target zone + enemy camp */}
+          {/* target zone + enemy camp (it jumps when you flatten it) */}
           <rect x={zoneX} y={GROUND_Y - 5} width={zoneW} height="10" rx="5" style={{ fill: 'var(--accent)' }} opacity="0.85" />
-          <path d={`M${targetX - 20} ${GROUND_Y} L${targetX} ${GROUND_Y - 34} L${targetX + 20} ${GROUND_Y} Z`} className="fill-stone-500 dark:fill-stone-400" />
-          <line x1={targetX} y1={GROUND_Y - 34} x2={targetX} y2={GROUND_Y - 52} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
-          <path d={`M${targetX} ${GROUND_Y - 52} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
+          <motion.g
+            animate={result?.verdict === 'hit' ? { y: [0, -16, 0], x: [0, 4, 0] } : { y: 0, x: 0 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          >
+            <path d={`M${targetX - 20} ${GROUND_Y} L${targetX} ${GROUND_Y - 34} L${targetX + 20} ${GROUND_Y} Z`} className="fill-stone-500 dark:fill-stone-400" />
+            <line x1={targetX} y1={GROUND_Y - 34} x2={targetX} y2={GROUND_Y - 52} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
+            <path d={`M${targetX} ${GROUND_Y - 52} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
+          </motion.g>
           <text x={targetX} y={GROUND_Y - 62} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
             {round.target} m
           </text>
@@ -451,26 +476,30 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             />
           )}
 
-          {/* catapult */}
+          {/* the slingshot: wheeled base, Y-fork, and the back elastic band */}
           <g>
-            <rect
-              x={ORIGIN_X - 18}
-              y={GROUND_Y - 46}
-              width="52"
-              height="9"
-              rx="4"
-              className="fill-amber-700 dark:fill-amber-600"
-              style={{
-                transformBox: 'fill-box',
-                transformOrigin: 'left bottom',
-                transform: `rotate(${flying ? -60 : -28}deg)`,
-                transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              }}
-            />
             <rect x={ORIGIN_X - 26} y={GROUND_Y - 26} width="60" height="12" rx="5" className="fill-amber-800 dark:fill-amber-700" />
             <circle cx={ORIGIN_X - 16} cy={GROUND_Y - 9} r="9" className="fill-stone-600 dark:fill-stone-400" />
             <circle cx={ORIGIN_X + 24} cy={GROUND_Y - 9} r="9" className="fill-stone-600 dark:fill-stone-400" />
+            <path
+              d={`M${ORIGIN_X} ${GROUND_Y - 22} V${AIM_Y + 12} M${ORIGIN_X} ${AIM_Y + 12} L${FORK_BACK.x} ${FORK_BACK.y} M${ORIGIN_X} ${AIM_Y + 12} L${FORK_FRONT.x} ${FORK_FRONT.y}`}
+              fill="none"
+              strokeWidth="8"
+              strokeLinecap="round"
+              className="stroke-amber-700 dark:stroke-amber-600"
+            />
           </g>
+          {!flying && (
+            <line
+              x1={FORK_BACK.x}
+              y1={FORK_BACK.y}
+              x2={pullX}
+              y2={pullY}
+              strokeWidth="5"
+              strokeLinecap="round"
+              className="stroke-amber-950/70 dark:stroke-amber-900"
+            />
+          )}
 
           {/* level 4 overlay: the launch speed split into its two parts */}
           {preview && (
@@ -507,38 +536,50 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             </g>
           )}
 
-          {/* the launch arrow you drag to aim */}
+          {/* while stretching: the first stretch of the flight, as fading dots */}
+          {dragging && !flying && !preview && power >= 10 && (() => {
+            const peek = simulate(angle, power, ammoId)
+            return (
+              <g className="pointer-events-none">
+                {peek.xs.slice(1, 9).map((x, i) => (
+                  <circle key={i} cx={x} cy={peek.ys[i + 1]} r={3.4 - i * 0.28} className="fill-ink/50 dark:fill-white/50" opacity={1 - i * 0.11} />
+                ))}
+              </g>
+            )
+          })()}
+
+          {/* the boulder in the sling: grab it, pull back, let go */}
           {!flying && (
             <g>
-              <line
-                x1={AIM_X}
-                y1={AIM_Y}
-                x2={pullX}
-                y2={pullY}
-                strokeWidth="5"
-                strokeLinecap="round"
-                style={{ stroke: 'var(--accent)' }}
-                opacity={dragging ? 1 : 0.75}
-              />
               <circle
                 cx={pullX}
                 cy={pullY}
-                r={BOULDER_R + 5}
+                r={(BOULDER_R + 3) * (ammo.mass >= 18 ? 1.25 : ammo.mass <= 5 ? 0.78 : 1)}
                 tabIndex={0}
                 onKeyDown={nudge}
                 role="slider"
-                aria-label="Launch aim. Up and down change the angle, left and right change the power."
+                aria-label="Slingshot aim. Up and down change the angle, left and right change the power. Enter fires."
                 aria-valuetext={`${angle} degrees at ${power} percent power`}
                 aria-valuenow={angle}
                 aria-valuemin={15}
                 aria-valuemax={75}
                 className={cn(
                   'cursor-grab outline-none',
-                  dragging ? 'fill-stone-800 dark:fill-stone-200' : 'fill-stone-700 dark:fill-stone-300',
+                  dragging ? 'cursor-grabbing fill-stone-800 dark:fill-stone-200' : 'fill-stone-700 dark:fill-stone-300',
                 )}
-                style={{ filter: dragging ? 'brightness(1.2)' : undefined }}
+                style={{ filter: dragging ? 'brightness(1.15)' : undefined }}
               />
-              <circle cx={pullX} cy={pullY} r={BOULDER_R + 10} className="fill-none stroke-ink/25 dark:stroke-white/25" strokeWidth="1.5" strokeDasharray="3 4" />
+              <circle cx={pullX} cy={pullY} r={BOULDER_R + 12} className="pointer-events-none fill-none stroke-ink/25 dark:stroke-white/25" strokeWidth="1.5" strokeDasharray="3 4" />
+              {/* front band, over the boulder like a real sling pouch */}
+              <line
+                x1={FORK_FRONT.x}
+                y1={FORK_FRONT.y}
+                x2={pullX}
+                y2={pullY}
+                strokeWidth="5"
+                strokeLinecap="round"
+                className="pointer-events-none stroke-amber-950 dark:stroke-amber-800"
+              />
             </g>
           )}
 
@@ -555,17 +596,37 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             />
           )}
 
-          {/* the boulder */}
+          {/* the boulder: snaps out of the sling, then flies the arc */}
           {shot && (
             <motion.circle
               key={shotId}
               r={BOULDER_R * (ammo.mass >= 18 ? 1.25 : ammo.mass <= 5 ? 0.78 : 1)}
               className="fill-stone-700 dark:fill-stone-300"
-              initial={{ cx: shot.xs[0], cy: shot.ys[0] }}
-              animate={{ cx: shot.xs, cy: shot.ys }}
+              initial={{ cx: shot.fromX ?? shot.xs[0], cy: shot.fromY ?? shot.ys[0] }}
+              animate={{
+                cx: [shot.fromX ?? shot.xs[0], ...shot.xs],
+                cy: [shot.fromY ?? shot.ys[0], ...shot.ys],
+              }}
               transition={{ duration: shot.duration, ease: 'linear' }}
               onAnimationComplete={() => finishFlight(shotId, shot)}
             />
+          )}
+
+          {/* dust where the last shot came down */}
+          {impact && !flying && (
+            <g className="pointer-events-none">
+              {[0, 1, 2].map((i) => (
+                <motion.circle
+                  key={`${impact.id}-${i}`}
+                  cx={impact.x + (i - 1) * 11}
+                  cy={impact.y}
+                  initial={{ r: 2, opacity: 0.6 }}
+                  animate={{ r: 13 + i * 3, opacity: 0 }}
+                  transition={{ duration: 0.7, delay: i * 0.06 }}
+                  className="fill-stone-400 dark:fill-stone-500"
+                />
+              ))}
+            </g>
           )}
         </svg>
       </div>
@@ -640,7 +701,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
           Power <span className="accent-text font-bold">{power}%</span>
         </span>
         <span className="text-sm text-ink-soft dark:text-stone-400">
-          Drag the arrow out of the catapult, then let go. Arrow keys work too.
+          Grab the boulder, stretch the sling back, and release to fire. Arrow keys work too.
         </span>
       </div>
 
