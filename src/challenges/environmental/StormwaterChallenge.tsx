@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { FileCheck, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -140,12 +142,15 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
   const [brush, setBrush] = useState<SurfaceId>('permeable')
   const [won, setWon] = useState(false)
   const [showChart, setShowChart] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setPond(0)
     setCells(Array(20).fill('paving'))
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const CELL = SITE / 20
@@ -156,6 +161,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
 
   /** Paint a plot, but the site still has to work as a car park. */
   const paint = (i: number) => {
+    setVerdict(null)
     setCells((prev) => {
       if (prev[i] === brush) return prev
       const next = [...prev]
@@ -169,10 +175,19 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
   const overBudget = setup.budget !== null && r.cost > setup.budget
   const solved = r.overflow <= setup.maxOverflow && !overBudget
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const reset = () => {
+    setPond(0)
+    setCells(Array(20).fill('paving'))
+    setWon(false)
+    setVerdict(null)
+  }
+
+  /** Send the scheme to planning and let the next storm judge it. */
+  const submitScheme = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Approved. Nothing on the road, ${Math.round(r.cost).toLocaleString()} all in, ${Math.round(paving).toLocaleString()} m² still parkable.` })
       lv.clearLevel(
         lv.level.metrics ? { cost: r.cost, overflow: r.overflow, paving } : undefined,
       )
@@ -180,15 +195,20 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, r.cost, r.overflow, paving])
-
-  const reset = () => {
-    setPond(0)
-    setCells(Array(20).fill('paving'))
-    setWon(false)
+      return
+    }
+    const text = overBudget
+      ? `Rejected: the scheme costs ${Math.round(r.cost).toLocaleString()} and the council's budget is ${setup.budget?.toLocaleString()}.`
+      : setup.surfaces && perm + grassArea === 0
+        ? `The storm put ${r.overflow.toFixed(0)} m³ on the road. Everything that lands on tarmac becomes runoff, and no affordable pond can swallow all of it. Change what the ground is made of.`
+        : `The storm still put ${r.overflow.toFixed(0)} m³ on the road, and planning allows ${setup.maxOverflow}.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Planning refused to look at another draft. The site is back to bare tarmac. Follow one storm bar through the chart before resubmitting.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
   }
 
   /* Chart */
@@ -205,6 +225,13 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.chart ? <InsightToggle label="the storm" on={showChart} onChange={setShowChart} /> : undefined}
+      />
+
+      <Objective
+        goal={`Keep road overflow to ${setup.maxOverflow} m³${setup.budget !== null ? ` on a ${setup.budget.toLocaleString()} budget` : ''}`}
+        status={`this storm: ${r.overflow.toFixed(0)} m³ on the road · ${Math.round(r.cost).toLocaleString()} spent`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -261,24 +288,24 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict */}
+      {/* Verdict: planning only rules once the scheme is submitted */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overBudget
-            ? `The scheme costs ${Math.round(r.cost).toLocaleString()} and the budget is ${setup.budget?.toLocaleString()}.`
-            : solved
-              ? `Nothing on the road. ${Math.round(r.cost).toLocaleString()} all in, with ${Math.round(paving).toLocaleString()} m² still parkable.`
-              : setup.surfaces && perm + grassArea === 0
-                ? `${r.overflow.toFixed(0)} m³ still goes down the road, and a pond big enough is out of budget. Every drop that lands on tarmac becomes runoff, so try changing what the ground is made of.`
-                : `${r.overflow.toFixed(0)} m³ of water is still spilling onto the road.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
+            Paint the site, size the pond, then submit the scheme and let the design storm hit it.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -356,7 +383,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setPond(dug ? i * 20 : (i + 1) * 20)}
+                  onClick={() => { setVerdict(null); setPond(dug ? i * 20 : (i + 1) * 20) }}
                   aria-pressed={dug}
                   aria-label={dug ? `Fill in basin ${i + 1}` : `Dig basin ${i + 1}`}
                   className={cn(
@@ -376,6 +403,10 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={submitScheme} disabled={won}>
+          <FileCheck className="h-5 w-5" />
+          Submit the scheme
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the scheme">
           <RotateCcw className="h-4 w-4" />
           Reset

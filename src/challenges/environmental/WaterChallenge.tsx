@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, RotateCcw, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Droplets, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -156,21 +158,26 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
   const [order, setOrder] = useState<string[]>([])
   const [wonRound, setWonRound] = useState(false)
   const [showReadout, setShowReadout] = useState(true)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setOrder([])
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const r = runPipe(order, round.pollutants, round.clogging)
   const overBudget = round.budget !== null && r.cost > round.budget
   const win = r.clean && !overBudget
 
-  useEffect(() => {
-    if (!win || wonRound) return
-    const timer = setTimeout(() => {
+  /** Open the taps and drink the result. */
+  const openTaps = () => {
+    if (wonRound) return
+    if (win) {
       setWonRound(true)
+      setVerdict({ ok: true, text: `Crystal clear${round.budget !== null ? ' and under budget' : ''}. Safe to drink!` })
       lv.clearLevel(
         lv.level.metrics ? { cost: r.cost, energy: r.energy, stages: order.length } : undefined,
       )
@@ -178,19 +185,32 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 600)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [win, wonRound, r.cost, r.energy, order.length])
+      return
+    }
+    const text = overBudget
+      ? `Over budget: this pipeline costs $${r.cost} and the plant can spend ${round.budget}.`
+      : r.clogged.length > 0
+        ? `${r.clogged.map((id) => stageById(id).name).join(' and ')} ${r.clogged.length > 1 ? 'are' : 'is'} ruined by the state of the water reaching ${r.clogged.length > 1 ? 'them' : 'it'}. Coarse to fine is the rule.`
+        : `Not safe yet. Still in the water: ${r.left.map((pl) => POLLUTANTS[pl].label).join(', ')}.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The health inspector shut the taps off. Empty pipeline. Match each stage to a pollutant before rebuilding.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const addStage = (id: string) => {
     if (order.includes(id)) return
     setOrder((prev) => [...prev, id])
     setWonRound(false)
+    setVerdict(null)
   }
   const removeStage = (id: string) => {
     setOrder((prev) => prev.filter((s) => s !== id))
     setWonRound(false)
+    setVerdict(null)
   }
   const move = (id: string, dir: -1 | 1) => {
     setOrder((prev) => {
@@ -207,6 +227,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
   const reset = () => {
     setOrder([])
     setWonRound(false)
+    setVerdict(null)
   }
 
   const clarity = round.pollutants.length === 0 ? 1 : 1 - r.left.length / round.pollutants.length
@@ -218,6 +239,13 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.readout ? <InsightToggle label="water readout" on={showReadout} onChange={setShowReadout} /> : undefined}
+      />
+
+      <Objective
+        goal={`Outflow clean enough to drink${round.budget !== null ? ` for $${round.budget} or less` : ''}`}
+        status={`still in the water: ${r.left.length === 0 ? 'nothing' : r.left.map((pl) => POLLUTANTS[pl].label).join(', ')} · $${r.cost}`}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -374,26 +402,29 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Crystal clear{round.budget !== null ? ' and under budget' : ''}. Safe to drink!
-          </motion.p>
-        ) : overBudget ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget. This many stages costs more than the plant can spend.
-          </p>
-        ) : r.clogged.length > 0 ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            {r.clogged.map((id) => stageById(id).name).join(' and ')} {r.clogged.length > 1 ? 'are' : 'is'} not working where the water reaches {r.clogged.length > 1 ? 'them' : 'it'}. Try a different order.
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Still in the water: {r.left.map((p) => POLLUTANTS[p].label).join(', ') || 'nothing, nice!'}
+            Build the pipeline in flow order, then open the taps for the inspector's verdict.
           </p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={openTaps} disabled={wonRound}>
+          <Droplets className="h-5 w-5" />
+          Open the taps
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Clear the pipeline">
           <RotateCcw className="h-4 w-4" />
           Reset
