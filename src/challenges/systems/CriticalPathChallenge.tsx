@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Minus, Plus, RotateCcw } from 'lucide-react'
+import { Minus, Plus, Rocket, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -141,6 +143,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setCrash({})
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const s = schedule(crash)
@@ -153,10 +156,15 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
     return sum + (row.slack > 0 ? (crash[t.id] ?? 0) * t.perDay : 0)
   }, 0)
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Commit the schedule to the customer and run the project. */
+  const commit = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Delivered in ${s.finish} days for ${s.cost} of overtime.` })
       lv.clearLevel(
         lv.level.metrics ? { days: s.finish, cost: s.cost, squeeze: s.worstSqueeze } : undefined,
       )
@@ -164,17 +172,30 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, s.finish, s.cost, s.worstSqueeze])
+      return
+    }
+    const text = overBudget
+      ? `Overtime came to ${s.cost} against a budget of ${setup.budget}.`
+      : wastedSpend > 0
+        ? `The project landed at ${s.finish} days, past the ${setup.deadline}-day deadline. ${wastedSpend} of overtime went to tasks that were waiting around anyway: speeding up work with slack moves nothing.`
+        : `The project landed at ${s.finish} days against a ${setup.deadline}-day deadline.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The customer walked. Overtime cancelled. Find the chain of tasks with zero slack: only that chain sets the finish date.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setCrash({})
     setWon(false)
+    setVerdict(null)
   }
 
   const bump = (id: string, delta: number) => {
+    setVerdict(null)
     const task = TASKS.find((t) => t.id === id)!
     setCrash((prev) => ({
       ...prev,
@@ -191,6 +212,13 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.readout ? <InsightToggle label="slack" on={showReadout} onChange={setShowReadout} /> : undefined}
+      />
+
+      <Objective
+        goal={`Finish in ${setup.deadline} days${setup.budget !== null ? ` with overtime under ${setup.budget}` : ''}`}
+        status={`this plan: ${s.finish} days · ${s.cost} overtime`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -264,22 +292,22 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overBudget
-            ? `Overtime is at ${s.cost} and the budget is ${setup.budget}.`
-            : solved
-              ? `Delivered in ${s.finish} days for ${s.cost} of overtime.`
-              : wastedSpend > 0
-                ? `Still ${s.finish} days. You have spent ${wastedSpend} speeding up work that was waiting around anyway, so the finish date has not moved a single day.`
-                : `Still ${s.finish} days, and the deadline is ${setup.deadline}.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Buy overtime where it matters, then commit the schedule to the customer.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -340,6 +368,10 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={commit} disabled={won}>
+          <Rocket className="h-5 w-5" />
+          Commit the schedule
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the plan">
           <RotateCcw className="h-4 w-4" />
           Reset

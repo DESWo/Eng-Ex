@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, RotateCcw, X } from 'lucide-react'
+import { Check, ClipboardCheck, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -96,6 +98,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setMass({ power: 10, science: 10, comms: 10, thermal: 10 })
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const usedMass = mass.power + mass.science + mass.comms + mass.thermal
@@ -119,10 +122,15 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
   }
   const win = Object.values(checks).every(Boolean)
 
-  useEffect(() => {
-    if (!win || wonRound) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Take the design to the flight readiness review. */
+  const review = () => {
+    if (wonRound) return
+    if (win) {
       setWonRound(true)
+      setVerdict({ ok: true, text: 'Every subsystem is happy and you stayed under budget. Cleared for launch!' })
       lv.clearLevel(
         lv.level.metrics
           ? {
@@ -136,17 +144,32 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 600)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [win, wonRound, science, usedMass, powerSupply, powerDemand])
+      return
+    }
+    const failing = Object.entries(checks)
+      .filter(([, ok]) => !ok)
+      .map(([k]) => k)
+    const text = overMass
+      ? `Too heavy to launch: ${usedMass} kg against a budget of ${round.massBudget}. Take mass from a subsystem that already meets its goal.`
+      : `The review board failed the design on: ${failing.join(', ')}. Notice which subsystems lean on the others.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Review slots exhausted. Balanced 10 kg blocks again. Trace which subsystem feeds which before rebuilding.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
-  const setPart = (key: keyof typeof mass, value: number) =>
+  const setPart = (key: keyof typeof mass, value: number) => {
+    setVerdict(null)
     setMass((prev) => ({ ...prev, [key]: value }))
+  }
 
   const reset = () => {
     setMass({ power: 10, science: 10, comms: 10, thermal: 10 })
     setWonRound(false)
+    setVerdict(null)
   }
 
   const requirements = [
@@ -174,6 +197,13 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.flows ? <InsightToggle label="flows" on={showFlows} onChange={setShowFlows} /> : undefined}
+      />
+
+      <Objective
+        goal={`Meet the science and comms goals with every check green, within ${round.massBudget} kg`}
+        status={`checks passing: ${Object.values(checks).filter(Boolean).length} of ${Object.values(checks).length} · ${usedMass} kg`}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -315,22 +345,29 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Every subsystem is happy and you stayed under budget. Cleared for launch!
-          </motion.p>
-        ) : overMass ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Too heavy to launch. Take mass from a subsystem that already meets its goal.
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Some subsystems still are not getting what they need. Notice which ones lean on the others.
+            Hand out the mass blocks, then take the design to review.
           </p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={review} disabled={wonRound}>
+          <ClipboardCheck className="h-5 w-5" />
+          Flight readiness review
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the design">
           <RotateCcw className="h-4 w-4" />
           Reset

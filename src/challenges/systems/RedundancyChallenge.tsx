@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Minus, Plus, RotateCcw } from 'lucide-react'
+import { Minus, Plus, Rocket, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -101,6 +103,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setSpares([0, 0, 0, 0])
     setWon(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const parts = PARTS.map((p, i) => {
@@ -115,27 +118,44 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
   const overMass = setup.maxMass !== null && mass > setup.maxMass
   const solved = reliability >= setup.minReliability && !overMass
 
-  useEffect(() => {
-    if (!solved || won) return
-    const timer = setTimeout(() => {
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+
+  /** Light the candle. Reliability is only a number until launch day. */
+  const launch = () => {
+    if (won) return
+    if (solved) {
       setWon(true)
+      setVerdict({ ok: true, text: `Mission success. ${reliability.toFixed(2)}% odds held up, at ${mass} kg.` })
       lv.clearLevel(lv.level.metrics ? { rel: reliability, mass, cost } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 650)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solved, won, reliability, mass, cost])
+      return
+    }
+    const text = overMass
+      ? `Scrubbed on the pad: that build is ${mass} kg and the rocket lifts ${setup.maxMass}.`
+      : `The review board scored it ${reliability.toFixed(2)}% against a required ${setup.minReliability}%. The post-mortem points at ${weakest.name}: it alone carries ${((weakest.risk / totalRisk) * 100).toFixed(0)}% of the risk.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The launch window closed. Spares unloaded. Back the weakest link, not the most famous part.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setSpares([0, 0, 0, 0])
     setWon(false)
+    setVerdict(null)
   }
 
-  const bump = (i: number, delta: number) =>
+  const bump = (i: number, delta: number) => {
+    setVerdict(null)
     setSpares((prev) => prev.map((v, j) => (j === i ? Math.max(0, Math.min(MAX_SPARES, v + delta)) : v)))
+  }
 
   const weakest = parts.reduce((a, b) => (b.risk > a.risk ? b : a), parts[0])
 
@@ -146,6 +166,13 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={setup.readout ? <InsightToggle label="risk share" on={showReadout} onChange={setShowReadout} /> : undefined}
+      />
+
+      <Objective
+        goal={`Mission survival odds of ${setup.minReliability}% or better${setup.maxMass !== null ? `, at most ${setup.maxMass} kg on the pad` : ''}`}
+        status={`this build: ${reliability.toFixed(2)}% · ${mass} kg`}
+        attemptsLeft={att.left}
+        met={won}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -209,20 +236,22 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
 
       {/* Verdict */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        <p
-          className={cn(
-            'rounded-xl px-4 py-2.5 text-sm font-semibold',
-            solved
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-          )}
-        >
-          {overMass
-            ? `That build is ${mass} kg and the rocket lifts ${setup.maxMass}.`
-            : solved
-              ? `Cleared. ${reliability.toFixed(2)}% odds of the whole mission surviving, at ${mass} kg.`
-              : `${reliability.toFixed(2)}% odds, and the mission needs ${setup.minReliability}%. Right now ${weakest.name} alone is carrying ${((weakest.risk / totalRisk) * 100).toFixed(0)}% of the risk.`}
-        </p>
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
+            Decide which parts deserve a spare, then launch and find out.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -244,6 +273,10 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={launch} disabled={won}>
+          <Rocket className="h-5 w-5" />
+          Launch the mission
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Remove all spares">
           <RotateCcw className="h-4 w-4" />
           Reset
