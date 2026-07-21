@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { CheckCheck, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -125,6 +126,7 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
     setVisited(new Set([0]))
     setSwaps(0)
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const rowIndex = (ra: boolean, rb: boolean) => (ra ? 2 : 0) + (rb ? 1 : 0)
@@ -146,10 +148,16 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
   const proven = !round.verify || visited.size === 4
   const correct = circuitBuilt && matches && proven
 
-  useEffect(() => {
-    if (!correct || wonRound) return
-    const timer = setTimeout(() => {
+  /** Three submissions per level; a guessed gate costs real bench time. */
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+
+  /** Declare the circuit finished and let the rule book check it. */
+  const declare = () => {
+    if (wonRound) return
+    if (correct) {
       setWonRound(true)
+      setVerdict({ ok: true, text: round.inverter && invert ? 'Built it from two parts. That is real logic design.' : 'That is the one!' })
       lv.clearLevel(
         lv.level.metrics
           ? { parts: (gate ? 1 : 0) + (invert ? 1 : 0), tested: visited.size, swaps }
@@ -159,10 +167,21 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
         completedRef.current = true
         onComplete()
       }
-    }, 500)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [correct, wonRound, gate, invert, visited.size, swaps])
+      return
+    }
+    const text = !circuitBuilt
+      ? 'There is no circuit on the bench yet.'
+      : matches && !proven
+        ? `You have only proven ${visited.size} of 4 switch combinations. Flip the switches through every row before declaring it.`
+        : 'Rejected: the light disagrees with the rule on at least one switch combination. Work through the rows.'
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'Bench cleared. Write the truth table on paper first, then build the gate that matches it.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const reset = () => {
     setGate(null)
@@ -172,6 +191,7 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
     setVisited(new Set([0]))
     setSwaps(0)
     setWonRound(false)
+    setVerdict(null)
   }
 
   const pickGate = (g: Gate) => {
@@ -189,6 +209,13 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.table ? <InsightToggle label="truth table" on={showTable} onChange={setShowTable} /> : undefined}
+      />
+
+      <Objective
+        goal={`Build a circuit that matches the rule on all 4 switch rows${round.verify ? ', and prove every row on the bench' : ''}`}
+        status={round.verify ? `${visited.size} of 4 rows tested` : undefined}
+        attemptsLeft={att.left}
+        met={wonRound}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -362,26 +389,29 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            {round.inverter && invert ? 'Built it from two parts. That is real logic design.' : 'That is the one!'}
-          </motion.p>
-        ) : circuitBuilt && matches && !proven ? (
-          <p className="rounded-xl bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">
-            The circuit looks right, but you have only proven {visited.size} of 4 rows. Flip the switches through the rest.
-          </p>
-        ) : circuitBuilt && !matches ? (
-          <p className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            Not quite. Flip the switches and compare what the light does against the rule.
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Pick a gate to see how it behaves.
+            Build the circuit, test it with the switches, then declare it done.
           </p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={declare} disabled={wonRound}>
+          <CheckCheck className="h-5 w-5" />
+          Declare it done
+        </Button>
         <Button variant="ghost" onClick={reset} aria-label="Clear the gate">
           <RotateCcw className="h-4 w-4" />
           Reset

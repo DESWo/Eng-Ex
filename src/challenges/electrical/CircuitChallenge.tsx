@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw, Undo2 } from 'lucide-react'
+import { PlugZap, RotateCcw, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { simulate, type SimPart } from '@/challenges/electrical/circuitSim'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { Meter } from '@/components/ui/Meter'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -192,6 +194,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setSelected(null)
     setSwitchOn(true)
     setWonRound(false)
+    setVerdict(null)
   }, [lv.level.n])
 
   const bulbs = round.parts.filter((p) => p.kind === 'bulb')
@@ -244,21 +247,40 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const overWire = round.wireBudget !== null && wireLength > round.wireBudget
   const allMet = round.requirements.every(met) && !simClosed.short && !overWire
 
-  useEffect(() => {
-    if (!allMet || wonRound) return
-    const timer = setTimeout(() => {
+  /** Three power-ups per level: melted wiring has consequences. */
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+
+  /** Close the case and power the board for real. */
+  const powerUp = () => {
+    if (wonRound) return
+    if (allMet) {
       setWonRound(true)
+      setVerdict({ ok: true, text: 'That circuit does exactly what was asked. Nice wiring.' })
       lv.clearLevel(lv.level.metrics ? { wire: wireLength, runs: wires.length } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
         onComplete()
       }
-    }, 500)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMet, wonRound, wireLength, wires.length])
+      return
+    }
+    const unmet = round.requirements.filter((rq) => !met(rq)).length
+    const text = simClosed.short
+      ? 'Short circuit! A wire runs straight from + back to − with nothing in between. The bench fuse blew.'
+      : overWire
+        ? `The wiring works but uses ${wireLength} of copper against a budget of ${round.wireBudget}. Route it more directly.`
+        : `${unmet} of the ${round.requirements.length} requirements ${unmet === 1 ? 'is' : 'are'} not met. Test with the switch before powering up.`
+    if (att.spend()) {
+      reset()
+      att.refill()
+      setVerdict({ ok: false, text: 'The bench supply cut out. Board stripped. Trace the current path with a finger before rebuilding.' })
+    } else {
+      setVerdict({ ok: false, text })
+    }
+  }
 
   const clickTerminal = (id: string) => {
+    setVerdict(null)
     if (selected === null) {
       setSelected(id)
       return
@@ -283,6 +305,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setWires([])
     setSelected(null)
     setWonRound(false)
+    setVerdict(null)
   }
 
   const allTerminals = [
@@ -301,6 +324,13 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       />
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+      <Objective
+        goal={`Meet all ${round.requirements.length} requirement${round.requirements.length === 1 ? '' : 's'}${round.wireBudget !== null ? ` within ${round.wireBudget} of copper` : ''}, no shorts`}
+        status={`copper used: ${wireLength}`}
+        attemptsLeft={att.left}
+        met={wonRound}
+      />
+
         <div className="max-w-md">
           <p className="text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
           <p className="mt-1 text-xs text-ink-soft dark:text-stone-500">
@@ -452,24 +482,27 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback */}
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {simClosed.short ? (
+        {verdict ? (
+          <p
+            className={cn(
+              'rounded-xl px-4 py-2.5 text-sm font-semibold',
+              verdict.ok
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+            )}
+          >
+            {verdict.text}
+          </p>
+        ) : simClosed.short ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
             Short circuit! A wire runs straight from + back to − with nothing in between, so all the
             power races through it.
-          </p>
-        ) : wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            That circuit does exactly what was asked. Nice wiring.
-          </motion.p>
-        ) : overWire ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            The wiring works but uses {wireLength} of copper against a budget of {round.wireBudget}. Route it more directly.
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
             {bulbs.some((b) => (live.power[b.id] ?? 0) > LIT && (live.power[b.id] ?? 0) < FULL)
               ? 'Something is glowing, but not at full strength.'
-              : 'Wire the parts up and watch what happens.'}
+              : 'Wire the parts up, test with the switch, then power the board for real.'}
           </p>
         )}
       </div>
@@ -486,6 +519,10 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={powerUp} disabled={wonRound}>
+          <PlugZap className="h-5 w-5" />
+          Power it for real
+        </Button>
         <Button variant="ghost" onClick={undo} disabled={wires.length === 0} aria-label="Undo last wire">
           <Undo2 className="h-4 w-4" />
           Undo
