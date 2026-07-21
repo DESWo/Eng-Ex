@@ -120,6 +120,12 @@ const AIM_X = ORIGIN_X
 const AIM_Y = GROUND_Y - 44
 const MAX_PULLBACK = 80 // sling stretch at full power
 const FIRE_MIN = 16 // release closer than this and the sling just relaxes
+/**
+ * The fort is a real obstacle, not just a landing zone: a boulder that crosses
+ * its front face below this height smashes straight into it, so flat direct
+ * shots work as well as lobs dropped on the roof.
+ */
+const FORT_H_M = 5 // fort height in metres
 
 interface Shot {
   xs: number[]
@@ -127,6 +133,8 @@ interface Shot {
   duration: number
   distance: number
   hitWall: boolean
+  /** True when the boulder smashed straight into the fort's front face. */
+  hitFort: boolean
   /** Where the boulder was released from, so the flight starts in the sling. */
   fromX?: number
   fromY?: number
@@ -135,9 +143,9 @@ interface Shot {
 type Verdict = 'short' | 'far' | 'hit' | 'wall'
 
 const messages: Record<Verdict, (d: number) => string> = {
-  hit: (d) => `Bullseye! You landed right on the camp at ${d} m.`,
-  short: (d) => `Landed short, at ${d} m.`,
-  far: (d) => `Overshot, all the way to ${d} m.`,
+  hit: (d) => `CRUNCH! The fort comes down at ${d} m.`,
+  short: (d) => `Landed short at ${d} m. The fort stands.`,
+  far: (d) => `Sailed clean over the fort, out to ${d} m.`,
   wall: () => 'Thunk! The wall knocked it down.',
 }
 
@@ -199,6 +207,8 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     const xs: number[] = []
     const ys: number[] = []
     let hitWall = false
+    let hitFort = false
+    const fortFace = round.target - round.tolerance // front of the fort, in metres
     let distance = 0
     let prevX = 0
     let prevY = 0
@@ -224,6 +234,22 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
         }
       }
 
+      // Same crossing test as the wall, but crashing into the fort is the win.
+      if (!hitWall && !hitFort && prevX < fortFace && x >= fortFace) {
+        const span = x - prevX
+        const frac = span > 0 ? (fortFace - prevX) / span : 0
+        const yAtFort = prevY + (y - prevY) * frac
+        if (yAtFort > 0 && yAtFort < FORT_H_M) {
+          hitFort = true
+          distance = Math.max(distance, fortFace)
+          xs.push(ORIGIN_X + fortFace * PX_PER_M)
+          ys.push(GROUND_Y - yAtFort * PX_PER_M - BOULDER_R)
+          xs.push(ORIGIN_X + fortFace * PX_PER_M + 8)
+          ys.push(GROUND_Y - BOULDER_R)
+          break
+        }
+      }
+
       distance = Math.max(distance, x)
       xs.push(ORIGIN_X + Math.max(0, x) * PX_PER_M)
       ys.push(GROUND_Y - Math.max(0, y) * PX_PER_M - BOULDER_R)
@@ -236,6 +262,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
       duration: Math.min(2.2, Math.max(0.8, flightTime * 0.45)),
       distance,
       hitWall,
+      hitFort,
     }
   }
 
@@ -286,7 +313,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     const diff = landed.distance - round.target
     const verdict: Verdict = landed.hitWall
       ? 'wall'
-      : Math.abs(diff) <= round.tolerance
+      : landed.hitFort || Math.abs(diff) <= round.tolerance
         ? 'hit'
         : diff < 0
           ? 'short'
@@ -372,7 +399,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-soft dark:text-stone-400">
-          Pull the boulder back, let it fly, and land it on the enemy camp.
+          Pull the boulder back, let it fly, and knock the fort down.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {round.shotLimit !== null && (
@@ -449,17 +476,49 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
             </g>
           )}
 
-          {/* target zone + enemy camp (it jumps when you flatten it) */}
+          {/* the fort: knock it down by dropping on the roof or smashing the face */}
           <rect x={zoneX} y={GROUND_Y - 5} width={zoneW} height="10" rx="5" style={{ fill: 'var(--accent)' }} opacity="0.85" />
-          <motion.g
-            animate={result?.verdict === 'hit' ? { y: [0, -16, 0], x: [0, 4, 0] } : { y: 0, x: 0 }}
-            transition={{ duration: 0.55, ease: 'easeOut' }}
-          >
-            <path d={`M${targetX - 20} ${GROUND_Y} L${targetX} ${GROUND_Y - 34} L${targetX + 20} ${GROUND_Y} Z`} className="fill-stone-500 dark:fill-stone-400" />
-            <line x1={targetX} y1={GROUND_Y - 34} x2={targetX} y2={GROUND_Y - 52} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
-            <path d={`M${targetX} ${GROUND_Y - 52} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
-          </motion.g>
-          <text x={targetX} y={GROUND_Y - 62} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
+          {(() => {
+            const smashed = result?.verdict === 'hit'
+            const spring = { type: 'spring' as const, stiffness: 130, damping: 13 }
+            const piece = (
+              key: string,
+              fly: { x: number; y: number; rot: number },
+              children: React.ReactNode,
+            ) => (
+              <motion.g
+                key={key}
+                animate={smashed ? { x: fly.x, y: fly.y, rotate: fly.rot } : { x: 0, y: 0, rotate: 0 }}
+                transition={spring}
+                style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+              >
+                {children}
+              </motion.g>
+            )
+            return (
+              <g>
+                {piece('tl', { x: -24, y: 6, rot: -75 }, (
+                  <rect x={targetX - 27} y={GROUND_Y - 34} width="13" height="34" rx="2" className="fill-stone-500 dark:fill-stone-400" />
+                ))}
+                {piece('tr', { x: 26, y: 8, rot: 80 }, (
+                  <rect x={targetX + 14} y={GROUND_Y - 34} width="13" height="34" rx="2" className="fill-stone-500 dark:fill-stone-400" />
+                ))}
+                {piece('wall', { x: 10, y: 14, rot: 38 }, (
+                  <rect x={targetX - 15} y={GROUND_Y - 22} width="30" height="22" rx="2" className="fill-stone-400 dark:fill-stone-500" />
+                ))}
+                {piece('roof', { x: -8, y: -20, rot: -50 }, (
+                  <rect x={targetX - 29} y={GROUND_Y - 40} width="58" height="7" rx="3" className="fill-stone-600 dark:fill-stone-300" />
+                ))}
+                {piece('flag', { x: -4, y: 30, rot: -120 }, (
+                  <g>
+                    <line x1={targetX} y1={GROUND_Y - 40} x2={targetX} y2={GROUND_Y - 56} className="stroke-stone-500 dark:stroke-stone-400" strokeWidth="2" />
+                    <path d={`M${targetX} ${GROUND_Y - 56} l14 4 l-14 4 Z`} style={{ fill: 'var(--accent)' }} />
+                  </g>
+                ))}
+              </g>
+            )
+          })()}
+          <text x={targetX} y={GROUND_Y - 66} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
             {round.target} m
           </text>
 
@@ -734,8 +793,8 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Camp destroyed in ${attempts} ${attempts === 1 ? 'shot' : 'shots'}. Try to beat your own numbers.`
-              : 'Direct hit. On to the next one.'
+              ? `Fort flattened in ${attempts} ${attempts === 1 ? 'shot' : 'shots'}. Try to beat your own numbers.`
+              : 'Fort flattened. On to the next one.'
           }
           onReplay={reset}
         />

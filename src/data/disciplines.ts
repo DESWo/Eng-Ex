@@ -81,7 +81,7 @@ export const disciplines: Discipline[] = [
       {
         id: 'catapult',
         title: 'Catapult Lab',
-        goal: 'Hit the target',
+        goal: 'Knock the fort down',
         why: [
           {
             icon: Gauge,
