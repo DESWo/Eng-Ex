@@ -234,16 +234,30 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
       {/* Scene */}
       <div className="overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
         <svg viewBox={`0 0 800 ${round.curve && showCurve ? 330 : 200}`} className="w-full" role="img" aria-label="Van on a bumpy road">
-          {/* road with bumps */}
-          <path
+          {/* road with bumps, scrolling under the van while it drives */}
+          <motion.path
             d={
               round.roadHz !== null
-                ? 'M0 168 ' + Array.from({ length: 20 }, () => `q10 -10 20 0 t20 0`).join(' ')
-                : 'M0 168 h180 q8 -2 14 0 l10 12 l10 -12 q120 -4 200 0 l10 12 l10 -12 h366'
+                ? 'M0 168 ' + Array.from({ length: 26 }, () => `q10 -10 20 0 t20 0`).join(' ')
+                : 'M0 168 h180 q8 -2 14 0 l10 12 l10 -12 q120 -4 200 0 l10 12 l10 -12 h180 q8 -2 14 0 l10 12 l10 -12 h250'
             }
             fill="none"
             strokeWidth="5"
             className="stroke-stone-500 dark:stroke-stone-400"
+            animate={
+              driving
+                ? round.roadHz !== null
+                  ? { x: [0, -80] }
+                  : { x: [0, -280] }
+                : { x: 0 }
+            }
+            transition={
+              driving
+                ? round.roadHz !== null
+                  ? { duration: 2 / round.roadHz, repeat: Infinity, ease: 'linear' }
+                  : { duration: 2.2, ease: 'linear' }
+                : undefined
+            }
           />
           <rect x="0" y="172" width="800" height="28" className="fill-stone-300/60 dark:fill-stone-800" />
 
@@ -275,12 +289,20 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
             <motion.g
               animate={
                 driving
-                  ? { y: [0, -bounce, bounce * 0.7, -bounce, bounce * 0.5, 0] }
+                  ? round.roadHz !== null
+                    ? { y: [0, -bounce, 0, bounce, 0] }
+                    : { y: [0, -bounce, bounce * 0.7, -bounce, bounce * 0.5, 0] }
                   : phase === 'failed' && bottomsOut
                     ? { y: 16 }
                     : { y: 0 }
               }
-              transition={driving ? { duration: 2.2, ease: 'easeInOut' } : { type: 'spring', stiffness: 160, damping: 12 }}
+              transition={
+                driving
+                  ? round.roadHz !== null
+                    ? { duration: 1 / round.roadHz, repeat: Math.ceil(2.2 * round.roadHz), ease: 'easeInOut' }
+                    : { duration: 2.2, ease: 'easeInOut' }
+                  : { type: 'spring', stiffness: 160, damping: 12 }
+              }
             >
               <rect x="295" y={92 - squat} width="190" height="52" rx="10" className="fill-slate-300 dark:fill-slate-400" />
               <rect x="440" y={100 - squat} width="42" height="30" rx="5" className="fill-sky-200 dark:fill-sky-800" />
