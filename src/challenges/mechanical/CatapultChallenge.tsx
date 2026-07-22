@@ -9,6 +9,8 @@ import { InsightToggle } from '@/components/level/InsightToggle'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { playSound } from '@/lib/sound'
+import { useFortPhysics, type Impact } from './useFortPhysics'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -167,22 +169,6 @@ function buildFort(cx: number, g: number): FortBlock[] {
   ]
 }
 
-/** A stable knock-down trajectory for one block (no re-randomising per frame). */
-function blockScatter(index: number, block: FortBlock, g: number) {
-  const rand = (n: number) => {
-    const s = Math.sin(index * 12.9898 + n * 78.233) * 43758.5453
-    return s - Math.floor(s)
-  }
-  const aboveGround = g - (block.y + block.h)
-  const dir = rand(1) < 0.28 ? -1 : 1 // the boulder comes from the left, so mostly rightward
-  return {
-    x: dir * (16 + rand(2) * 46),
-    y: aboveGround * 0.55 + rand(3) * 16, // higher blocks fall further into the pile
-    rot: (rand(4) - 0.5) * 220,
-    delay: (aboveGround / 60) * 0.12 + rand(5) * 0.05, // taller pieces topple a touch later
-  }
-}
-
 interface Shot {
   xs: number[]
   ys: number[]
@@ -218,6 +204,8 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
   const [attempts, setAttempts] = useState(0)
   const [result, setResult] = useState<{ distance: number; verdict: Verdict } | null>(null)
   const [impact, setImpact] = useState<{ x: number; y: number; id: number } | null>(null)
+  /** Set only on a hit: the boulder's arrival, handed to the physics sim. */
+  const [smash, setSmash] = useState<Impact | null>(null)
   const [celebrate, setCelebrate] = useState(false)
   const [pendingLaunch, setPendingLaunch] = useState(false)
   const [beat, setBeat] = useState(false)
@@ -241,6 +229,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     setShot(null)
     setResult(null)
     setImpact(null)
+    setSmash(null)
     setAttempts(0)
     setCelebrate(false)
     setBeat(false)
@@ -248,6 +237,8 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
   }, [lv.level.n])
 
   const targetX = ORIGIN_X + round.target * PX_PER_M
+  const fort = buildFort(targetX, GROUND_Y)
+  const fortPose = useFortPhysics(fort, GROUND_Y, smash)
   const zoneX = ORIGIN_X + (round.target - round.tolerance) * PX_PER_M
   const zoneW = round.tolerance * 2 * PX_PER_M
 
@@ -344,6 +335,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
   const launch = () => {
     if (flying || outOfShots) return
     const nextShot = { ...simulate(angle, power, ammoId), fromX: pullX, fromY: pullY }
+    playSound('whoosh')
     const id = shotId + 1
     setShot(nextShot)
     setShotId(id)
@@ -376,7 +368,24 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
           : 'far'
     setResult({ distance: Math.round(landed.distance), verdict })
 
-    if (verdict !== 'hit') return
+    if (verdict !== 'hit') {
+      playSound('thud')
+      return
+    }
+
+    // The last two sampled points give the heading the boulder came in on, so
+    // the fort collapses away from the shot rather than in a canned direction.
+    const n = landed.xs.length
+    const vx = n > 1 ? landed.xs[n - 1] - landed.xs[n - 2] : 1
+    const vy = n > 1 ? landed.ys[n - 1] - landed.ys[n - 2] : 0
+    setSmash({
+      x: landed.xs[n - 1],
+      y: Math.min(landed.ys[n - 1], GROUND_Y - BOULDER_R),
+      vx,
+      vy,
+      id,
+    })
+    playSound('crunch')
 
     setCelebrate(true)
     setBeat(true)
@@ -407,6 +416,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     setResult(null)
     setShot(null)
     setImpact(null)
+    setSmash(null)
     setCelebrate(false)
     setBeat(false)
   }
@@ -534,9 +544,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
 
           {/* the fort: an Angry-Birds-style block stack, knocked down on a hit */}
           <rect x={zoneX} y={GROUND_Y - 5} width={zoneW} height="10" rx="5" style={{ fill: 'var(--accent)' }} opacity="0.85" />
-          {buildFort(targetX, GROUND_Y).map((b, i) => {
-            const smashed = result?.verdict === 'hit'
-            const s = blockScatter(i, b, GROUND_Y)
+          {fort.map((b) => {
             const style = BLOCK_STYLE[b.mat]
             let body: React.ReactNode
             if (b.shape === 'roof') {
@@ -571,15 +579,22 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
                 </>
               )
             }
+            // Matter reports an absolute position and angle; the scene wants
+            // an offset from where the block was built, spun about its centre.
+            const pose = fortPose[b.id]
+            const cx = b.x + b.w / 2
+            const cy = b.y + b.h / 2
             return (
-              <motion.g
+              <g
                 key={b.id}
-                animate={smashed ? { x: s.x, y: s.y, rotate: s.rot } : { x: 0, y: 0, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 120, damping: 12, delay: smashed ? s.delay : 0 }}
-                style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                transform={
+                  pose
+                    ? `translate(${pose.dx} ${pose.dy}) rotate(${pose.rot} ${cx} ${cy})`
+                    : undefined
+                }
               >
                 {body}
-              </motion.g>
+              </g>
             )
           })}
           <text x={targetX} y={GROUND_Y - 78} textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
