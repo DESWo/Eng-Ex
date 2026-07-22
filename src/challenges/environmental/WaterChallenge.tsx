@@ -108,7 +108,7 @@ const LEVELS: ChallengeLevel<WaterSetup>[] = [
     title: 'Filter it out',
     phase: 'play',
     concept: 'A stage per pollutant',
-    teach: 'Each treatment stage pulls one thing out of the water. Add the stages that match what is floating in it, and the outflow runs clear.',
+    teach: 'It is a pipe-building puzzle where the pieces are treatment stages. Each one pulls one thing out of the water, so pick the stages that match what is floating in it and the outflow runs clear.',
     setup: { label: 'Muddy creek', pollutants: ['trash', 'dirt'], shelf: ['screen', 'sand'], budget: null, clogging: false, readout: false, brief: 'A creek full of litter and mud. Build a line that cleans it.' },
   },
   {

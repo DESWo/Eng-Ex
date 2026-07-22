@@ -103,7 +103,7 @@ const LEVELS: ChallengeLevel<LinkSetup>[] = [
     title: 'Something is wrong',
     phase: 'play',
     concept: 'A check bit catches errors',
-    teach: 'The link flips the odd bit and nobody notices, so the data quietly arrives wrong. Add one check bit and the receiver can at least tell that something broke.',
+    teach: 'Think of a sudoku row that has to add up: the check bits are the totals that expose a wrong square. Right now the link flips bits and nobody notices. Add one check bit and the receiver can at least tell something broke.',
     setup: { noise: 0.012, checkBits: null, maxSilent: 0.02, canResend: true, budget: null, stream: false, brief: 'A sensor link keeps delivering corrupted readings and nothing flags them.' },
   },
   {

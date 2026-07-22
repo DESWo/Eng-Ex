@@ -24,12 +24,12 @@ Three depths of anchoring:
 | Smooth Ride | Hill Climb Racing suspension upgrade screen | hook |
 | Balance Act | Playground seesaw | hook |
 | Green Wave | Traffic-control sims | (none yet) |
-| Shake Proof | Jenga / wobbly block-tower party game | hook |
+| Shake Proof | Jenga / wobbly block-tower party game (floors shear block-by-block in the shake) | deep |
 | Power Up | Mini Metro subway-map routing | hook |
 | Circuit Lab | Minecraft-redstone-style wiring sandbox | hook |
 | Don't Trip | Tetris-style block fitting (appliances into breaker capacity) | hook |
 | Reactor Control | Virtual pet / keep-it-alive sim | hook |
-| Decay Heat | (none yet; candidate: idle game in reverse) | - |
+| Decay Heat | Idle game in reverse (heat keeps earning while the reactor is off) | hook |
 | Trim for Flight | Flight sims | hook |
 | Re-entry | (its own stone-skipping metaphor already lands) | - |
 | Assembly Line | Overcooked kitchen-rush flow | hook |
@@ -37,15 +37,15 @@ Three depths of anchoring:
 | Warehouse Layout | Unpacking / tidying games, scored in footsteps | hook |
 | Line Follower | Kart-racer time-trial tuning | hook |
 | Safe Grip | Operation steady-hand buzzer game (live ride: hold the squeeze between moving lines) | deep |
-| Clean Stream | (none yet; candidate: pipe-ordering puzzle) | - |
+| Clean Stream | Pipe-building puzzle (stages are the pipe pieces) | hook |
 | Solar Array | Stardew-style farm-grid planning | hook |
 | Stormwater | City-builder zoning | hook |
-| Sky High | (candidate: same block-tower anchor as Shake Proof) | - |
+| Sky High | Wobbly block-tower game (floor blocks shear out of line as sway grows) | deep |
 | Beam Section | (none yet) | - |
 | Foundation | (none yet) | - |
 | Logic Lab | Block-game switch wiring (redstone archetype) | hook |
 | Binary Bulbs | Lights Out-style lights puzzle | hook |
-| Error Check | (none yet; candidate: sudoku-style parity) | - |
+| Error Check | Sudoku-style parity (check bits are the row totals) | hook |
 | Backup Plan | Monster-catching team loadout | hook |
 | Critical Path | Speedrun route planning | hook |
 

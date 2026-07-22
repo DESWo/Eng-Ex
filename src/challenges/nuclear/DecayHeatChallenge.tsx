@@ -59,7 +59,7 @@ const LEVELS: ChallengeLevel<DecaySetup>[] = [
     title: 'It is still hot',
     phase: 'play',
     concept: 'Heat after shutdown',
-    teach: 'The reactor is switched off, and it is still making enough heat to melt itself. Pick a cooling setting for each stretch of time and keep the fuel below the damage line.',
+    teach: 'It plays like an idle game running in reverse: the reactor is OFF and still earning heat you never asked for, fastest right after shutdown. Pick a cooling setting for each stretch of time and keep the fuel below the damage line.',
     setup: { modes: BASIC, limit: 900, battery: null, curve: false, brief: 'The reactor scrammed an hour ago. Keep it cool for the next day.' },
   },
   {

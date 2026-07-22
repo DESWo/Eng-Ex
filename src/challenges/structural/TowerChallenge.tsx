@@ -52,7 +52,7 @@ const LEVELS: ChallengeLevel<TowerSetup>[] = [
     title: 'Stand up straight',
     phase: 'play',
     concept: 'Tall things sway',
-    teach: 'Wind pushes hardest at the top, and a bendy core lets the whole tower wave around. Pick a core stiff enough to beat the breeze. Spend whatever you like.',
+    teach: 'It is the wobbly block-tower game, scaled up to a real building. Wind pushes hardest at the top, and a bendy core lets the whole stack wave around. Pick a core stiff enough to beat the breeze. Spend whatever you like.',
     setup: { label: 'Gentle breeze', wind: 12, budget: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-storey block on an open site. Stop it waving at the neighbours.' },
   },
   {
@@ -227,16 +227,19 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
               </>
             )}
 
-            {/* tower body */}
-            <rect x="374" y={topY} width="52" height={towerH} rx="4" fill={core.fill} />
-            {Array.from({ length: round.floors }, (_, i) => (
-              <line key={i} x1="374" y1={topY + i * floorH + floorH} x2="426" y2={topY + i * floorH + floorH} className="stroke-black/10" strokeWidth="1.5" />
-            ))}
-            {Array.from({ length: round.floors * 2 }, (_, i) => {
-              const col = i % 2
-              const row = Math.floor(i / 2)
+            {/* tower body: a stack of floor blocks that shear apart as sway grows */}
+            {Array.from({ length: round.floors }, (_, i) => {
+              const row = round.floors - 1 - i // 0 = bottom block
+              const heightFrac = (row + 1) / round.floors
+              // Higher blocks slide further out of line, block-tower style.
+              const shear = Math.sin(row * 2.1) * Math.min(7, sway * 0.55) * heightFrac
+              const y = baseY - (row + 1) * floorH
               return (
-                <rect key={i} x={382 + col * 22} y={topY + row * floorH + 6} width="12" height="10" rx="2" className="fill-sky-200/80 dark:fill-sky-900" />
+                <g key={i}>
+                  <rect x={374 + shear} y={y} width="52" height={floorH - 2} rx="3" fill={core.fill} className="stroke-black/15" strokeWidth="1" />
+                  <rect x={382 + shear} y={y + 6} width="12" height="10" rx="2" className="fill-sky-200/80 dark:fill-sky-900" />
+                  <rect x={404 + shear} y={y + 6} width="12" height="10" rx="2" className="fill-sky-200/80 dark:fill-sky-900" />
+                </g>
               )
             })}
 

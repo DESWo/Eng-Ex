@@ -242,16 +242,30 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                 ))}
               </>
             )}
-            {/* floors */}
+            {/* floors: each block shears on its own, and drift builds with height */}
             {Array.from({ length: floors }, (_, i) => {
               const y = baseY - (i + 1) * floorHeight - (isolation ? 14 : 0) + 14
+              const heightFrac = (i + 1) / floors
+              // Weak designs let the upper blocks whip much further than the base.
+              const shear = amplitude * 0.55 * heightFrac * (survives ? 0.45 : 1)
+              const shaking = phase === 'shaking'
               return (
-                <g key={i}>
+                <motion.g
+                  key={`${i}-${runId}`}
+                  animate={
+                    shaking
+                      ? { x: [0, -shear, shear, -shear * 0.8, shear * 0.5, survives ? 0 : shear * 0.9] }
+                      : phase === 'failed'
+                        ? { x: shear * 0.9 }
+                        : { x: 0 }
+                  }
+                  transition={shaking ? { duration: 2.0, ease: 'easeInOut' } : { duration: 0.3 }}
+                >
                   <rect x="345" y={y} width="115" height={floorHeight - 3} rx="4" fill={frame.fill} />
                   {[360, 392, 424].map((wx) => (
                     <rect key={wx} x={wx} y={y + 9} width="18" height="14" rx="2" className="fill-sky-200 dark:fill-sky-900" />
                   ))}
-                </g>
+                </motion.g>
               )
             })}
             {/* X braces strengthen the lower floors */}
