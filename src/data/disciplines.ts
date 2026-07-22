@@ -82,6 +82,7 @@ export const disciplines: Discipline[] = [
         id: 'catapult',
         title: 'Catapult Lab',
         goal: 'Knock the fort down',
+        realJob: 'Launch engineers tune release angle and speed like this, from aircraft-carrier catapults to Mars landers.',
         why: [
           {
             icon: Gauge,
@@ -104,6 +105,7 @@ export const disciplines: Discipline[] = [
         id: 'suspension',
         title: 'Smooth Ride',
         goal: 'Tame the bumps',
+        realJob: 'Ride engineers at car companies pick springs and dampers so vans, race cars, and limos each feel right on real roads.',
         why: [
           {
             icon: Gauge,
@@ -126,6 +128,7 @@ export const disciplines: Discipline[] = [
         id: 'beam',
         title: 'Balance Act',
         goal: 'Level the beam',
+        realJob: 'Rigging engineers balance crane loads exactly like this before anything heavy leaves the ground.',
         why: [
           {
             icon: Weight,
@@ -208,6 +211,7 @@ export const disciplines: Discipline[] = [
         id: 'bridge',
         title: 'Bridge Builder',
         goal: 'Get the truck across',
+        realJob: 'Structural engineers run this same member-force check on every real truss bridge before a single beam is ordered.',
         why: [
           {
             icon: Columns3,
@@ -230,6 +234,7 @@ export const disciplines: Discipline[] = [
         id: 'traffic',
         title: 'Green Wave',
         goal: 'Clear the jam',
+        realJob: 'Traffic engineers time signal splits for whole cities. A few seconds of green decide rush hour.',
         why: [
           {
             icon: Timer,
@@ -252,6 +257,7 @@ export const disciplines: Discipline[] = [
         id: 'quake',
         title: 'Shake Proof',
         goal: 'Survive the quake',
+        realJob: 'Earthquake engineers in Japan, Chile, and California choose between stiff frames and base isolation on real towers.',
         why: [
           {
             icon: ShieldCheck,
@@ -334,6 +340,7 @@ export const disciplines: Discipline[] = [
         id: 'power-grid',
         title: 'Power Up',
         goal: 'Light every house',
+        realJob: 'Grid planners route transmission lines with exactly this delivery-loss and survive-one-line-down thinking.',
         why: [
           {
             icon: Cable,
@@ -356,6 +363,7 @@ export const disciplines: Discipline[] = [
         id: 'circuit',
         title: 'Circuit Lab',
         goal: 'Wire a working gadget',
+        realJob: 'Electronics engineers breadboard circuits like this before any design gets printed and soldered.',
         why: [
           {
             icon: Cable,
@@ -378,6 +386,7 @@ export const disciplines: Discipline[] = [
         id: 'overload',
         title: "Don't Trip",
         goal: 'Balance the load',
+        realJob: 'Electricians and building engineers balance circuits on every breaker panel they sign off.',
         why: [
           {
             icon: Gauge,
@@ -463,6 +472,7 @@ export const disciplines: Discipline[] = [
         id: 'reactor',
         title: 'Reactor Control',
         goal: 'Hold the power steady',
+        realJob: 'Reactor operators hold power and temperature in band through every shift, control lag and all.',
         why: [
         {
           icon: Gauge,
@@ -485,6 +495,7 @@ export const disciplines: Discipline[] = [
         id: 'shield',
         title: 'Shield Stack',
         goal: 'Make it safe to stand there',
+        realJob: 'Radiation-protection engineers layer shielding for hospitals, labs, and shipping flasks with this exact math.',
         why: [
           {
             icon: ShieldCheck,
@@ -507,6 +518,7 @@ export const disciplines: Discipline[] = [
         id: 'decay-heat',
         title: 'Decay Heat',
         goal: 'Keep it cool for a day',
+        realJob: 'Nuclear safety engineers plan the cooling that must keep running after shutdown. It is the hardest lesson in the field.',
         why: [
           {
             icon: Flame,
@@ -586,6 +598,7 @@ export const disciplines: Discipline[] = [
         id: 'flight',
         title: 'Trim for Flight',
         goal: 'Fly straight and level',
+        realJob: 'Flight-controls engineers and test pilots trim aircraft to fly level and efficient every single day.',
         why: [
         {
           icon: Feather,
@@ -608,6 +621,7 @@ export const disciplines: Discipline[] = [
         id: 'orbit',
         title: 'Orbit Insertion',
         goal: 'Park it in a circle',
+        realJob: 'Mission planners at NASA and SpaceX design burn sequences exactly like this for every satellite that flies.',
         why: [
           {
             icon: Rocket,
@@ -630,6 +644,7 @@ export const disciplines: Discipline[] = [
         id: 'reentry',
         title: 'Re-entry',
         goal: 'Bring the crew home',
+        realJob: 'Entry, descent, and landing engineers pick the corridor and the heat shield for every capsule that comes home.',
         why: [
           {
             icon: Flame,
@@ -709,6 +724,7 @@ export const disciplines: Discipline[] = [
         id: 'assembly',
         title: 'Assembly Line',
         goal: 'Beat the target rate',
+        realJob: 'Line balancing is the bread and butter of industrial engineers in every factory on earth.',
         why: [
         {
           icon: Timer,
@@ -731,6 +747,7 @@ export const disciplines: Discipline[] = [
         id: 'quality-gate',
         title: 'Quality Gate',
         goal: 'Stop shipping faults',
+        realJob: 'Quality engineers decide where the inspection desks go. Catching defects early is how factories stay profitable.',
         why: [
           {
             icon: Search,
@@ -753,6 +770,7 @@ export const disciplines: Discipline[] = [
         id: 'warehouse',
         title: 'Warehouse Layout',
         goal: 'Save the pickers a walk',
+        realJob: 'Logistics engineers slot products by pick frequency in every fulfillment center you have ever ordered from.',
         why: [
           {
             icon: Route,
@@ -832,6 +850,7 @@ export const disciplines: Discipline[] = [
         id: 'mission',
         title: 'Mission Budget',
         goal: 'Meet every requirement',
+        realJob: 'Systems engineers run mass and power budgets for every spacecraft. Nothing flies until the margins close.',
         why: [
         {
           icon: Scale,
@@ -854,6 +873,7 @@ export const disciplines: Discipline[] = [
         id: 'redundancy',
         title: 'Backup Plan',
         goal: 'Get the odds up',
+        realJob: 'Reliability engineers decide which parts get spares on airliners, space probes, and pacemakers.',
         why: [
           {
             icon: Share2,
@@ -876,6 +896,7 @@ export const disciplines: Discipline[] = [
         id: 'critical-path',
         title: 'Critical Path',
         goal: 'Hit the deadline',
+        realJob: 'Project engineers find the critical path on everything from stadiums to chip factories.',
         why: [
           {
             icon: Timer,
@@ -955,6 +976,7 @@ export const disciplines: Discipline[] = [
         id: 'robot-arm',
         title: 'Claw Machine',
         goal: 'Win every prize',
+        realJob: 'Robotics engineers solve this exact inverse-kinematics problem thousands of times a second in every factory arm.',
         why: [
         {
           icon: Move,
@@ -977,6 +999,7 @@ export const disciplines: Discipline[] = [
         id: 'line-follower',
         title: 'Line Follower',
         goal: 'Drive the whole track',
+        realJob: 'Controls engineers tune gain and damping like this in robots, drones, and self-driving cars.',
         why: [
           {
             icon: Route,
@@ -999,6 +1022,7 @@ export const disciplines: Discipline[] = [
         id: 'gripper',
         title: 'Safe Grip',
         goal: 'Hold it without breaking it',
+        realJob: 'Grasping engineers set force windows so warehouse robots can pick up an egg and an engine block with the same hand.',
         why: [
           {
             icon: Scale,
@@ -1078,6 +1102,7 @@ export const disciplines: Discipline[] = [
         id: 'water',
         title: 'Clean Stream',
         goal: 'Make the water safe',
+        realJob: 'Treatment-plant engineers order these exact stages, coarse to fine, in every plant that makes water drinkable.',
         why: [
         {
           icon: Filter,
@@ -1100,6 +1125,7 @@ export const disciplines: Discipline[] = [
         id: 'solar',
         title: 'Solar Array',
         goal: 'Keep the lights on',
+        realJob: 'Solar designers size panels and batteries against a household hour-by-hour demand curve, just like this.',
         why: [
           {
             icon: Sprout,
@@ -1122,6 +1148,7 @@ export const disciplines: Discipline[] = [
         id: 'stormwater',
         title: 'Stormwater',
         goal: 'Keep it off the road',
+        realJob: 'Drainage engineers submit schemes like this one to planning for every big car park and housing estate.',
         why: [
           {
             icon: Droplets,
@@ -1201,6 +1228,7 @@ export const disciplines: Discipline[] = [
         id: 'tower',
         title: 'Sky High',
         goal: 'Beat the wind',
+        realJob: 'Tall-building engineers fight sway with cores, outriggers, and tuned dampers. Taipei 101 carries a 660-tonne one.',
         why: [
         {
           icon: Wind,
@@ -1223,6 +1251,7 @@ export const disciplines: Discipline[] = [
         id: 'beam-section',
         title: 'Beam Section',
         goal: 'Stiff enough, light enough',
+        realJob: 'Structural engineers pick section shapes from catalogs like this. The I-beam is the favourite shape of the built world.',
         why: [
           {
             icon: ArrowDownToLine,
@@ -1245,6 +1274,7 @@ export const disciplines: Discipline[] = [
         id: 'foundation',
         title: 'Foundation',
         goal: 'Keep it standing straight',
+        realJob: 'Geotechnical engineers size footings so buildings settle evenly. The Leaning Tower of Pisa is what happens otherwise.',
         why: [
           {
             icon: ArrowDownToLine,
@@ -1324,6 +1354,7 @@ export const disciplines: Discipline[] = [
         id: 'logic',
         title: 'Logic Lab',
         goal: 'Match the rule',
+        realJob: 'Chip designers build every processor from exactly these gates. Billions of them.',
         why: [
         {
           icon: ToggleLeft,
@@ -1346,6 +1377,7 @@ export const disciplines: Discipline[] = [
         id: 'binary',
         title: 'Binary Bulbs',
         goal: 'Send the reading',
+        realJob: 'This is how every number in every computer on earth is actually stored and sent.',
         why: [
           {
             icon: Binary,
@@ -1368,6 +1400,7 @@ export const disciplines: Discipline[] = [
         id: 'error-check',
         title: 'Error Check',
         goal: 'Make the link trustworthy',
+        realJob: 'Coding-theory engineers protect deep-space links, QR codes, and SSDs with these very check bits.',
         why: [
           {
             icon: ShieldCheck,

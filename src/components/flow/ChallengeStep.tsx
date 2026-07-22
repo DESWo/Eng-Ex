@@ -1,6 +1,6 @@
 import { Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Check, PartyPopper, Target } from 'lucide-react'
+import { ArrowRight, BriefcaseBusiness, Check, PartyPopper, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -122,6 +122,14 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
           Goal: {active.goal}
         </Badge>
       </div>
+
+      {/* The career behind the game, so it never feels like just a puzzle. */}
+      <p className="flex items-start gap-2 text-sm text-ink-soft dark:text-stone-400">
+        <BriefcaseBusiness className="accent-text mt-0.5 h-4 w-4 shrink-0" />
+        <span>
+          <span className="font-display font-semibold">The real job:</span> {active.realJob}
+        </span>
+      </p>
 
       {ChallengeComponent ? (
         // Keyed by game so a chunk that failed to download only marks THIS

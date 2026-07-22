@@ -59,6 +59,11 @@ export interface ChallengeRef {
   id: string
   title: string
   goal: string
+  /**
+   * The real career behind the game, shown while playing: who does this for
+   * a living and where. Desmond's rule: every game must feel like a field.
+   */
+  realJob: string
   /** Why THIS game works, shown in the "Why it works" step (one card each). */
   why: LearnPoint[]
 }
