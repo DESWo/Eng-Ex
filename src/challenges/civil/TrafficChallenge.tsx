@@ -213,7 +213,9 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     simInterval.current = setInterval(() => {
       // Wall-clock time, so a janky tab cannot stretch the minute out.
       const now = performance.now()
-      const dt = Math.min(0.4, (now - last) / 1000) * SIM_SPEED
+      // Cap the catch-up at 4 real seconds per tick: a throttled background
+      // tab advances in coarse steps instead of stalling the whole minute.
+      const dt = Math.min(4, (now - last) / 1000) * SIM_SPEED
       last = now
       t += dt
       // Arrivals trickle in the whole minute; the stop line only clears on green.
