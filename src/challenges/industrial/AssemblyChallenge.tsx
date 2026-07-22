@@ -129,34 +129,41 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   const win = rate >= round.targetRate && spare >= 0
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const [running, setRunning] = useState(false)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
 
-  /** Start the shift and hold the line to its promised rate. */
+  /** Start the shift: the line runs, piles form, THEN the verdict lands. */
   const startShift = () => {
-    if (wonRound) return
-    if (win) {
-      setWonRound(true)
-      setVerdict({ ok: true, text: `The line is humming! You hit ${rate}/min by feeding the bottleneck.` })
-      lv.clearLevel(lv.level.metrics ? { workers: used, util: utilization, rate } : undefined)
-      if (!completedRef.current) {
-        completedRef.current = true
-        onComplete()
+    if (wonRound || running) return
+    setVerdict(null)
+    setRunning(true)
+    setTimeout(() => {
+      setRunning(false)
+      if (win) {
+        setWonRound(true)
+        setVerdict({ ok: true, text: `The line is humming! You hit ${rate}/min by feeding the bottleneck.` })
+        lv.clearLevel(lv.level.metrics ? { workers: used, util: utilization, rate } : undefined)
+        if (!completedRef.current) {
+          completedRef.current = true
+          onComplete()
+        }
+        return
       }
-      return
-    }
-    const text = spare < 0
-      ? `You have assigned ${used} workers and the roster is ${round.workers}.`
-      : `The shift managed ${rate}/min against a promised ${round.targetRate}/min. ${bottleneck.name} set the pace: a line only moves as fast as its slowest station.`
-    if (att.spend()) {
-      reset()
-      att.refill()
-      setVerdict({ ok: false, text: 'The shift supervisor sent everyone home. One worker per station again. Find the slowest station on paper before staffing.' })
-    } else {
-      setVerdict({ ok: false, text })
-    }
+      const text = spare < 0
+        ? `You have assigned ${used} workers and the roster is ${round.workers}.`
+        : `The shift managed ${rate}/min against a promised ${round.targetRate}/min. ${bottleneck.name} set the pace: watch where the pile formed.`
+      if (att.spend()) {
+        reset()
+        att.refill()
+        setVerdict({ ok: false, text: 'The shift supervisor sent everyone home. One worker per station again. Find the slowest station on paper before staffing.' })
+      } else {
+        setVerdict({ ok: false, text })
+      }
+    }, 2800)
   }
 
   const change = (id: string, delta: number) => {
+    if (running) return
     setVerdict(null)
     setAssigned((prev) => {
       const current = prev[id] ?? 1
@@ -260,7 +267,41 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
                 {i < round.stations.length - 1 && (
                   <div className="flex flex-col items-center gap-1">
                     <ArrowRight className="h-5 w-5 shrink-0 text-stone-400 dark:text-stone-500" />
-                    {round.wip && showWip && (() => {
+                    {running && (() => {
+                      // Watch it run: dots leave this station at its pace, and a
+                      // pile grows here when the next station cannot keep up.
+                      const nextStation = round.stations[i + 1]
+                      const pile = Math.max(0, Math.min(5, Math.round((timeOf(nextStation) - time) / 3)))
+                      return (
+                        <span className="relative flex h-8 w-6 items-center justify-center">
+                          {[0, 1].map((k) => (
+                            <motion.span
+                              key={k}
+                              className="absolute h-2.5 w-2.5 rounded-full bg-amber-500"
+                              initial={{ x: -14, opacity: 0 }}
+                              animate={{ x: 14, opacity: [0, 1, 1, 0] }}
+                              transition={{
+                                duration: Math.max(0.4, time / 8),
+                                repeat: Infinity,
+                                delay: k * (Math.max(0.4, time / 8) / 2),
+                                ease: 'linear',
+                              }}
+                            />
+                          ))}
+                          {pile > 0 && (
+                            <motion.span
+                              className="absolute -top-1 font-display text-[10px] font-bold text-amber-600 dark:text-amber-400"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 1.2 }}
+                            >
+                              +{pile}
+                            </motion.span>
+                          )}
+                        </span>
+                      )
+                    })()}
+                    {!running && round.wip && showWip && (() => {
                       // Items pile up where a slow station follows a faster one.
                       const nextStation = round.stations[i + 1]
                       const pile = Math.max(
@@ -320,9 +361,9 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button variant="accent" size="lg" onClick={startShift} disabled={wonRound}>
+        <Button variant="accent" size="lg" onClick={startShift} disabled={wonRound || running}>
           <Play className="h-5 w-5" fill="currentColor" />
-          Start the shift
+          {running ? 'Line running…' : 'Start the shift'}
         </Button>
         <Button variant="ghost" onClick={reset} aria-label="Reset the line">
           <RotateCcw className="h-4 w-4" />
