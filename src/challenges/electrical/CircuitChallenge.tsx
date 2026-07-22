@@ -341,7 +341,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Board */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 360" className="w-full" role="img" aria-label="Circuit board">
           {/* wires */}
           {wires.map(([a, b]) => {

@@ -256,7 +256,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 p-4 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint p-4">
         <svg viewBox={`0 0 800 ${H + 34}`} className="w-full" role="img" aria-label="Solar generation against household demand">
           {/* demand steps */}
           <polyline

@@ -335,7 +335,7 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 340" className="w-full" role="img" aria-label="Claw machine scene" {...bind}>
           {/* level 4 overlay: everywhere the arm can physically touch */}
           {setup.envelope && showEnvelope && (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { LogIn, LogOut, Save } from 'lucide-react'
+import { SoundToggle } from '@/components/ui/SoundToggle'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SignInDialog } from '@/components/auth/SignInDialog'
 import { SaveDialog } from '@/components/auth/SaveDialog'
@@ -82,6 +83,7 @@ export function Navbar() {
               </button>
             )}
 
+            <SoundToggle />
             <ThemeToggle />
           </div>
         </div>

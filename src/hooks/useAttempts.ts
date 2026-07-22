@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ChallengeLevel } from '@/lib/types'
+import { playSound } from '@/lib/sound'
 
 /**
  * Limited test runs per level, so brute-forcing a small search space stops
@@ -37,9 +38,15 @@ export function useAttempts(allowance: number | null, levelN: number): AttemptSt
   }, [allowance, levelN])
 
   const spend = useCallback(() => {
-    if (allowance === null || left === null) return false
+    if (allowance === null || left === null) {
+      // Unlimited levels still failed a check, so they still get the buzz.
+      playSound('fail')
+      return false
+    }
     const next = Math.max(0, left - 1)
     setLeft(next)
+    // Running dry sounds different from an ordinary miss: the bench is cleared.
+    playSound(next === 0 ? 'reset' : 'fail')
     return next === 0
   }, [allowance, left])
 

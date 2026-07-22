@@ -213,7 +213,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 300" className="w-full" role="img" aria-label="Building foundations in soil" {...bind}>
           {/* the frame, tilting when one side drops further than the other */}
           {feet.length > 1 && (

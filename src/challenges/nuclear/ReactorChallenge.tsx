@@ -252,7 +252,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-slate-100/80 dark:bg-slate-950/50">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox={`0 0 800 ${round.chart && showChart ? 390 : 300}`} className="w-full" role="img" aria-label="Nuclear reactor scene">
           <path d="M250 250 V150 A150 100 0 0 1 550 150 V250 Z" className="fill-slate-200 dark:fill-slate-800" />
           <path d="M250 250 V150 A150 100 0 0 1 550 150 V250 Z" fill="none" className="stroke-slate-300 dark:stroke-slate-700" strokeWidth="3" />

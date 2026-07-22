@@ -97,6 +97,98 @@
     width: 100%;
     height: 2rem;
   }
+
+  /*
+   * Engineering paper. `.paper-grid` is the fine graph paper a game scene sits
+   * on; `.paper-grid-lg` is the wider ruling used behind page headers so the
+   * two do not fight when they stack. Both are pure gradients: no image
+   * requests, and they retint themselves from the surrounding text color.
+   */
+  .paper-grid,
+  .paper-grid-lg {
+    background-image: linear-gradient(
+        to right,
+        color-mix(in oklab, var(--accent, #7b6cf0) 14%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--accent, #7b6cf0) 14%, transparent) 1px,
+        transparent 1px
+      );
+    background-position: center center;
+  }
+
+  .paper-grid {
+    background-size: 22px 22px;
+  }
+
+  .paper-grid-lg {
+    background-size: 64px 64px;
+  }
+
+  /*
+   * Dark mode needs a much lighter touch: an accent line on a near-black panel
+   * reads far brighter than the same line on cream, and at header scale it
+   * competes with the title instead of sitting behind it.
+   */
+  .dark .paper-grid,
+  .dark .paper-grid-lg {
+    background-image: linear-gradient(
+        to right,
+        color-mix(in oklab, var(--accent, #7b6cf0) 9%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--accent, #7b6cf0) 9%, transparent) 1px,
+        transparent 1px
+      );
+  }
+
+  /*
+   * A drafting-table blueprint: the grid above, plus a soft accent wash and a
+   * vignette so the middle of a scene stays readable.
+   */
+  .blueprint {
+    background-color: color-mix(in oklab, var(--accent, #7b6cf0) 7%, white);
+    background-image: radial-gradient(
+        ellipse at 50% 40%,
+        transparent 40%,
+        color-mix(in oklab, var(--accent, #7b6cf0) 10%, transparent) 100%
+      ),
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--accent, #7b6cf0) 20%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--accent, #7b6cf0) 20%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 100% 100%, 22px 22px, 22px 22px;
+    background-position: center center;
+  }
+
+  .dark .blueprint {
+    background-color: color-mix(in oklab, var(--accent, #7b6cf0) 13%, var(--color-night-panel));
+    background-image: radial-gradient(
+        ellipse at 50% 40%,
+        transparent 40%,
+        rgb(0 0 0 / 0.28) 100%
+      ),
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--accent, #7b6cf0) 16%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--accent, #7b6cf0) 16%, transparent) 1px,
+        transparent 1px
+      );
+  }
 }
 
 /* Animated "electricity" dashes on powered wires. */

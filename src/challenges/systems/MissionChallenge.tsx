@@ -212,7 +212,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Satellite scene: modules light up when their requirement is met */}
-      <div className="overflow-hidden rounded-2xl bg-slate-100/80 dark:bg-slate-950/50">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 220" className="w-full" role="img" aria-label="Satellite subsystems">
           {/* stars */}
           {[[80, 40], [180, 150], [700, 60], [640, 170], [120, 90]].map(([x, y]) => (

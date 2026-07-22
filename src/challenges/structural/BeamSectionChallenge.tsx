@@ -243,7 +243,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 260" className="w-full" role="img" aria-label="Beam cross section and sag" {...bind}>
           <text x="190" y="28" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
             Cross section

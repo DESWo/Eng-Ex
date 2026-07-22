@@ -241,7 +241,7 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
       </Card>
 
       {/* The gadget: switches -> gate -> optional inverter -> bulb */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 220" className="w-full" role="img" aria-label="Logic gadget">
           <line x1="180" y1="70" x2="360" y2="90" strokeWidth="4" className={a ? 'stroke-amber-400' : 'stroke-stone-400 dark:stroke-stone-600'} />
           <line x1="180" y1="150" x2="360" y2="130" strokeWidth="4" className={b ? 'stroke-amber-400' : 'stroke-stone-400 dark:stroke-stone-600'} />

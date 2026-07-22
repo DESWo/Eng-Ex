@@ -242,7 +242,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 p-4 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint p-4">
         <svg viewBox={`0 0 800 ${H + 40}`} className="w-full" role="img" aria-label="Storm runoff and pond level">
           {r.steps.map((s, i) => {
             const x = X0 + i * (W / STORM.length)

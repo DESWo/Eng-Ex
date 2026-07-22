@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { ChallengeLevel } from '@/lib/types'
 import { loadJson, saveJson } from '@/lib/storage'
+import { playSound } from '@/lib/sound'
 
 /** challenge id -> which level numbers are cleared, plus best scores per metric. */
 type LevelStore = Record<
@@ -84,6 +85,9 @@ export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): 
    */
   const clearLevel = useCallback(
     (scores?: Record<string, number>) => {
+      // Every game routes its win through here, so this is the one place the
+      // victory sound has to live.
+      playSound('levelClear')
       write((entry) => {
         const nextCleared = entry.cleared?.includes(level.n)
           ? entry.cleared

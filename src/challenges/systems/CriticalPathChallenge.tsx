@@ -227,7 +227,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Gantt chart */}
-      <div className="overflow-x-auto rounded-2xl bg-stone-100/80 p-4 dark:bg-white/5">
+      <div className="overflow-x-auto rounded-2xl blueprint p-4">
         <svg viewBox={`0 0 ${chartW} ${TASKS.length * 34 + 34}`} style={{ minWidth: 520 }} className="w-full" role="img" aria-label="Project schedule">
           {/* deadline marker */}
           <line

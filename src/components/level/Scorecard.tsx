@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react'
 import { Meter } from '@/components/ui/Meter'
+import { Ticker } from '@/components/ui/Ticker'
 import type { LevelMetric } from '@/lib/types'
 
 interface ScorecardProps {
@@ -45,7 +46,13 @@ export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
             <div key={m.id}>
               <Meter
                 label={m.label}
-                display={`${Math.round(value)}${unit}, par ${Math.round(m.target)}${unit}`}
+                display={
+                  <>
+                    <Ticker value={value} />
+                    {unit}, par {Math.round(m.target).toLocaleString()}
+                    {unit}
+                  </>
+                }
                 fraction={scaleMax > 0 ? value / scaleMax : 0}
                 markerFraction={scaleMax > 0 ? m.target / scaleMax : 0}
                 barClass={!scored ? 'accent-bg' : ok ? 'bg-emerald-500' : 'bg-amber-500'}
@@ -53,7 +60,11 @@ export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
               {bestValue !== undefined && (
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft dark:text-stone-400">
                   <Trophy className="h-3 w-3" />
-                  Your best: <span className="font-semibold tabular-nums">{Math.round(bestValue)}{unit}</span>
+                  Your best:{' '}
+                  <span className="font-semibold tabular-nums">
+                    <Ticker value={bestValue} />
+                    {unit}
+                  </span>
                 </p>
               )}
             </div>

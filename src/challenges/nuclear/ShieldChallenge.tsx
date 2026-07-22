@@ -262,7 +262,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 250" className="w-full" role="img" aria-label="Radiation shield stack">
           {/* source */}
           <circle cx={SRC_X} cy="120" r="22" className="fill-amber-400" />

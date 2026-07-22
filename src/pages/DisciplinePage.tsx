@@ -77,7 +77,7 @@ export function DisciplinePage() {
   return (
     <div style={{ '--accent': discipline.accent } as CSSProperties}>
       {/* Discipline header */}
-      <section className="accent-softer">
+      <section className="accent-softer paper-grid-lg">
         <div className="mx-auto max-w-4xl px-6 py-8 sm:py-10">
           <Link
             to="/"

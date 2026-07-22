@@ -191,7 +191,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       {/* Scene: heat against cooling for each stretch of the day */}
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 260" className="w-full" role="img" aria-label="Decay heat over the first day">
           {timeline.map((b, i) => {
             const x = COL_X + i * COL_W

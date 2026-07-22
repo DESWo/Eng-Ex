@@ -1,10 +1,11 @@
+import { type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface MeterProps {
   label: string
   /** Text shown on the right, e.g. "$8,100 of $10,000". */
-  display: string
+  display: ReactNode
   /** 0 to 1 fill amount. */
   fraction: number
   /** Tailwind class for the fill color, e.g. "bg-emerald-500". */
