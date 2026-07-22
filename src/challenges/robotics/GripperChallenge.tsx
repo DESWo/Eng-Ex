@@ -19,6 +19,23 @@ import { cn } from '@/lib/utils'
 const GRAVITY = 10
 const FORCE_SCALE = 4 // keeps the numbers in a comfortable slider range
 const MAX_GRIP = 200
+/* The lift is live, Operation-style: the slip floor moves while you hold. */
+const LIFT_S = 4.5 // seconds the lift takes on screen
+const SLIP_GRACE = 0.35 // seconds you may ride below the floor before it drops
+const CRUSH_GRACE = 0.12 // seconds above the ceiling before it breaks
+const TICK = 40 // ms per physics tick
+
+/**
+ * Lift acceleration over the ride: gentle start, hard pull through the
+ * middle, braking at the top. The slip floor follows it, with a wobble so
+ * the hold never goes static.
+ */
+function accelAt(t: number, aPeak: number) {
+  const u = t / LIFT_S
+  const base = u < 0.25 ? (u / 0.25) * aPeak : u < 0.72 ? aPeak : aPeak * (1 - (u - 0.72) / 0.28) - aPeak * 0.35 * ((u - 0.72) / 0.28)
+  const wobble = 1 + 0.1 * Math.sin(t * 2 * Math.PI * 1.7) + 0.05 * Math.sin(t * 2 * Math.PI * 3.1)
+  return Math.max(-GRAVITY * 0.4, base * wobble)
+}
 
 /** Gripper pads. Grippier pads need less squeeze, softer pads spread the squeeze out. */
 const PADS = {
@@ -67,7 +84,7 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     title: 'Pick it up',
     phase: 'play',
     concept: 'Grip enough to hold',
-    teach: 'It is the steady-hand buzzer game, played with real force. Squeeze too gently and the can slides straight out of the gripper. Turn the grip up until it holds.',
+    teach: 'It is the steady-hand buzzer game, played with real force. Set a starting squeeze, then HOLD it through the lift: the pull of accelerating upwards raises the slip line mid-ride, so keep dragging to stay above it.',
     setup: { payload: PAYLOADS.can, pad: 'rubber', accel: 2, window: false, brief: 'A warehouse gripper needs to lift a soup can off the belt.' },
   },
   {
@@ -126,6 +143,11 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const [won, setWon] = useState(false)
   const [showWindow, setShowWindow] = useState(true)
   const completedRef = useRef(false)
+  /** The live ride: t is seconds into the lift, slipNow is today's floor. */
+  const [ride, setRide] = useState<{ t: number; slipNow: number } | null>(null)
+  const gripRef = useRef(30)
+  const rideInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lifting = ride !== null
 
   useEffect(() => {
     setGrip(30)
@@ -143,31 +165,13 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   // When slip meets crush there is no safe grip at all, so "impossible" and
   // "held" must never both be true.
   const impossible = slip >= crush
-  const held = !impossible && grip >= slip && grip <= crush
   const margin = Math.min(grip - slip, crush - grip)
   const liftTime = 60 / (2 + a)
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
 
-  /** Actually lift the item. Slip and crush only reveal themselves in the air. */
-  const lift = () => {
-    if (won) return
-    if (held) {
-      setWon(true)
-      setVerdict({ ok: true, text: `Held safely, with ${Math.round(margin)} of margin on the tighter side.` })
-      lv.clearLevel(lv.level.metrics ? { time: liftTime, margin, grip } : undefined)
-      if (!completedRef.current) {
-        completedRef.current = true
-        onComplete()
-      }
-      return
-    }
-    const text = impossible
-      ? `These pads cannot do it: the item starts breaking at ${Math.round(crush)} before it stops slipping at ${Math.round(slip)}. Try a different pad.`
-      : grip < slip
-        ? `It slipped out on the way up. This setup needs at least ${Math.round(slip)} of grip.`
-        : `Crushed it. Anything over ${Math.round(crush)} is too much here.`
+  const failLift = (text: string) => {
     if (att.spend()) {
       reset()
       att.refill()
@@ -177,7 +181,77 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
     }
   }
 
+  /**
+   * The Operation part: the lift plays out live, the slip floor climbs and
+   * wobbles with the acceleration, and you drag the squeeze to stay between
+   * the lines the whole way up.
+   */
+  const lift = () => {
+    if (won || lifting) return
+    if (impossible) {
+      failLift(`These pads cannot do it: the item starts breaking at ${Math.round(crush)} before it stops slipping at ${Math.round(slip)}. Try a different pad.`)
+      return
+    }
+    setVerdict(null)
+    gripRef.current = grip
+    let slipTime = 0
+    let crushTime = 0
+    let minMargin = Infinity
+    const start = performance.now()
+    let last = start
+    setRide({ t: 0, slipNow: slipForce(setup.payload, pad, accelAt(0, a)) })
+    if (rideInterval.current) clearInterval(rideInterval.current)
+    rideInterval.current = setInterval(() => {
+      const now = performance.now()
+      // Ride progress runs on the wall clock so a throttled tab cannot stall
+      // the lift; the clamped dt only feeds the grace meters, so one late
+      // tick can never kill the hold on its own.
+      const t = (now - start) / 1000
+      const dt = Math.min(0.12, (now - last) / 1000)
+      last = now
+      const slipNow = slipForce(setup.payload, pad, accelAt(t, a))
+      const g = gripRef.current
+      minMargin = Math.min(minMargin, Math.min(g - slipNow, crush - g))
+      if (g > crush) crushTime += dt
+      else crushTime = 0
+      if (g < slipNow) slipTime += dt
+      const end = (fn: () => void) => {
+        if (rideInterval.current) clearInterval(rideInterval.current)
+        setRide(null)
+        fn()
+      }
+      if (crushTime > CRUSH_GRACE) {
+        end(() => failLift(`BZZZT. Crushed it at ${Math.round(g)} of squeeze: anything over ${Math.round(crush)} is too much here.`))
+        return
+      }
+      if (slipTime > SLIP_GRACE) {
+        end(() => failLift(`It slipped out mid-lift. The pull of accelerating pushed the slip line up to ${Math.round(slipNow)} and your grip stayed at ${Math.round(g)}.`))
+        return
+      }
+      if (t >= LIFT_S) {
+        end(() => {
+          setWon(true)
+          setVerdict({ ok: true, text: `Held it the whole way up, never closer than ${Math.max(0, Math.round(minMargin))} to a line.` })
+          lv.clearLevel(lv.level.metrics ? { time: liftTime, margin: Math.max(0, minMargin), grip: gripRef.current } : undefined)
+          if (!completedRef.current) {
+            completedRef.current = true
+            onComplete()
+          }
+        })
+        return
+      }
+      setRide({ t, slipNow })
+    }, TICK)
+  }
+
+  useEffect(() => () => {
+    if (rideInterval.current) clearInterval(rideInterval.current)
+  }, [])
+
   const reset = () => {
+    if (rideInterval.current) clearInterval(rideInterval.current)
+    setRide(null)
+    gripRef.current = 30
     setGrip(30)
     setPadId(setup.pad ?? 'rubber')
     setAccel(setup.accel ?? 3)
@@ -188,17 +262,27 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   /** Drag along the force bar to squeeze harder or softer. */
   const { bind } = useSvgDrag((x) => {
     const f = ((x - 80) / 640) * MAX_GRIP
-    setGrip(Math.max(0, Math.min(MAX_GRIP, Math.round(f))))
+    const clamped = Math.max(0, Math.min(MAX_GRIP, Math.round(f)))
+    gripRef.current = clamped
+    setGrip(clamped)
   })
   const nudgeGrip = (e: React.KeyboardEvent) => {
     const step = e.shiftKey ? 10 : 2
-    if (e.key === 'ArrowRight') setGrip((g) => Math.min(MAX_GRIP, g + step))
-    else if (e.key === 'ArrowLeft') setGrip((g) => Math.max(0, g - step))
+    const move = (d: number) =>
+      setGrip((g) => {
+        const next = Math.max(0, Math.min(MAX_GRIP, g + d))
+        gripRef.current = next
+        return next
+      })
+    if (e.key === 'ArrowRight') move(step)
+    else if (e.key === 'ArrowLeft') move(-step)
     else return
     e.preventDefault()
   }
 
   const state: 'slipping' | 'crushed' | 'held' = grip < slip ? 'slipping' : grip > crush ? 'crushed' : 'held'
+  /** During the ride, danger means you are outside the lines right now. */
+  const rideDanger = ride !== null && (grip < ride.slipNow || grip > crush)
 
   /* Scene geometry */
   const CX = 400
@@ -206,7 +290,8 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const obj = setup.payload
   // The jaws close in as grip rises, and the payload rides up once it is held.
   const jawGap = obj.w / 2 + 10 - Math.min(8, (grip / MAX_GRIP) * 14)
-  const objY = state === 'held' && won ? TOP + 40 : state === 'slipping' ? TOP + 150 : TOP + 96
+  const liftRise = ride ? (ride.t / LIFT_S) * 110 : won ? 110 : 0
+  const objY = TOP + 96 + (state === 'slipping' && !ride && !won ? 54 : 0) - liftRise
 
   const WIN_Y = 260
   const WIN_W = 640
@@ -245,25 +330,27 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
         >
           {/* gantry */}
           <rect x={CX - 70} y="18" width="140" height="16" rx="8" className="fill-stone-400 dark:fill-stone-600" />
-          <line x1={CX} y1="34" x2={CX} y2={TOP} strokeWidth="8" className="stroke-stone-400 dark:stroke-stone-600" />
 
-          {/* jaws */}
-          {[-1, 1].map((side) => (
-            <rect
-              key={side}
-              x={CX + side * jawGap - (side === 1 ? 0 : 14)}
-              y={TOP + 70}
-              width="14"
-              height="56"
-              rx="4"
-              className="fill-stone-500 dark:fill-stone-400"
-              style={{ transition: 'x 0.25s ease-out' }}
-            />
-          ))}
-          <rect x={CX - jawGap - 14} y={TOP + 54} width={jawGap * 2 + 28} height="16" rx="6" className="fill-stone-600 dark:fill-stone-500" />
+          {/* jaws, riding up with the lift */}
+          <g transform={`translate(0 ${-liftRise})`}>
+            <line x1={CX} y1="34" x2={CX} y2={TOP + 54 + liftRise} strokeWidth="8" className="stroke-stone-400 dark:stroke-stone-600" />
+            {[-1, 1].map((side) => (
+              <rect
+                key={side}
+                x={CX + side * jawGap - (side === 1 ? 0 : 14)}
+                y={TOP + 70}
+                width="14"
+                height="56"
+                rx="4"
+                className="fill-stone-500 dark:fill-stone-400"
+                style={{ transition: 'x 0.25s ease-out' }}
+              />
+            ))}
+            <rect x={CX - jawGap - 14} y={TOP + 54} width={jawGap * 2 + 28} height="16" rx="6" className="fill-stone-600 dark:fill-stone-500" />
+          </g>
 
           {/* the payload */}
-          <motion.g animate={{ y: objY - (TOP + 96) }} transition={{ type: 'spring', stiffness: 180, damping: 20 }}>
+          <motion.g animate={{ y: objY - (TOP + 96) }} transition={ride ? { duration: 0.05, ease: 'linear' } : { type: 'spring', stiffness: 180, damping: 20 }}>
             <rect
               x={CX - obj.w / 2}
               y={TOP + 96}
@@ -287,7 +374,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
           {(
             <g>
               <text x={WIN_X} y={WIN_Y - 14} fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-                {setup.window && showWindow ? 'Force window for these pads' : 'Drag the squeeze'}
+                {ride ? 'RIDE IT: stay between the lines' : setup.window && showWindow ? 'Force window for these pads' : 'Drag the squeeze'}
               </text>
               <rect x={WIN_X} y={WIN_Y} width={WIN_W} height="18" rx="9" className="fill-stone-200 dark:bg-white/10 dark:fill-white/10" />
               {!impossible && setup.window && showWindow && (
@@ -313,6 +400,25 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
                 <text x={toX(crush)} y={WIN_Y + 40} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
                   breaks above {Math.round(crush)}
                 </text>
+              )}
+              {/* live lines while the lift is riding: the floor chases you */}
+              {ride && (
+                <g>
+                  <line x1={toX(ride.slipNow)} y1={WIN_Y - 8} x2={toX(ride.slipNow)} y2={WIN_Y + 26} strokeWidth="4" className="stroke-amber-500" />
+                  <text x={toX(ride.slipNow)} y={WIN_Y - 12} textAnchor="middle" fontSize="10" fontWeight="700" className="fill-amber-600 font-display dark:fill-amber-400">
+                    slip
+                  </text>
+                  <line x1={toX(crush)} y1={WIN_Y - 8} x2={toX(crush)} y2={WIN_Y + 26} strokeWidth="4" className="stroke-rose-500" />
+                  <text x={toX(crush)} y={WIN_Y - 12} textAnchor="middle" fontSize="10" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-400">
+                    crush
+                  </text>
+                  {/* lift progress */}
+                  <rect x={WIN_X} y={WIN_Y + 30} width={WIN_W} height="6" rx="3" className="fill-stone-200 dark:fill-white/10" />
+                  <rect x={WIN_X} y={WIN_Y + 30} width={WIN_W * Math.min(1, ride.t / LIFT_S)} height="6" rx="3" className="fill-emerald-500" />
+                  {rideDanger && (
+                    <rect x={WIN_X - 8} y={WIN_Y - 24} width={WIN_W + 16} height="66" rx="12" fill="none" strokeWidth="3" className="stroke-rose-500 animate-pulse" />
+                  )}
+                </g>
               )}
               {/* the squeeze itself, which you drag */}
               <circle
@@ -348,7 +454,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            Set the grip, then lift. Slip and crush only show themselves in the air.
+            Set a starting squeeze, then ride the lift: the slip line climbs as the arm pulls, so keep dragging to stay between the lines all the way up.
           </p>
         )}
       </div>
@@ -365,7 +471,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setPadId(id)}
+                  onClick={() => { if (!lifting) setPadId(id) }}
                   aria-pressed={active}
                   className={cn(
                     'rounded-2xl px-4 py-2.5 text-left font-display text-sm font-semibold transition-colors duration-200',
@@ -398,7 +504,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
               <button
                 key={g.v}
                 type="button"
-                onClick={() => setAccel(g.v)}
+                onClick={() => { if (!lifting) setAccel(g.v) }}
                 aria-pressed={accel === g.v}
                 className={cn(
                   'rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors duration-200',
@@ -415,11 +521,11 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button variant="accent" size="lg" onClick={lift} disabled={won}>
+        <Button variant="accent" size="lg" onClick={lift} disabled={won || lifting}>
           <ArrowUpFromLine className="h-5 w-5" />
-          Lift it
+          {lifting ? 'Riding the lift…' : 'Lift it'}
         </Button>
-        <Button variant="ghost" onClick={reset} aria-label="Reset the gripper">
+        <Button variant="ghost" onClick={reset} disabled={lifting} aria-label="Reset the gripper">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>

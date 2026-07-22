@@ -36,7 +36,7 @@ Three depths of anchoring:
 | Quality Gate | Papers, Please inspection desk (place the desk, watch units get stamped and binned) | deep |
 | Warehouse Layout | Unpacking / tidying games, scored in footsteps | hook |
 | Line Follower | Kart-racer time-trial tuning | hook |
-| Safe Grip | Operation steady-hand buzzer game | hook |
+| Safe Grip | Operation steady-hand buzzer game (live ride: hold the squeeze between moving lines) | deep |
 | Clean Stream | (none yet; candidate: pipe-ordering puzzle) | - |
 | Solar Array | Stardew-style farm-grid planning | hook |
 | Stormwater | City-builder zoning | hook |
