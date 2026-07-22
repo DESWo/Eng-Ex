@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughCircle, RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -23,10 +24,10 @@ import { cn } from '@/lib/utils'
  * something close to its own mass. Lead is nearly useless against them.
  */
 const MATERIALS = {
-  lead: { label: 'Lead', gamma: 0.8, neutron: 0.05, kgPerCm: 11.3, costPerCm: 8, fill: 'fill-slate-500' },
-  concrete: { label: 'Concrete', gamma: 0.15, neutron: 0.1, kgPerCm: 2.4, costPerCm: 1, fill: 'fill-stone-400' },
-  water: { label: 'Water', gamma: 0.07, neutron: 0.35, kgPerCm: 1.0, costPerCm: 0.3, fill: 'fill-sky-400' },
-  poly: { label: 'Polythene', gamma: 0.06, neutron: 0.45, kgPerCm: 0.95, costPerCm: 2, fill: 'fill-emerald-400' },
+  lead: { label: 'Lead', gamma: 0.8, neutron: 0.05, kgPerCm: 11.3, costPerCm: 8, fill: 'fill-slate-500', ink: 'stroke-slate-700 dark:stroke-slate-300', hatch: 'stroke-slate-500' },
+  concrete: { label: 'Concrete', gamma: 0.15, neutron: 0.1, kgPerCm: 2.4, costPerCm: 1, fill: 'fill-stone-400', ink: 'stroke-stone-600 dark:stroke-stone-300', hatch: 'stroke-stone-400' },
+  water: { label: 'Water', gamma: 0.07, neutron: 0.35, kgPerCm: 1.0, costPerCm: 0.3, fill: 'fill-sky-400', ink: 'stroke-sky-600 dark:stroke-sky-300', hatch: 'stroke-sky-400' },
+  poly: { label: 'Polythene', gamma: 0.06, neutron: 0.45, kgPerCm: 0.95, costPerCm: 2, fill: 'fill-emerald-400', ink: 'stroke-emerald-600 dark:stroke-emerald-300', hatch: 'stroke-emerald-400' },
 } as const
 type MatId = keyof typeof MATERIALS
 const MAT_IDS = Object.keys(MATERIALS) as MatId[]
@@ -265,8 +266,8 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
       <div className="overflow-hidden rounded-2xl blueprint">
         <svg viewBox="0 0 800 250" className="w-full" role="img" aria-label="Radiation shield stack">
           {/* source */}
-          <circle cx={SRC_X} cy="120" r="22" className="fill-amber-400" />
-          <circle cx={SRC_X} cy="120" r="11" className="fill-amber-600" />
+          <RoughCircle cx={SRC_X} cy={120} r={22} className="stroke-amber-600" fillClassName="stroke-amber-400" />
+          <RoughCircle cx={SRC_X} cy={120} r={11} className="stroke-amber-700" fillClassName="stroke-amber-600" />
           <text x={SRC_X} y="168" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
             Source
           </text>
@@ -281,14 +282,27 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
             const frac = (after.gamma + after.neutron) / Math.max(1, setup.gammaIn + setup.neutronIn)
             return (
               <g key={m}>
+                {/*
+                 * The sketched slab is decoration; the transparent rect on top
+                 * of it keeps the click target and tooltip a plain rectangle.
+                 */}
+                <g className="pointer-events-none">
+                  <RoughRect
+                    x={x}
+                    y={62}
+                    width={w}
+                    height={116}
+                    className={MATERIALS[m].ink}
+                    fillClassName={MATERIALS[m].hatch}
+                  />
+                </g>
                 <rect
                   x={x}
                   y="62"
                   width={w}
                   height="116"
-                  rx="3"
-                  className={cn(MATERIALS[m].fill, 'cursor-pointer')}
-                  opacity="0.85"
+                  fill="transparent"
+                  className="cursor-pointer"
                   onClick={() => addSlab(m, -SLAB)}
                 >
                   <title>{`${MATERIALS[m].label}, click to take 2 cm off`}</title>
@@ -319,8 +333,8 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
             />
           )}
           <g transform="translate(720 96)">
-            <circle cx="0" cy="0" r="13" className="fill-stone-500 dark:fill-stone-400" />
-            <rect x="-11" y="17" width="22" height="42" rx="9" className="fill-stone-500 dark:fill-stone-400" />
+            <RoughCircle cx={0} cy={0} r={13} className="stroke-stone-600 dark:stroke-stone-300" fillClassName="stroke-stone-500 dark:stroke-stone-400" />
+            <RoughRect x={-11} y={17} width={22} height={42} className="stroke-stone-600 dark:stroke-stone-300" fillClassName="stroke-stone-500 dark:stroke-stone-400" />
           </g>
           <text x="720" y="176" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
             Technician
