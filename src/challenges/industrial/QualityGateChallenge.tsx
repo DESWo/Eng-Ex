@@ -264,7 +264,7 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
         Click a gap in the line to put an inspection desk there. Faulty units get stamped and
         binned at the first desk they reach; the rest walk out to customers.
       </p>
-      <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
+      <div className="overflow-hidden rounded-2xl blueprint">
         <svg
           viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
           className="w-full"

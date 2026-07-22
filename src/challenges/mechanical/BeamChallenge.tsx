@@ -7,6 +7,7 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughPath, RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -261,9 +262,17 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
         >
           {/* ground + pivot */}
           <rect x="0" y={GROUND_Y} width="800" height="10" className="fill-emerald-200 dark:fill-emerald-950" />
+          <g className="pointer-events-none">
+            <RoughPath
+              d={`M${pivotPx - 34} ${GROUND_Y} L${pivotPx} ${BEAM_Y + 8} L${pivotPx + 34} ${GROUND_Y} Z`}
+              className="stroke-stone-600 dark:stroke-stone-300"
+              fillClassName="stroke-stone-500"
+            />
+          </g>
           <path
             d={`M${pivotPx - 34} ${GROUND_Y} L${pivotPx} ${BEAM_Y + 8} L${pivotPx + 34} ${GROUND_Y} Z`}
-            className={cn('fill-stone-500 dark:fill-stone-500', round.movablePivot && 'cursor-grab')}
+            fill="transparent"
+            className={cn(round.movablePivot && 'cursor-grab')}
             onPointerDown={() => {
               grabbedPivot.current = true
             }}
@@ -290,13 +299,13 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
               transition: 'transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)',
             }}
           >
-            <rect
+            <RoughRect
               x={CENTER_X - 10.5 * PX_PER_MARK}
               y={BEAM_Y - 6}
               width={21 * PX_PER_MARK}
-              height="12"
-              rx="6"
-              className="fill-amber-700 dark:fill-amber-600"
+              height={12}
+              className="stroke-amber-800 dark:stroke-amber-500"
+              fillClassName="stroke-amber-700 dark:stroke-amber-600"
             />
             {/* position marks */}
             {ALL_MARKS.map((m) => (
@@ -312,7 +321,26 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
               const x = CENTER_X + crate.pos * PX_PER_MARK
               return (
                 <g key={i}>
-                  <rect x={x - size / 2} y={BEAM_Y - 6 - size} width={size} height={size} rx="5" className="fill-stone-500 dark:fill-stone-400" />
+                  {/*
+                   * A pale wash under the hatching, the way a real sketch is
+                   * shaded, so the weight label keeps a surface to sit on.
+                   */}
+                  <rect
+                    x={x - size / 2}
+                    y={BEAM_Y - 6 - size}
+                    width={size}
+                    height={size}
+                    rx="4"
+                    className="fill-stone-500/35 dark:fill-stone-400/25"
+                  />
+                  <RoughRect
+                    x={x - size / 2}
+                    y={BEAM_Y - 6 - size}
+                    width={size}
+                    height={size}
+                    className="stroke-stone-700 dark:stroke-stone-200"
+                    fillClassName="stroke-stone-500 dark:stroke-stone-400"
+                  />
                   <text x={x} y={BEAM_Y - 6 - size / 2 + 5} textAnchor="middle" fontSize="14" fontWeight="700" className="fill-white font-display">
                     {crate.weight}
                   </text>

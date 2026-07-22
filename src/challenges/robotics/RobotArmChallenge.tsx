@@ -10,6 +10,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { playSound } from '@/lib/sound'
 import { useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
@@ -230,6 +231,7 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
 
   /** Drop the claw. Arcade rules: it closes on whatever is exactly under it. */
   const grab = () => {
+    playSound('coin')
     if (won || allDone) return
     if (onTarget) {
       const nowReached = [...reached, nextIndex]

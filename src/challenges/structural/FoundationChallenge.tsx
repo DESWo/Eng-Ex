@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -89,6 +90,10 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     ],
   },
 ]
+
+/** Pen and hatching for the concrete drawn in section. */
+const INK = 'stroke-stone-600 dark:stroke-stone-300'
+const HATCH = 'stroke-stone-500 dark:stroke-stone-400'
 
 export function FoundationChallenge({ onComplete }: ChallengeProps) {
   const lv = useLevels('foundation', LEVELS)
@@ -255,9 +260,32 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                     className={f.safe ? 'fill-sky-400/25' : 'fill-rose-400/30'}
                   />
                 )}
-                {/* column */}
-                <rect x={x - 13} y={GROUND_Y - 92 + drop} width="26" height={92} className="fill-stone-500 dark:fill-stone-400" />
-                {/* footing */}
+                {/* column, drawn as hatched concrete in section */}
+                <g className="pointer-events-none">
+                  <RoughRect
+                    x={x - 13}
+                    y={GROUND_Y - 92 + drop}
+                    width={26}
+                    height={92}
+                    className={INK}
+                    fillClassName={HATCH}
+                  />
+                </g>
+                {/*
+                 * The sketched footing carries the safe/overloaded colour; the
+                 * transparent rect over it stays the drag handle, so widening a
+                 * footing by mouse or keyboard is untouched.
+                 */}
+                <g className="pointer-events-none">
+                  <RoughRect
+                    x={x - w / 2}
+                    y={GROUND_Y + drop}
+                    width={w}
+                    height={16}
+                    className={f.safe ? 'stroke-slate-700 dark:stroke-slate-200' : 'stroke-rose-600'}
+                    fillClassName={f.safe ? 'stroke-slate-500 dark:stroke-slate-400' : 'stroke-rose-500'}
+                  />
+                </g>
                 <rect
                   x={x - w / 2}
                   y={GROUND_Y + drop}
@@ -278,7 +306,8 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                     else return
                     e.preventDefault()
                   }}
-                  className={cn('cursor-ew-resize outline-none', f.safe ? 'fill-slate-500 dark:fill-slate-400' : 'fill-rose-500')}
+                  fill="transparent"
+                  className="cursor-ew-resize outline-none"
                 />
                 <text x={x} y={GROUND_Y - 100} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
                   {f.load} kN

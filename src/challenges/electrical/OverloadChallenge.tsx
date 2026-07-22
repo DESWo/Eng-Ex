@@ -23,6 +23,7 @@ import { InsightToggle } from '@/components/level/InsightToggle'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { playSound } from '@/lib/sound'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -288,6 +289,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     timerRef.current = setTimeout(() => {
       if (tripped.length === 0 && overheated.length === 0) {
         setPhase('passed')
+        playSound('success')
         lv.clearLevel(
           lv.level.metrics
             ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin }
@@ -299,6 +301,8 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
         }
       } else {
         setPhase('failed')
+        // A breaker snapping open, rather than the generic fail buzz.
+        playSound('zap')
       }
     }, 900)
   }
