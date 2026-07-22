@@ -209,8 +209,12 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     simQ.current = { ns: 0, ew: 0 }
     if (simInterval.current) clearInterval(simInterval.current)
     let t = 0
+    let last = performance.now()
     simInterval.current = setInterval(() => {
-      const dt = (TICK_MS / 1000) * SIM_SPEED
+      // Wall-clock time, so a janky tab cannot stretch the minute out.
+      const now = performance.now()
+      const dt = Math.min(0.4, (now - last) / 1000) * SIM_SPEED
+      last = now
       t += dt
       // Arrivals trickle in the whole minute; the stop line only clears on green.
       const q = simQ.current
