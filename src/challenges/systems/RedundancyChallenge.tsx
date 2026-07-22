@@ -203,7 +203,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-24 text-center font-display text-sm font-bold tabular-nums">
+              <span className="w-24 text-center text-sm font-bold font-mono tabular-nums">
                 {p.spares === 0 ? 'no spare' : `${p.spares} spare${p.spares > 1 ? 's' : ''}`}
               </span>
               <button
@@ -225,7 +225,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
                     style={{ width: `${(p.risk / totalRisk) * 100}%` }}
                   />
                 </div>
-                <span className="w-20 text-right font-display text-xs font-bold tabular-nums text-ink-soft dark:text-stone-400">
+                <span className="w-20 text-right text-xs font-bold font-mono tabular-nums text-ink-soft dark:text-stone-400">
                   {((p.risk / totalRisk) * 100).toFixed(0)}% of risk
                 </span>
               </div>

@@ -427,7 +427,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
                 onClick={() => retune(setDampers)(Math.min(n, MAX_DAMPERS))}
                 aria-pressed={dampers === n}
                 className={cn(
-                  'h-11 w-11 rounded-full border-2 font-display text-sm font-bold tabular-nums transition-colors duration-200',
+                  'h-11 w-11 rounded-full border-2 text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                   dampers === n
                     ? 'accent-border accent-soft accent-text'
                     : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400 dark:hover:border-white/25',

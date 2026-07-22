@@ -20,7 +20,7 @@ export function Meter({ label, display, fraction, barClass, markerFraction }: Me
     <div>
       <div className="mb-1 flex items-center justify-between text-sm">
         <span className="font-display font-semibold">{label}</span>
-        <span className="tabular-nums text-ink-soft dark:text-stone-400">{display}</span>
+        <span className="font-mono tabular-nums text-ink-soft dark:text-stone-400">{display}</span>
       </div>
       <div className="relative h-3 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
         <motion.div

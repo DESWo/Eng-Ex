@@ -68,7 +68,7 @@ export function DisciplineCard({ discipline }: DisciplineCardProps) {
               >
                 {TIER_LABEL[mastery.tier]}
               </span>
-              <span className="tabular-nums text-ink-soft dark:text-stone-400">
+              <span className="font-mono tabular-nums text-ink-soft dark:text-stone-400">
                 {mastery.cleared} / {mastery.total} levels
               </span>
             </div>

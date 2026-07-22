@@ -62,7 +62,7 @@ export function Objective({ goal, status, attemptsLeft, met }: ObjectiveProps) {
           animate={urgent ? { scale: [1, 1.07, 1] } : { scale: 1 }}
           transition={urgent ? { duration: 1.4, repeat: Infinity } : { duration: 0.2 }}
           className={cn(
-            'relative ml-auto rounded-full px-3 py-1 font-display text-xs font-bold tabular-nums',
+            'relative ml-auto rounded-full px-3 py-1 text-xs font-bold font-mono tabular-nums',
             attemptsLeft <= 1
               ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
               : 'bg-white/70 text-ink dark:bg-white/10 dark:text-stone-200',

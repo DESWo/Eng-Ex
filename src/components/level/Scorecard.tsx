@@ -30,7 +30,7 @@ export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
     <div className="rounded-2xl bg-stone-100 p-4 dark:bg-white/5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="font-display text-sm font-bold">Optimization targets</p>
-        <span className="font-display text-sm font-semibold tabular-nums text-ink-soft dark:text-stone-400">
+        <span className="text-sm font-semibold font-mono tabular-nums text-ink-soft dark:text-stone-400">
           {scored ? `${met} of ${metrics.length} at par` : 'Solve it to score'}
         </span>
       </div>
@@ -61,7 +61,7 @@ export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft dark:text-stone-400">
                   <Trophy className="h-3 w-3" />
                   Your best:{' '}
-                  <span className="font-semibold tabular-nums">
+                  <span className="font-semibold font-mono tabular-nums">
                     <Ticker value={bestValue} />
                     {unit}
                   </span>

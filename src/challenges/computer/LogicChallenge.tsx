@@ -231,7 +231,7 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
           <p className="mt-2 flex flex-wrap items-center gap-1.5 font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
             Target:
             {ROWS.map(([ra, rb], i) => (
-              <span key={i} className="rounded bg-stone-100 px-1.5 py-0.5 tabular-nums dark:bg-white/10">
+              <span key={i} className="rounded bg-stone-100 px-1.5 py-0.5 font-mono tabular-nums dark:bg-white/10">
                 {ra ? 1 : 0}
                 {rb ? 1 : 0}→{round.truth[i] ? 1 : 0}
               </span>
@@ -350,7 +350,7 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
       {/* Truth table that fills in as rows are actually tested */}
       {round.table && showTable && (
         <div className="mt-4 inline-block rounded-2xl border border-stone-200 p-3 dark:border-white/10">
-          <table className="text-sm tabular-nums">
+          <table className="text-sm font-mono tabular-nums">
             <thead>
               <tr className="text-ink-soft dark:text-stone-400">
                 <th className="px-3 font-display font-semibold">A</th>

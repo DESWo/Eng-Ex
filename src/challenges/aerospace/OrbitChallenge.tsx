@@ -488,7 +488,7 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
             <div key={b.n} className="rounded-2xl bg-stone-100 p-3 dark:bg-white/5">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <p className="font-display text-sm font-semibold">{b.label}</p>
-                <span className="accent-text font-display text-sm font-bold tabular-nums">{b.value} m/s</span>
+                <span className="accent-text text-sm font-bold font-mono tabular-nums">{b.value} m/s</span>
               </div>
               {/* one tick per pulse spent */}
               <div className="mb-2 flex h-2.5 gap-[2px]">

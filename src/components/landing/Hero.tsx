@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion'
+import { useRef } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowDown, Compass, HeartHandshake, Timer } from 'lucide-react'
 import { buttonClasses } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -11,8 +12,17 @@ const chips = [
 ]
 
 export function Hero() {
+  const ref = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
+  // The paper drifts slower than the words on it, so the headline lifts off
+  // the drafting sheet as you scroll rather than sliding with it.
+  const paperY = useTransform(scrollYProgress, [0, 1], ['0%', '22%'])
+  const contentY = useTransform(scrollYProgress, [0, 1], ['0%', '-12%'])
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
+
   return (
-    <section className="paper-grid-lg relative overflow-hidden">
+    <section ref={ref} className="relative overflow-hidden">
+      <motion.div aria-hidden className="paper-grid-lg absolute inset-0 -z-20" style={{ y: paperY }} />
       {/* Soft floating color blobs behind the headline. */}
       <div aria-hidden className="absolute inset-0 -z-10">
         <motion.div
@@ -34,6 +44,7 @@ export function Hero() {
 
       <div className="mx-auto max-w-4xl px-6 pb-16 pt-20 text-center sm:pt-28">
         <motion.div
+          style={{ y: contentY, opacity: contentOpacity }}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}

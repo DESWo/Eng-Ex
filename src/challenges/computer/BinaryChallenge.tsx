@@ -229,7 +229,7 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
                 >
                   {on ? 1 : 0}
                 </button>
-                <span className="font-display text-xs font-semibold tabular-nums text-ink-soft dark:text-stone-400">
+                <span className="text-xs font-semibold font-mono tabular-nums text-ink-soft dark:text-stone-400">
                   {isSign ? '±' : Math.pow(2, place)}
                 </span>
                 {setup.width === null && place === signPlace && w > 2 && (

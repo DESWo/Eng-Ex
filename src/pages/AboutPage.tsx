@@ -29,16 +29,15 @@ export function AboutPage() {
       <motion.section
         className="mt-16"
         variants={staggerContainer}
-        initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: '-60px' }}
       >
-        <motion.h2 variants={fadeUp} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+        <motion.h2 variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           {aboutWhy.heading}
         </motion.h2>
         <div className="mt-4 space-y-4">
           {aboutWhy.paragraphs.map((p) => (
-            <motion.p key={p} variants={fadeUp} className="text-lg leading-relaxed text-ink-soft dark:text-stone-300">
+            <motion.p key={p} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="text-lg leading-relaxed text-ink-soft dark:text-stone-300">
               {p}
             </motion.p>
           ))}
@@ -49,19 +48,18 @@ export function AboutPage() {
       <motion.section
         className="mt-16"
         variants={staggerContainer}
-        initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: '-60px' }}
       >
-        <motion.h2 variants={fadeUp} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+        <motion.h2 variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           {aboutGoal.heading}
         </motion.h2>
-        <motion.p variants={fadeUp} className="mt-4 text-lg leading-relaxed text-ink-soft dark:text-stone-300">
+        <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="mt-4 text-lg leading-relaxed text-ink-soft dark:text-stone-300">
           {aboutGoal.body}
         </motion.p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {aboutGoal.pillars.map(({ icon: Icon, label, text }) => (
-            <motion.div key={label} variants={fadeUp}>
+            <motion.div key={label} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
               <Card sketch className="h-full p-5">
                 <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 dark:bg-white/10">
                   <Icon className="h-6 w-6 text-ink-soft dark:text-stone-300" />
@@ -78,11 +76,10 @@ export function AboutPage() {
       <motion.section
         className="mt-16"
         variants={staggerContainer}
-        initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: '-60px' }}
       >
-        <motion.div variants={fadeUp}>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
           <Card className="p-6 sm:p-8">
             <div className="flex items-center gap-4">
               <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-rose-400 font-display text-2xl font-extrabold text-white">
@@ -108,16 +105,15 @@ export function AboutPage() {
       <motion.section
         className="mt-16"
         variants={staggerContainer}
-        initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: '-60px' }}
       >
-        <motion.h2 variants={fadeUp} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+        <motion.h2 variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           {aboutRoadmap.heading}
         </motion.h2>
         <div className="mt-6 space-y-3">
           {aboutRoadmap.items.map(({ icon: Icon, title, body, status }) => (
-            <motion.div key={title} variants={fadeUp}>
+            <motion.div key={title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
               <Card className="flex items-start gap-4 p-5">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-stone-100 dark:bg-white/10">
                   <Icon className="h-6 w-6 text-ink-soft dark:text-stone-300" />

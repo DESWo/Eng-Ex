@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Check, Compass, Lock, Sparkles } from 'lucide-react'
 import { DisciplineCard } from '@/components/landing/DisciplineCard'
 import { Card } from '@/components/ui/Card'
+import { Reveal } from '@/components/ui/Reveal'
 import { disciplines } from '@/data/disciplines'
 import { useProgress } from '@/hooks/useProgress'
 import { fadeUp, staggerContainer } from '@/lib/animations'
@@ -91,7 +92,7 @@ function LockedMore({
 function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }) {
   return (
     <>
-      <div className="mb-4 mt-20 text-center">
+      <Reveal className="mb-4 mt-20 text-center">
         <motion.span
           initial={{ scale: 0.8, opacity: 0 }}
           whileInView={{ scale: 1, opacity: 1 }}
@@ -108,7 +109,7 @@ function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }
         <p className="mt-3 text-ink-soft dark:text-stone-400">
           Every field splits into branches. Here are the big ones under each core field.
         </p>
-      </div>
+      </Reveal>
 
       <div className="space-y-14">
         {core.map((parent) => {
@@ -152,18 +153,18 @@ export function DisciplineGrid() {
 
   return (
     <section id="disciplines" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-16">
-      <div className="mb-10 text-center">
-        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-stone-900/5 px-4 py-1.5 font-display text-sm font-semibold text-ink-soft dark:bg-white/10 dark:text-stone-300">
+      <Reveal className="mb-10 text-center">
+        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-stone-900/5 px-4 py-1.5 label-caps text-ink-soft dark:bg-white/10 dark:text-stone-300">
           <Compass className="h-4 w-4" />
           Start here
         </span>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          Pick your first adventure
+          Choose a field to study
         </h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
           Three core fields to start, eight more to unlock, zero tests.
         </p>
-      </div>
+      </Reveal>
 
       <Grid items={core} />
 

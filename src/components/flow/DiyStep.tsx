@@ -22,10 +22,8 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
     <motion.div
       className="mx-auto max-w-2xl space-y-6"
       variants={staggerContainer}
-      initial="hidden"
-      animate="show"
     >
-      <motion.div variants={fadeUp} className="text-center">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           Try it at home
         </h2>
@@ -34,7 +32,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         </p>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="accent-softer accent-border border-2 p-6">
           <p className="accent-text flex items-center gap-2 font-display text-xs font-bold uppercase tracking-widest">
             <Hammer className="h-4 w-4" />
@@ -46,7 +44,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
       </motion.div>
 
       {Diagram && (
-        <motion.div variants={fadeUp}>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
           <Card className="p-4 sm:p-6">
             <p className="mb-3 font-display text-xs font-bold uppercase tracking-widest text-ink-soft dark:text-stone-400">
               The build, at a glance
@@ -58,7 +56,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         </motion.div>
       )}
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <p className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-ink-soft dark:text-stone-400">
           You will need
         </p>
@@ -71,13 +69,13 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         </div>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="p-6">
           <h3 className="mb-4 font-display text-lg font-bold">How to build it</h3>
           <ol className="space-y-3">
             {diy.steps.map((step, i) => (
               <li key={step} className="flex gap-3">
-                <span className="accent-soft accent-text flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-sm font-bold tabular-nums">
+                <span className="accent-soft accent-text flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold font-mono tabular-nums">
                   {i + 1}
                 </span>
                 <p className="pt-0.5 text-[15px] leading-relaxed">{step}</p>
@@ -87,7 +85,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="accent-soft flex items-start gap-4 p-6">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-clay dark:bg-night-panel">
             <FlaskConical className="accent-text h-6 w-6" />
@@ -101,14 +99,14 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <div className="flex items-start gap-3 rounded-2xl bg-amber-100 p-4 text-sm font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
           <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
           {diy.safety}
         </div>
       </motion.div>
 
-      <motion.div variants={fadeUp} className="flex flex-wrap justify-center gap-3 pb-4">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="flex flex-wrap justify-center gap-3 pb-4">
         <Button variant="primary" size="lg" onClick={onExploreMore}>
           <Compass className="h-5 w-5" />
           Explore more disciplines

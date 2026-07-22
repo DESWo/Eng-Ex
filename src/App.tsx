@@ -4,6 +4,7 @@ import { Route, Routes, useLocation } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { ScrollProgress } from '@/components/ui/ScrollProgress'
 import { LandingPage } from '@/pages/LandingPage'
 import { DisciplinePage } from '@/pages/DisciplinePage'
 import { AboutPage } from '@/pages/AboutPage'
@@ -23,6 +24,7 @@ function Shell() {
   const { profile } = useProfile()
   return (
     <div className="flex min-h-screen flex-col">
+      <ScrollProgress />
       <Navbar />
       <main className="flex-1">
         {/* Keyed on who is signed in: signing in or out remounts the pages so

@@ -834,10 +834,10 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
 
       {/* Aim readout. The aiming itself happens by dragging the sling. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-stone-100 px-4 py-2 font-display text-sm font-semibold tabular-nums dark:bg-white/5">
+        <span className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold font-mono tabular-nums dark:bg-white/5">
           Angle <span className="accent-text font-bold">{angle}°</span>
         </span>
-        <span className="rounded-full bg-stone-100 px-4 py-2 font-display text-sm font-semibold tabular-nums dark:bg-white/5">
+        <span className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold font-mono tabular-nums dark:bg-white/5">
           Power <span className="accent-text font-bold">{power}%</span>
         </span>
         <span className="text-sm text-ink-soft dark:text-stone-400">

@@ -349,7 +349,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                   >
                     <span className="mb-1 block h-2.5 w-8 rounded-full" style={{ backgroundColor: f.fill }} />
                     <span className="font-display text-sm font-bold">{f.label}</span>
-                    <span className="block text-xs tabular-nums text-ink-soft dark:text-stone-400">
+                    <span className="block text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">
                       ${f.cost.toLocaleString('en-US')} · stability {f.stability}
                     </span>
                   </button>
@@ -371,7 +371,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                     onClick={() => rebuild(setBraces)(Math.min(n, MAX_BRACES))}
                     disabled={busy}
                     className={cn(
-                      'h-11 w-11 rounded-full border-2 font-display text-sm font-bold tabular-nums transition-colors duration-200',
+                      'h-11 w-11 rounded-full border-2 text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                       braces === n
                         ? 'accent-border accent-soft accent-text'
                         : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400 dark:hover:border-white/25',

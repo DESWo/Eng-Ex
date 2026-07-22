@@ -27,10 +27,8 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
     <motion.div
       className="mx-auto max-w-3xl space-y-8"
       variants={staggerContainer}
-      initial="hidden"
-      animate="show"
     >
-      <motion.div variants={fadeUp} className="text-center">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           {learn.heading}
         </h2>
@@ -43,7 +41,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
 
       {/* One block per game, so every challenge gets explained. */}
       {challenges.map((challenge) => (
-        <motion.div key={challenge.id} variants={fadeUp} className="space-y-4">
+        <motion.div key={challenge.id} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="space-y-4">
           {multi && (
             <div className="flex items-center gap-2.5">
               <span
@@ -90,7 +88,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
         </motion.div>
       ))}
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="accent-soft flex items-start gap-4 p-6">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-clay dark:bg-night-panel">
             <Lightbulb className="accent-text h-6 w-6" />
@@ -105,7 +103,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
       </motion.div>
 
       {/* The tradeoff at the heart of the field */}
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="flex items-start gap-4 p-6">
           <span className="accent-soft flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
             <Scale className="accent-text h-6 w-6" />
@@ -120,7 +118,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
       </motion.div>
 
       {/* Real-world application: you used the same concept engineers use */}
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="border-2 accent-border p-6">
           <p className="accent-text flex items-center gap-2 font-display text-xs font-bold uppercase tracking-widest">
             <Factory className="h-4 w-4" />
@@ -142,7 +140,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
       </motion.div>
 
       {reflection?.enjoyed === 'loved' && (
-        <motion.div variants={fadeUp}>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
           <Card className="flex items-center gap-3 p-5">
             <Heart className="h-5 w-5 shrink-0 text-rose-500" fill="currentColor" />
             <p className="text-[15px]">
@@ -154,7 +152,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
         </motion.div>
       )}
 
-      <motion.div variants={fadeUp} className="flex flex-wrap justify-center gap-3 pb-4">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="flex flex-wrap justify-center gap-3 pb-4">
         <Button variant="accent" size="lg" onClick={onNext}>
           Next: try it at home
           <ArrowRight className="h-5 w-5" />

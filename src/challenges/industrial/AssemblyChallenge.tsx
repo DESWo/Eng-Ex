@@ -234,7 +234,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
                       transition={{ duration: 0.3 }}
                     />
                   </div>
-                  <p className="mt-1 text-xs tabular-nums text-ink-soft dark:text-stone-400">{time.toFixed(1)}s each</p>
+                  <p className="mt-1 text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">{time.toFixed(1)}s each</p>
 
                   {/* worker stepper */}
                   <div className="mt-2 flex items-center justify-between">
@@ -247,7 +247,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="flex items-center gap-1 font-display text-sm font-bold tabular-nums">
+                    <span className="flex items-center gap-1 text-sm font-bold font-mono tabular-nums">
                       {workersOn(s.id)}
                       <span className="text-xs font-normal text-ink-soft dark:text-stone-400">
                         {workersOn(s.id) === 1 ? 'worker' : 'workers'}

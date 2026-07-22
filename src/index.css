@@ -4,8 +4,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Every measured value is set in mono, so columns of numbers line up. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* Core palette. Edit these to retheme the whole site. */
   --color-cream: #faf7f2;
@@ -88,6 +90,37 @@
 
   .accent-border {
     border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  }
+
+  /*
+   * Journal furniture. `.label-caps` is the small letterspaced heading a paper
+   * uses above a section; `.rule` is the hairline that separates them. Both are
+   * quiet on purpose: they organise a page without competing with it.
+   */
+  .label-caps {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .rule {
+    border-top: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+  }
+  .dark .rule {
+    border-top-color: rgb(255 255 255 / 0.12);
+  }
+
+  /* A figure caption, set the way a textbook sets one. */
+  .figure-caption {
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-ink-soft);
+  }
+  .dark .figure-caption {
+    color: #a8a29e;
   }
 
   /* Range sliders pick up the discipline accent automatically. */

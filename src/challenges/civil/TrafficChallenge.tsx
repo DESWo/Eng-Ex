@@ -101,7 +101,7 @@ function RoadCard({
   return (
     <div className={cn('rounded-2xl border-2 p-4', ok ? 'border-stone-200 dark:border-white/10' : 'border-rose-300 dark:border-rose-500/40')}>
       <p className="font-display text-sm font-bold">{name}</p>
-      <p className="mt-2 text-sm tabular-nums text-ink-soft dark:text-stone-300">
+      <p className="mt-2 text-sm font-mono tabular-nums text-ink-soft dark:text-stone-300">
         <span className="font-bold">{arriving}</span> cars arrive each minute.
         <br />
         Its green clears <span className={cn('font-bold', ok ? '' : 'text-rose-600 dark:text-rose-400')}>{clearing.toFixed(0)}</span> each minute.
@@ -377,7 +377,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           {running && (
             <g>
               <rect x="640" y="20" width="140" height="34" rx="10" className="fill-white/80 dark:fill-black/40" />
-              <text x="710" y="42" textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink font-display tabular-nums dark:fill-stone-100">
+              <text x="710" y="42" textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink font-mono tabular-nums dark:fill-stone-100">
                 {Math.floor(simT)}s / {CYCLE}s
               </text>
             </g>

@@ -732,7 +732,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                   >
                     <span className="mb-1 block h-2.5 w-8 rounded-full" style={{ backgroundColor: m.color }} />
                     <span className="font-display text-sm font-bold">{m.label}</span>
-                    <span className="block text-xs tabular-nums text-ink-soft dark:text-stone-400">
+                    <span className="block text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">
                       ${m.cost}/length · holds {m.compression}-{m.tension}
                     </span>
                   </button>

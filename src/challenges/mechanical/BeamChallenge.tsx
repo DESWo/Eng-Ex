@@ -444,7 +444,7 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
                 onClick={() => setWeight(w)}
                 aria-pressed={weight === w}
                 className={cn(
-                  'rounded-full border-2 px-4 py-1.5 font-display text-sm font-bold tabular-nums transition-colors duration-200',
+                  'rounded-full border-2 px-4 py-1.5 text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                   weight === w
                     ? 'accent-border accent-soft accent-text'
                     : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400 dark:hover:border-white/25',
@@ -466,7 +466,7 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
                 onClick={() => setMark(m)}
                 aria-pressed={mark === m}
                 className={cn(
-                  'h-9 w-9 rounded-full border-2 font-display text-sm font-bold tabular-nums transition-colors duration-200',
+                  'h-9 w-9 rounded-full border-2 text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                   mark === m
                     ? 'accent-border accent-soft accent-text'
                     : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400 dark:hover:border-white/25',

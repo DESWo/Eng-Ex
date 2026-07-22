@@ -84,7 +84,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
                 ) : lv > 0 ? (
                   <span
                     className={cn(
-                      'rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums',
+                      'rounded-full px-1.5 py-0.5 text-xs font-bold font-mono tabular-nums',
                       isActive ? 'bg-white/25' : 'bg-stone-200 dark:bg-white/10',
                     )}
                   >
@@ -96,7 +96,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
                 ) : (
                   <span
                     className={cn(
-                      'flex h-5 w-5 items-center justify-center rounded-full text-xs tabular-nums',
+                      'flex h-5 w-5 items-center justify-center rounded-full text-xs font-mono tabular-nums',
                       isActive ? 'bg-white/25' : 'bg-stone-200 dark:bg-white/10',
                     )}
                   >

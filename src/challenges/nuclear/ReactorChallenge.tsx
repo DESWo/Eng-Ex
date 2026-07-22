@@ -325,7 +325,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
         <div>
           <div className="mb-1 flex items-center justify-between text-sm">
             <span className="font-display font-semibold">Power to the grid</span>
-            <span className="tabular-nums text-ink-soft dark:text-stone-400">{netPower} MW</span>
+            <span className="font-mono tabular-nums text-ink-soft dark:text-stone-400">{netPower} MW</span>
           </div>
           <div className="relative h-4 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
             <div
@@ -348,7 +348,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
             <span className="font-display font-semibold">Core temperature</span>
             <span
               className={cn(
-                'tabular-nums font-semibold',
+                'font-mono tabular-nums font-semibold',
                 tempZone === 'safe' ? 'text-emerald-600 dark:text-emerald-400' : tempZone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400',
               )}
             >

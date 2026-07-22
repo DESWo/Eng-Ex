@@ -235,7 +235,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
                     <div className="accent-bg h-full rounded-full" style={{ width: `${(work / maxEffortBar) * 100}%` }} />
                   </div>
-                  <span className="w-12 text-right font-display text-xs font-bold tabular-nums text-ink-soft dark:text-stone-400">
+                  <span className="w-12 text-right text-xs font-bold font-mono tabular-nums text-ink-soft dark:text-stone-400">
                     {work}
                   </span>
                 </div>

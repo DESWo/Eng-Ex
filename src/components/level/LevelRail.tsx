@@ -38,7 +38,7 @@ export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick 
               title={locked ? 'Clear the level before this one to unlock' : l.concept}
               className={cn(
                 'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-3',
-                'font-display text-sm font-bold tabular-nums transition-colors duration-200',
+                'text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                 isActive && 'accent-bg text-white shadow-clay',
                 !isActive && cleared && 'accent-soft accent-text hover:brightness-105',
                 !isActive &&

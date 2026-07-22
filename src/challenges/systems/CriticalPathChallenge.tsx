@@ -350,7 +350,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-14 text-center font-display text-xs font-bold tabular-nums">
+              <span className="w-14 text-center text-xs font-bold font-mono tabular-nums">
                 {used === 0 ? '0 days' : `-${used} d`}
               </span>
               <button

@@ -264,7 +264,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
           >
             {r.ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
             {r.label}
-            <span className="tabular-nums opacity-70">({r.value})</span>
+            <span className="font-mono tabular-nums opacity-70">({r.value})</span>
           </span>
         ))}
       </div>
@@ -310,7 +310,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
             <div key={key} className="rounded-2xl bg-stone-100 p-3 dark:bg-white/5">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <p className="font-display text-sm font-semibold">{label}</p>
-                <span className="accent-text font-display text-sm font-bold tabular-nums">{mass[key]} kg</span>
+                <span className="accent-text text-sm font-bold font-mono tabular-nums">{mass[key]} kg</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {Array.from({ length: MAX_BLOCKS }, (_, i) => {

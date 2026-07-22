@@ -221,7 +221,7 @@ function ApplianceChip({
     >
       <Icon className="h-4 w-4" />
       {appliance.label}
-      <span className="tabular-nums opacity-70">{appliance.watts}W</span>
+      <span className="font-mono tabular-nums opacity-70">{appliance.watts}W</span>
       {appliance.motor && <Zap className="h-3.5 w-3.5 text-amber-500" fill="currentColor" />}
     </button>
   )

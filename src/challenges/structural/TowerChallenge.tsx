@@ -339,7 +339,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
                 >
                   <span className="mb-1 block h-2.5 w-8 rounded-full" style={{ backgroundColor: c.fill }} />
                   <span className="font-display text-sm font-bold">{c.label}</span>
-                  <span className="block text-xs tabular-nums text-ink-soft dark:text-stone-400">
+                  <span className="block text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">
                     ${c.cost} · stiff {c.stiff}
                   </span>
                 </button>

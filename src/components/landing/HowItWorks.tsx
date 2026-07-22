@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { BookOpen, Gamepad2, Lightbulb, MessagesSquare } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { Reveal } from '@/components/ui/Reveal'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 
 const steps = [
@@ -29,12 +30,13 @@ const steps = [
 export function HowItWorks() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-10 text-center">
+      <Reveal className="mb-10 text-center">
+        <p className="label-caps accent-text mb-3">The loop</p>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
           Every discipline follows the same simple loop.
         </p>
-      </div>
+      </Reveal>
 
       <motion.div
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"

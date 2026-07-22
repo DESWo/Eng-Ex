@@ -35,5 +35,5 @@ export function Ticker({ value, format, duration = 0.5 }: TickerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, reduced, duration])
 
-  return <span className="tabular-nums">{format ? format(shown) : Math.round(shown).toLocaleString()}</span>
+  return <span className="font-mono tabular-nums">{format ? format(shown) : Math.round(shown).toLocaleString()}</span>
 }
