@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -204,9 +205,23 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                   {b.label}
                 </text>
                 {/* decay heat */}
-                <rect x={x} y={160 - heatH} width="26" height={heatH} rx="3" className="fill-rose-400" />
+                <RoughRect
+                  x={x}
+                  y={160 - heatH}
+                  width={26}
+                  height={heatH}
+                  className="stroke-rose-600 dark:stroke-rose-300"
+                  fillClassName="stroke-rose-400"
+                />
                 {/* what the chosen cooling can remove */}
-                <rect x={x + 34} y={160 - coolH} width="26" height={coolH} rx="3" className="fill-sky-400" />
+                <RoughRect
+                  x={x + 34}
+                  y={160 - coolH}
+                  width={26}
+                  height={coolH}
+                  className="stroke-sky-600 dark:stroke-sky-300"
+                  fillClassName="stroke-sky-400"
+                />
                 <line x1={x - 6} y1="160" x2={x + 66} y2="160" strokeWidth="1.5" className="stroke-stone-400 dark:stroke-stone-600" />
                 {showCurve && setup.curve && (
                   <>

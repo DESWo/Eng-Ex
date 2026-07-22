@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
+import { SketchFrame } from '@/components/ui/SketchFrame'
 import { DifficultyBadge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { masteryFor, TIER_LABEL } from '@/lib/mastery'
@@ -30,10 +31,11 @@ export function DisciplineCard({ discipline }: DisciplineCardProps) {
         transition={{ type: 'spring', stiffness: 350, damping: 22 }}
         className="h-full"
       >
-        <Card interactive className="flex h-full flex-col gap-4 p-6">
+        <Card interactive sketch className="flex h-full flex-col gap-4 p-6">
           <div className="flex items-start justify-between">
-            <span className="accent-soft flex h-14 w-14 items-center justify-center rounded-2xl">
-              <Icon className="accent-text h-7 w-7" />
+            <span className="accent-soft relative flex h-14 w-14 items-center justify-center rounded-2xl">
+              <SketchFrame className="stroke-[var(--accent)]/45" inset={1} />
+              <Icon className="accent-text relative h-7 w-7" />
             </span>
             <div className="flex items-center gap-2">
               {mastery.tier === 'mastered' && (

@@ -65,6 +65,13 @@ interface ShapeProps {
   className?: string
   /** Tailwind stroke class for the hatching, e.g. "stroke-amber-400". */
   fillClassName?: string
+  /**
+   * Literal outline colour, for scenes that carry their palette in data rather
+   * than in Tailwind classes. Wins over `className` because it lands inline.
+   */
+  stroke?: string
+  /** Literal hatching colour. Presence of either fill prop enables hatching. */
+  hatchStroke?: string
   /** Override the pen. */
   options?: Options
   seed?: number
@@ -77,22 +84,28 @@ interface RoughRectProps extends ShapeProps {
   height: number
 }
 
-export function RoughRect({ x, y, width, height, className, fillClassName, options, seed }: RoughRectProps) {
+export function RoughRect({ x, y, width, height, className, fillClassName, stroke, hatchStroke, options, seed }: RoughRectProps) {
   const s = seed ?? seedFrom(x, y, width, height)
   const { hatch, outline } = useMemo(() => {
     const opts = { ...BASE, ...options, seed: s }
     return {
-      hatch: fillClassName
+      hatch: fillClassName || hatchStroke
         ? paths(generator.rectangle(x, y, width, height, { ...opts, fill: '#000', stroke: 'none' }), 'h')
         : null,
       outline: paths(generator.rectangle(x, y, width, height, { ...opts, fill: undefined }), 'o'),
     }
-  }, [x, y, width, height, fillClassName, options, s])
+  }, [x, y, width, height, fillClassName, hatchStroke, options, s])
 
   return (
     <>
-      {hatch && <g className={cn('fill-none', fillClassName)}>{hatch}</g>}
-      <g className={cn('fill-none', className)}>{outline}</g>
+      {hatch && (
+        <g className={cn('fill-none', fillClassName)} style={hatchStroke ? { stroke: hatchStroke } : undefined}>
+          {hatch}
+        </g>
+      )}
+      <g className={cn('fill-none', className)} style={stroke ? { stroke } : undefined}>
+        {outline}
+      </g>
     </>
   )
 }
@@ -103,22 +116,28 @@ interface RoughCircleProps extends ShapeProps {
   r: number
 }
 
-export function RoughCircle({ cx, cy, r, className, fillClassName, options, seed }: RoughCircleProps) {
+export function RoughCircle({ cx, cy, r, className, fillClassName, stroke, hatchStroke, options, seed }: RoughCircleProps) {
   const s = seed ?? seedFrom(cx, cy, r)
   const { hatch, outline } = useMemo(() => {
     const opts = { ...BASE, ...options, seed: s }
     return {
-      hatch: fillClassName
+      hatch: fillClassName || hatchStroke
         ? paths(generator.circle(cx, cy, r * 2, { ...opts, fill: '#000', stroke: 'none' }), 'h')
         : null,
       outline: paths(generator.circle(cx, cy, r * 2, { ...opts, fill: undefined }), 'o'),
     }
-  }, [cx, cy, r, fillClassName, options, s])
+  }, [cx, cy, r, fillClassName, hatchStroke, options, s])
 
   return (
     <>
-      {hatch && <g className={cn('fill-none', fillClassName)}>{hatch}</g>}
-      <g className={cn('fill-none', className)}>{outline}</g>
+      {hatch && (
+        <g className={cn('fill-none', fillClassName)} style={hatchStroke ? { stroke: hatchStroke } : undefined}>
+          {hatch}
+        </g>
+      )}
+      <g className={cn('fill-none', className)} style={stroke ? { stroke } : undefined}>
+        {outline}
+      </g>
     </>
   )
 }
@@ -130,33 +149,43 @@ interface RoughLineProps extends ShapeProps {
   y2: number
 }
 
-export function RoughLine({ x1, y1, x2, y2, className, options, seed }: RoughLineProps) {
+export function RoughLine({ x1, y1, x2, y2, className, stroke, options, seed }: RoughLineProps) {
   const s = seed ?? seedFrom(x1, y1, x2, y2)
   const line = useMemo(
     () => paths(generator.line(x1, y1, x2, y2, { ...BASE, ...options, seed: s }), 'l'),
     [x1, y1, x2, y2, options, s],
   )
-  return <g className={cn('fill-none', className)}>{line}</g>
+  return (
+    <g className={cn('fill-none', className)} style={stroke ? { stroke } : undefined}>
+      {line}
+    </g>
+  )
 }
 
 interface RoughPathProps extends ShapeProps {
   d: string
 }
 
-export function RoughPath({ d, className, fillClassName, options, seed }: RoughPathProps) {
+export function RoughPath({ d, className, fillClassName, stroke, hatchStroke, options, seed }: RoughPathProps) {
   const s = seed ?? seedFrom(d.length, d.charCodeAt(0) || 1)
   const { hatch, outline } = useMemo(() => {
     const opts = { ...BASE, ...options, seed: s }
     return {
-      hatch: fillClassName ? paths(generator.path(d, { ...opts, fill: '#000', stroke: 'none' }), 'h') : null,
+      hatch: fillClassName || hatchStroke ? paths(generator.path(d, { ...opts, fill: '#000', stroke: 'none' }), 'h') : null,
       outline: paths(generator.path(d, { ...opts, fill: undefined }), 'o'),
     }
-  }, [d, fillClassName, options, s])
+  }, [d, fillClassName, hatchStroke, options, s])
 
   return (
     <>
-      {hatch && <g className={cn('fill-none', fillClassName)}>{hatch}</g>}
-      <g className={cn('fill-none', className)}>{outline}</g>
+      {hatch && (
+        <g className={cn('fill-none', fillClassName)} style={hatchStroke ? { stroke: hatchStroke } : undefined}>
+          {hatch}
+        </g>
+      )}
+      <g className={cn('fill-none', className)} style={stroke ? { stroke } : undefined}>
+        {outline}
+      </g>
     </>
   )
 }

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -236,7 +237,14 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
               const y = baseY - (row + 1) * floorH
               return (
                 <g key={i}>
-                  <rect x={374 + shear} y={y} width="52" height={floorH - 2} rx="3" fill={core.fill} className="stroke-black/15" strokeWidth="1" />
+                  <RoughRect
+                    x={374 + shear}
+                    y={y}
+                    width={52}
+                    height={floorH - 2}
+                    stroke="rgba(0,0,0,0.45)"
+                    hatchStroke={core.fill}
+                  />
                   <rect x={382 + shear} y={y + 6} width="12" height="10" rx="2" className="fill-sky-200/80 dark:fill-sky-900" />
                   <rect x={404 + shear} y={y + 6} width="12" height="10" rx="2" className="fill-sky-200/80 dark:fill-sky-900" />
                 </g>

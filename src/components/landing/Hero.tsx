@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowDown, Compass, HeartHandshake, Timer } from 'lucide-react'
 import { buttonClasses } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { RoughLine } from '@/components/ui/Sketchy'
 
 const chips = [
   { icon: Compass, text: '11 fields to explore' },
@@ -11,7 +12,7 @@ const chips = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section className="paper-grid-lg relative overflow-hidden">
       {/* Soft floating color blobs behind the headline. */}
       <div aria-hidden className="absolute inset-0 -z-10">
         <motion.div
@@ -43,23 +44,19 @@ export function Hero() {
             Explore{' '}
             <span className="relative inline-block">
               Engineering
-              <svg
+              <motion.svg
                 aria-hidden
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 300 12"
+                className="absolute -bottom-3 left-0 w-full overflow-visible"
+                viewBox="0 0 300 16"
                 preserveAspectRatio="none"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
               >
-                <motion.path
-                  d="M3 9 Q 50 2 100 8 T 200 7 T 297 5"
-                  fill="none"
-                  stroke="#f2695c"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
-                />
-              </svg>
+                {/* Two passes, the way you underline something by hand. */}
+                <RoughLine x1={4} y1={8} x2={296} y2={6} stroke="#f2695c" options={{ roughness: 2.2, strokeWidth: 4 }} seed={7} />
+                <RoughLine x1={10} y1={12} x2={288} y2={11} stroke="#f2695c" options={{ roughness: 2.6, strokeWidth: 3 }} seed={21} />
+              </motion.svg>
             </span>
           </h1>
 
