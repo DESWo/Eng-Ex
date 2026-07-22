@@ -62,7 +62,7 @@ export function AboutPage() {
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {aboutGoal.pillars.map(({ icon: Icon, label, text }) => (
             <motion.div key={label} variants={fadeUp}>
-              <Card className="h-full p-5">
+              <Card sketch className="h-full p-5">
                 <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 dark:bg-white/10">
                   <Icon className="h-6 w-6 text-ink-soft dark:text-stone-300" />
                 </span>

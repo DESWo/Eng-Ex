@@ -45,7 +45,7 @@ export function HowItWorks() {
       >
         {steps.map(({ icon: Icon, title, body }, i) => (
           <motion.div key={title} variants={fadeUp}>
-            <Card className="h-full p-6">
+            <Card sketch className="h-full p-6">
               <div className="mb-4 flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-stone-100 font-display text-sm font-bold dark:bg-white/10">
                   {i + 1}
