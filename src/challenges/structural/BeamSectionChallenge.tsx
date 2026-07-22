@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
+import { RoughCircle, RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
@@ -132,6 +133,10 @@ const LEVELS: ChallengeLevel<SectionSetup>[] = [
   },
 ]
 
+/** Pen and hatching for the cross section drawing. */
+const INK = 'stroke-slate-700 dark:stroke-slate-200'
+const HATCH = 'stroke-slate-500 dark:stroke-slate-400'
+
 export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
   const lv = useLevels('beam-section', LEVELS)
   const setup = lv.level.setup
@@ -249,28 +254,48 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
             Cross section
           </text>
 
-          {/* the section itself */}
-          <g className="fill-slate-500 dark:fill-slate-400">
-            {key === 'solid' && <rect x={x0} y={y0} width={w} height={h} rx="2" />}
+          {/*
+           * The section, drawn as a hatched engineering cross section. Steel is
+           * conventionally shown hatched rather than filled, so this is closer
+           * to a real drawing than the solid blocks it replaces.
+           */}
+          <g className="pointer-events-none">
+            {key === 'solid' && (
+              <RoughRect x={x0} y={y0} width={w} height={h} className={INK} fillClassName={HATCH} />
+            )}
             {key === 'ibeam' && (
               <>
-                <rect x={x0} y={y0} width={w} height={10 * px} />
-                <rect x={x0} y={y0 + h - 10 * px} width={w} height={10 * px} />
-                <rect x={CX - (8 * px) / 2} y={y0 + 10 * px} width={8 * px} height={Math.max(0, h - 20 * px)} />
+                <RoughRect x={x0} y={y0} width={w} height={10 * px} className={INK} fillClassName={HATCH} />
+                <RoughRect x={x0} y={y0 + h - 10 * px} width={w} height={10 * px} className={INK} fillClassName={HATCH} />
+                <RoughRect
+                  x={CX - (8 * px) / 2}
+                  y={y0 + 10 * px}
+                  width={8 * px}
+                  height={Math.max(0, h - 20 * px)}
+                  className={INK}
+                  fillClassName={HATCH}
+                />
               </>
             )}
             {key === 'box' && (
               <>
-                <rect x={x0} y={y0} width={w} height={8 * px} />
-                <rect x={x0} y={y0 + h - 8 * px} width={w} height={8 * px} />
-                <rect x={x0} y={y0} width={8 * px} height={h} />
-                <rect x={x0 + w - 8 * px} y={y0} width={8 * px} height={h} />
+                <RoughRect x={x0} y={y0} width={w} height={8 * px} className={INK} fillClassName={HATCH} />
+                <RoughRect x={x0} y={y0 + h - 8 * px} width={w} height={8 * px} className={INK} fillClassName={HATCH} />
+                <RoughRect x={x0} y={y0} width={8 * px} height={h} className={INK} fillClassName={HATCH} />
+                <RoughRect x={x0 + w - 8 * px} y={y0} width={8 * px} height={h} className={INK} fillClassName={HATCH} />
               </>
             )}
             {key === 'tube' && (
               <>
-                <circle cx={CX} cy={CY} r={h / 2} />
-                <circle cx={CX} cy={CY} r={Math.max(0, h / 2 - 8 * px)} className="fill-stone-100 dark:fill-[#1b222b]" />
+                <RoughCircle cx={CX} cy={CY} r={h / 2} className={INK} fillClassName={HATCH} />
+                {/* Masks the hatching so only the wall of the tube stays filled. */}
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={Math.max(0, h / 2 - 8 * px)}
+                  className="fill-stone-100 dark:fill-[#1b222b]"
+                />
+                <RoughCircle cx={CX} cy={CY} r={Math.max(0, h / 2 - 8 * px)} className={INK} />
               </>
             )}
           </g>
