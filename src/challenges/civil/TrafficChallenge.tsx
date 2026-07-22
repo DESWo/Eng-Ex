@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +18,8 @@ import { cn } from '@/lib/utils'
 const CYCLE = 60 // seconds in one full light cycle
 const CARS_PER_GREEN_SECOND = 0.5 // cars that clear the light per green second
 const LOST_PER_PHASE = 4 // amber + all-red clearance wasted at every phase change
+const SIM_SPEED = 9 // the one-minute cycle plays out this many times faster on screen
+const TICK_MS = 50 // animation tick
 
 interface TrafficSetup {
   label: string
@@ -127,8 +131,13 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const lost = round.lostTime ? LOST_PER_PHASE * phases : 0
   const available = CYCLE - round.ped - lost
 
-  const [greenNS, setGreenNS] = useState(Math.round(available / 2))
+  const [greenNS, setGreenNS] = useState(6)
   const [phase, setPhase] = useState<Phase>('idle')
+  /** Where we are inside the running cycle, in cycle seconds (0..CYCLE). */
+  const [simT, setSimT] = useState(0)
+  const simQ = useRef({ ns: 0, ew: 0 })
+  const simInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
   const [showQueues, setShowQueues] = useState(true)
   const barRef = useRef<HTMLDivElement | null>(null)
   const draggingSplit = useRef(false)
@@ -138,7 +147,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const greenEW = available - greenNS
 
   useEffect(() => {
-    setGreenNS(Math.round(available / 2))
+    setGreenNS(6)
     setPhase('idle')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
@@ -196,27 +205,60 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const run = () => {
     if (phase === 'running') return
     setPhase('running')
-    timerRef.current = setTimeout(() => {
-      if (okNS && okEW) {
-        setPhase('passed')
-        lv.clearLevel(lv.level.metrics ? { total: totalDelay, worst: worstDelay } : undefined)
-        if (!completedRef.current) {
-          completedRef.current = true
-          onComplete()
+    setSimT(0)
+    simQ.current = { ns: 0, ew: 0 }
+    if (simInterval.current) clearInterval(simInterval.current)
+    let t = 0
+    simInterval.current = setInterval(() => {
+      const dt = (TICK_MS / 1000) * SIM_SPEED
+      t += dt
+      // Arrivals trickle in the whole minute; the stop line only clears on green.
+      const q = simQ.current
+      q.ns += (round.ns / 60) * dt
+      q.ew += (round.ew / 60) * dt
+      if (t < greenNS) q.ns = Math.max(0, q.ns - CARS_PER_GREEN_SECOND * dt)
+      else if (t < greenNS + greenEW) q.ew = Math.max(0, q.ew - CARS_PER_GREEN_SECOND * dt)
+      setSimT(Math.min(CYCLE, t))
+      if (t >= CYCLE) {
+        if (simInterval.current) clearInterval(simInterval.current)
+        if (okNS && okEW) {
+          setPhase('passed')
+          lv.clearLevel(lv.level.metrics ? { total: totalDelay, worst: worstDelay } : undefined)
+          if (!completedRef.current) {
+            completedRef.current = true
+            onComplete()
+          }
+        } else {
+          if (att.spend()) {
+            setGreenNS(6)
+            att.refill()
+          }
+          setPhase('failed')
         }
-      } else {
-        setPhase('failed')
       }
-    }, 2300)
+    }, TICK_MS)
   }
 
   const reset = () => {
-    setGreenNS(Math.round(available / 2))
+    if (simInterval.current) clearInterval(simInterval.current)
+    setGreenNS(6)
     setPhase('idle')
+    setSimT(0)
   }
 
+  useEffect(() => () => {
+    if (simInterval.current) clearInterval(simInterval.current)
+  }, [])
+
+  /* What the signals show right now, derived from where we are in the cycle. */
+  const running = phase === 'running'
+  const nsGo = running && simT < greenNS
+  const ewGo = running && simT >= greenNS && simT < greenNS + greenEW
+  const walkNow = running && simT >= greenNS + greenEW && round.ped > 0
+  const qNS = running ? simQ.current.ns : 0
+  const qEW = running ? simQ.current.ew : 0
+
   const won = phase === 'passed'
-  const carCount = (perMin: number) => Math.max(1, Math.min(7, Math.round(perMin / 3)))
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -225,6 +267,13 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.queues ? <InsightToggle label="queues" on={showQueues} onChange={setShowQueues} /> : undefined}
+      />
+
+      <Objective
+        goal={`Give both roads enough green to clear their traffic (NS needs ${round.ns}/min, EW ${round.ew}/min; a road clears ${CARS_PER_GREEN_SECOND} car per green second)`}
+        status={`this split clears NS ${capNS.toFixed(0)}/min, EW ${capEW.toFixed(0)}/min`}
+        attemptsLeft={att.left}
+        met={phase === 'passed'}
       />
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -239,46 +288,98 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         </div>
       </div>
 
-      {/* Scene: a bird's eye intersection */}
+      {/* Scene: the junction actually runs the cycle you set */}
       <div className="overflow-hidden rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/40">
-        <svg viewBox="0 0 800 280" className="w-full" role="img" aria-label="Intersection scene">
-          <rect x="0" y="190" width="800" height="64" className="fill-stone-500 dark:fill-stone-700" />
-          <rect x="360" y="0" width="44" height="280" className="fill-stone-500 dark:fill-stone-700" />
-          <line x1="0" y1="222" x2="352" y2="222" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
-          <line x1="412" y1="222" x2="800" y2="222" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
-          <line x1="382" y1="0" x2="382" y2="182" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
+        <svg viewBox="0 0 800 300" className="w-full" role="img" aria-label="Intersection running the light cycle">
+          {/* roads */}
+          <rect x="0" y="200" width="800" height="64" className="fill-stone-500 dark:fill-stone-700" />
+          <rect x="360" y="0" width="44" height="300" className="fill-stone-500 dark:fill-stone-700" />
+          <line x1="0" y1="232" x2="352" y2="232" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
+          <line x1="412" y1="232" x2="800" y2="232" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
+          <line x1="382" y1="0" x2="382" y2="192" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
 
-          {Array.from({ length: carCount(round.ns) }, (_, i) => (
-            <motion.rect
-              key={`ns-${i}`}
-              x="372"
-              y={20 + i * 32}
-              width="20"
-              height="26"
-              rx="5"
-              className={i % 2 === 0 ? 'fill-rose-400' : 'fill-sky-400'}
-              animate={phase === 'running' && okNS ? { y: 120 } : { y: 0 }}
-              transition={{ duration: 1.9, ease: 'easeIn', delay: i * 0.09 }}
-            />
+          {/* zebra crossing, striped while the walk phase is on */}
+          {round.ped > 0 && (
+            <g>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <rect key={i} x={412 + i * 9} y="206" width="5" height="52" rx="2" className={walkNow ? 'fill-white' : 'fill-white/35'} />
+              ))}
+              {walkNow && (
+                <motion.circle
+                  r="7"
+                  cx="434"
+                  className="fill-amber-300"
+                  initial={{ cy: 196 }}
+                  animate={{ cy: 268 }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                />
+              )}
+            </g>
+          )}
+
+          {/* signal heads: one facing each road, wired to the real cycle position */}
+          <g>
+            <rect x="330" y="150" width="22" height="44" rx="7" className="fill-stone-800 dark:fill-stone-900" />
+            <circle cx="341" cy="163" r="7" className={running && !nsGo ? 'fill-rose-500' : 'fill-rose-900/40'} />
+            <circle cx="341" cy="181" r="7" className={nsGo ? 'fill-emerald-400' : 'fill-emerald-900/40'} />
+            <text x="341" y="142" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">NS</text>
+          </g>
+          <g>
+            <rect x="415" y="150" width="44" height="22" rx="7" className="fill-stone-800 dark:fill-stone-900" />
+            <circle cx="428" cy="161" r="7" className={running && !ewGo ? 'fill-rose-500' : 'fill-rose-900/40'} />
+            <circle cx="446" cy="161" r="7" className={ewGo ? 'fill-emerald-400' : 'fill-emerald-900/40'} />
+            <text x="470" y="166" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">EW</text>
+          </g>
+
+          {/* queued cars: one rect per waiting car, stacked back from the stop line */}
+          {Array.from({ length: Math.min(9, Math.round(running ? qNS : round.ns / 3)) }, (_, i) => (
+            <rect key={`qns-${i}`} x="366" y={168 - i * 32} width="14" height="24" rx="4" className={i % 2 === 0 ? 'fill-rose-400' : 'fill-sky-400'} />
           ))}
-          {Array.from({ length: carCount(round.ew) }, (_, i) => (
-            <motion.rect
-              key={`ew-${i}`}
-              x={30 + i * 40}
-              y="212"
-              width="26"
-              height="20"
-              rx="5"
-              className={i % 2 === 0 ? 'fill-amber-400' : 'fill-violet-400'}
-              animate={phase === 'running' && okEW ? { x: 140 } : { x: 0 }}
-              transition={{ duration: 1.9, ease: 'easeIn', delay: i * 0.09 }}
-            />
+          {Array.from({ length: Math.min(9, Math.round(running ? qEW : round.ew / 3)) }, (_, i) => (
+            <rect key={`qew-${i}`} x={330 - i * 38} y="236" width="24" height="14" rx="4" className={i % 2 === 0 ? 'fill-amber-400' : 'fill-violet-400'} />
           ))}
 
+          {/* cars streaming through while their light is green */}
+          {nsGo && (
+            <motion.rect
+              key="flow-ns"
+              x="384"
+              width="14"
+              height="24"
+              rx="4"
+              className="fill-sky-400"
+              initial={{ y: 150 }}
+              animate={{ y: 310 }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            />
+          )}
+          {ewGo && (
+            <motion.rect
+              key="flow-ew"
+              y="210"
+              width="24"
+              height="14"
+              rx="4"
+              className="fill-amber-400"
+              initial={{ x: 330 }}
+              animate={{ x: 820 }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            />
+          )}
+
+          {/* cycle clock */}
+          {running && (
+            <g>
+              <rect x="640" y="20" width="140" height="34" rx="10" className="fill-white/80 dark:fill-black/40" />
+              <text x="710" y="42" textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink font-display tabular-nums dark:fill-stone-100">
+                {Math.floor(simT)}s / {CYCLE}s
+              </text>
+            </g>
+          )}
           <text x="415" y="30" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
             {round.ns}/min from the north
           </text>
-          <text x="30" y="180" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
+          <text x="30" y="188" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
             {round.ew}/min from the west
           </text>
         </svg>
