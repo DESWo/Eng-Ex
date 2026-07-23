@@ -377,10 +377,25 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
             <motion.div
               key={circuit.id}
               onClick={() => placeSelected(circuit.id)}
+              // With an appliance picked up, the circuit is a drop target, so it
+              // has to be reachable and actionable by keyboard, not just click.
+              role={selectedId ? 'button' : undefined}
+              tabIndex={selectedId ? 0 : undefined}
+              aria-label={
+                selectedId && selectedAppliance
+                  ? `Put ${selectedAppliance.label} on ${circuit.label}`
+                  : undefined
+              }
+              onKeyDown={(e) => {
+                if (selectedId && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault()
+                  placeSelected(circuit.id)
+                }
+              }}
               animate={phase === 'testing' ? { opacity: [1, 0.6, 1, 0.7, 1] } : { opacity: 1 }}
               transition={{ duration: 0.8 }}
               className={cn(
-                'rounded-2xl border-2 p-4 transition-colors duration-200',
+                'rounded-2xl border-2 p-4 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2',
                 selectedId && 'accent-border cursor-pointer border-dashed',
                 !selectedId && isTripped && 'border-rose-400 bg-rose-50 dark:border-rose-500/50 dark:bg-rose-500/10',
                 !selectedId && !isTripped && phase === 'passed' && 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10',

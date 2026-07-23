@@ -289,6 +289,15 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       setSelected(null)
       return
     }
+    // A wire straight across a part's own two terminals is a dead short: current
+    // skips the part entirely and the whole board reads as broken with no clue
+    // why. Refuse it and say so, rather than letting it quietly kill the level.
+    const partOf = (t: string) => t.slice(0, t.lastIndexOf('.'))
+    if (partOf(selected) === partOf(id)) {
+      setVerdict({ ok: false, text: 'That wire shorts the part out: its two terminals must reach the rest of the circuit, not each other.' })
+      setSelected(null)
+      return
+    }
     const key = wireKey(selected, id)
     if (!wires.some(([a, b]) => wireKey(a, b) === key)) {
       setWires((prev) => [...prev, [selected, id]])

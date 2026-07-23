@@ -344,6 +344,14 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
                   <text x={x} y={BEAM_Y - 6 - size / 2 + 5} textAnchor="middle" fontSize="14" fontWeight="700" className="fill-white font-display">
                     {crate.weight}
                   </text>
+                  {/*
+                   * The notch each crate sits on, right under it. Without this
+                   * the early levels play as guess-and-check, because the crate
+                   * sits between the ruler marks and you cannot read its arm.
+                   */}
+                  <text x={x} y={BEAM_Y + 20} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-mono dark:fill-stone-400">
+                    {crate.pos > 0 ? `+${crate.pos}` : crate.pos}
+                  </text>
                 </g>
               )
             })}
@@ -367,6 +375,9 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
                 className="fill-white font-display"
               >
                 {weight}
+              </text>
+              <text x={CENTER_X + mark * PX_PER_MARK} y={BEAM_Y + 20} textAnchor="middle" fontSize="11" fontWeight="700" className="accent-text font-mono">
+                {mark > 0 ? `+${mark}` : mark}
               </text>
             </g>
           </g>

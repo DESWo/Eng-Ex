@@ -87,8 +87,12 @@ const LEVELS: ChallengeLevel<SlotSetup>[] = [
     teach: 'Heavy things want the front to save backs, busy things want the front to save time, and a busy front aisle jams up with pickers. All three cannot have it.',
     setup: { maxWalk: null, maxEffort: null, weighted: true, readout: true, brief: 'Sign off the layout the warehouse will actually be built to.' },
     metrics: [
+      // Walking wants the busy items forward, carrying wants the heavy ones
+      // forward, and they are different items. The walk par is set to 440
+      // deliberately: the lightest-carrying layout still walks 470, so no
+      // single arrangement can beat both at once. You have to pick two.
       { id: 'effort', label: 'Carrying work', goal: 'min', target: 1250 },
-      { id: 'walk', label: 'Walking', goal: 'min', target: 760 },
+      { id: 'walk', label: 'Walking', goal: 'min', target: 440 },
       { id: 'front', label: 'Front aisle traffic', goal: 'min', target: 32, unit: ' trips' },
     ],
   },

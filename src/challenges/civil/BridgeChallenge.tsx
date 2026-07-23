@@ -227,11 +227,14 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const svgPoint = (event: { clientX: number; clientY: number }) => {
     const svg = svgRef.current
     if (!svg) return null
+    // A synthetic or malformed event can arrive without real coordinates. Bail
+    // rather than snap NaN into a joint at NaN,NaN that nothing can select or clear.
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return null
     const rect = svg.getBoundingClientRect()
-    return {
-      x: snap(((event.clientX - rect.left) / rect.width) * VIEW_W, MIN_X, MAX_X),
-      y: snap(((event.clientY - rect.top) / rect.height) * VIEW_H, MIN_Y, MAX_Y),
-    }
+    const x = snap(((event.clientX - rect.left) / rect.width) * VIEW_W, MIN_X, MAX_X)
+    const y = snap(((event.clientY - rect.top) / rect.height) * VIEW_H, MIN_Y, MAX_Y)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+    return { x, y }
   }
 
   const pushHistory = () =>
