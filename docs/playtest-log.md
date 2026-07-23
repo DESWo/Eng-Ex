@@ -337,3 +337,37 @@ L3 is the subtle beat: two footings each "safe" on pressure still crack the
 building if one sinks twice as far. Verified against the settlement model
 (diff must stay under 8 mm). No bugs found.
 
+## Systems Engineering
+
+### Mission Budget — Fun 7.5/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Science 20, comms 15: all four checks green | The rocket-builder-menu framing works; dealing out mass blocks is satisfying. |
+| 5 | Science 25, comms 20, power 25, thermal 25: cleared for launch | The coupling is the whole lesson: more science needs more power AND more cooling, both eating the mass you wanted for science. |
+
+L3 is where it bites: adding one subsystem pulls on two others, so a balanced
+build beats a greedy one. Verified against the yield/demand model. No bugs found.
+Note: mass-block buttons need ~190ms spacing or React batches the clicks (a
+scripting quirk, not a user-facing bug).
+
+### Backup Plan (Redundancy) — Fun 8/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | One spare sensor: odds 87.9% -> 94.9% | Spare the WEAKEST part, not the most important: the sensor (0.92) buys the most. |
+| 5 | Spare comms + spare sensor: 97.79% at 165 kg, $640 — all three pars | Redundancy pays where things break, not where they feel important. |
+
+L3 is the sharp lesson: a spare computer adds almost nothing (it was already
+going to survive) while a spare sensor adds ~7 points. Verified against the
+1-(1-r)^(1+spares) reliability model. The best game in the field. No bugs found.
+
+### Critical Path — Fun 7/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Crashed Build frame by 2 days: finished 14 of 14 | Only the longest chain matters; speedrun-route framing lands it. |
+| 5 | Crashed frame by 3 + assemble by 1: hit the 12-day deadline | The critical path shifts as you crash it, so the next dollar goes somewhere new. |
+
+L3 is the counterintuitive beat: money spent speeding up an off-path task
+(Order parts, Software) moves the finish date by exactly zero, because a
+different chain is what the project waits on. Verified against the CPM
+schedule. The slack/critical-path readout at L4 makes it visible. No bugs found.
+
