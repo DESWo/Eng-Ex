@@ -210,3 +210,68 @@ finished level; the won-guard correctly ignored the stray confirm.
 
 No bugs found.
 
+## Robotics Engineering
+
+### Claw Machine — Fun 8.5/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Keyboard-walked the claw onto the plush, dropped: clean grab | The arcade-claw skin over real inverse kinematics is the app's best disguise for a hard idea. |
+| 5 | All three prizes in order, one elbow flip for the far-low one, 238° travel vs 420° par, no coins lost | Prize 3 is only reachable elbow-down (checked: elbow-up is out of limits), so the flip is forced, exactly the L3 lesson paying off. |
+
+The hold-to-grab + coins rework holds up; a fumbled grab genuinely costs a coin.
+No bugs found.
+
+### Line Follower — Fun 7.5/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Default gain, ran: made it in 247 ticks, 6.1 px drift | Racing-kart tuning framing reads well; a gentle curve forgives a rough gain. |
+| 5 | Gain 5 + damping 42 at Quick: 159 ticks, 10.7 px drift, beat all three pars | The wide-open track rewards damping over raw gain, the field's PD-control lesson. |
+
+L3 is the counterintuitive beat (more gain makes the twitchy line worse; only
+damping settles it, verified: gain-alone runs lose the line). No bugs found.
+
+### Safe Grip — Fun 7/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Rubber, static squeeze 190 through the lift: held, never closer than 26 to a line | The Operation-style live ride is tense in the right way; the slip line rising under acceleration is a real gotcha. |
+| 5 | Foam, gentle lift, grip 84 vs par 90: held, 28 of margin | Foam's wide window (slip ~46, crush ~150) lets you sit low and beat the grip metric; rubber's window (59-88) is a knife-edge by comparison. |
+
+L3 (bare bulb) is the hard pivot: the grip that stops the slip is the grip that
+shatters it on rubber, so only foam works (verified: rubber slip 16 > crush 15).
+The live ride completes correctly on an absolute wall clock. No bugs found.
+
+## Industrial Engineering
+
+### Assembly Line — Fun 7.5/10 · Difficulty 6/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Two workers each on the three stations: hit 5/min | The kitchen-rush framing works; adding people to a station visibly splits its time. |
+| 5 | Phone line 2/3/2/2/1: 6.7/min at 87% busy on 10 workers, all three pars | The bottleneck rule is the lesson: workers anywhere but the slow station do nothing. Verified by allocation scan. |
+
+L2's teaching line (the line runs at its slowest station, not one item faster)
+is the most important sentence in the field and the sim proves it. No bugs found.
+
+### Quality Gate — Fun 8/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | One desk after Electronics: escapes fell to 8 of 1000 | The inspection-desk skin over a real cost model is genuinely clever. |
+| 5 | Desks after Paint and Electronics: 8 escapes, 2,688 inspection, 6,517 waste | 2 of 3 pars (inspection 88 over) — and a full desk scan confirms NO layout hits all three, exactly the intended tradeoff. |
+
+L3 is the standout lesson: end-of-line checking catches everything and still
+loses money, because you scrapped units with the electronics already fitted.
+Verified against the cost model (all-end-gates = 17,821 total). No bugs found.
+
+### Warehouse Layout — Fun 7/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Busiest items (Bolts, Screws) to the front aisle: 250 steps, the minimum | Trips-times-distance made tangible; the busy-to-front instinct is right and rewarded. |
+| 5 | Heavy items (Timber, Cement) to the front: best run 1,148 effort / 470 walk / 14 front trips | The heavy-to-front layout beats all three pars. |
+
+**Finding W1 (minor, design):** L5's copy says "all three cannot have it,"
+but a full 3^6 layout scan shows the heavy-to-front arrangement clears all
+three pars at once (effort 1,148, walk 470, front 14). The tension between
+walking (wants busy-to-front) and carrying (wants heavy-to-front) is real, but
+the current pars are loose enough that one layout wins outright. Tightening the
+walking par toward ~430 or the front-traffic par would restore the intended
+"pick two" tension. Still clears and teaches as is.
+
