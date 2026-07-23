@@ -162,7 +162,7 @@ export function DisciplineGrid() {
           Choose a field to study
         </h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
-          Three core fields to start, eight more to unlock, zero tests.
+          Three core fields to start, nine more to unlock, zero tests.
         </p>
       </Reveal>
 

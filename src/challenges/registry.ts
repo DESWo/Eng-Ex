@@ -158,4 +158,16 @@ export const challengeRegistry: Record<string, RegisteredChallenge> = {
     () => import('@/challenges/environmental/StormwaterChallenge'),
     (m) => m.StormwaterChallenge,
   ),
+  reaction: lazyChallenge(
+    () => import('@/challenges/chemical/ReactionChallenge'),
+    (m) => m.ReactionChallenge,
+  ),
+  'heat-exchanger': lazyChallenge(
+    () => import('@/challenges/chemical/HeatExchangerChallenge'),
+    (m) => m.HeatExchangerChallenge,
+  ),
+  titration: lazyChallenge(
+    () => import('@/challenges/chemical/TitrationChallenge'),
+    (m) => m.TitrationChallenge,
+  ),
 }

@@ -17,6 +17,7 @@ import {
   Feather,
   Filter,
   Flame,
+  FlaskConical,
   Gauge,
   Lightbulb,
   Move,
@@ -34,6 +35,7 @@ import {
   Snowflake,
   Sprout,
   Target,
+  Thermometer,
   Timer,
   ToggleLeft,
   TrendingUp,
@@ -1199,6 +1201,131 @@ export const disciplines: Discipline[] = [
       experiment:
         'Add more layers or finer sand and pour again. More stages catch more dirt, just like adding filters in the game. (Still do not drink it!)',
       safety: 'This water is clearer, not safe to drink. It is a demo only.',
+    },
+  },
+  {
+    slug: 'chemical',
+    name: 'Chemical Engineering',
+    shortName: 'Chemical',
+    tagline: 'Turn raw stuff into fuels, medicines, and materials.',
+    description:
+      'Fuels, plastics, medicines, clean water, food. Chemical engineers run the reactions and separations that make almost everything you use.',
+    icon: FlaskConical,
+    accent: '#c026d3',
+    tier: 'more',
+    parent: 'civil',
+    difficulty: 'Advanced',
+    intro: {
+      heading: 'What do chemical engineers do?',
+      paragraphs: [
+        'Chemical engineers take raw ingredients and turn them into useful things at enormous scale: petrol, plastics, fertiliser, medicine, even the fizz in your drink.',
+        'They design reactors that make new molecules, and separators that pull the good stuff out of the mix, all while saving as much energy as they can.',
+      ],
+      builds: ['Reactors', 'Distillation columns', 'Heat exchangers', 'Fuel refineries', 'Medicine plants', 'Water treatment'],
+      challengeTeaser:
+        'A reactor is running cold and slow. Warm it up to make product, but not so hot that the reaction turns back on you.',
+    },
+    challenges: [
+      {
+        id: 'reaction',
+        title: 'Sweet Spot',
+        goal: 'Get the yield up',
+        realJob: 'Process engineers pick the operating temperature of every industrial reactor against exactly this rate-versus-equilibrium trade.',
+        why: [
+          {
+            icon: Flame,
+            title: 'Heat speeds a reaction up',
+            body: 'Molecules have to collide hard enough to react, and a hotter reactor means faster, harder collisions. Cold reactors barely go, which is why almost every industrial reaction runs warm.',
+          },
+          {
+            icon: Gauge,
+            title: 'But heat can push it backwards',
+            body: 'Many reactions give off heat, and adding heat to those shoves the balance back towards the ingredients. The ceiling on how much product you can ever make falls as the reactor gets hotter, so the best yield sits at a warm middle, not at the top of the dial.',
+          },
+          {
+            icon: Timer,
+            title: 'Time trades against temperature',
+            body: 'A long slow bake reaches the same place on less heat but ties the reactor up; a fast hot run frees it sooner but costs fuel and yield. Choosing that operating point is the daily work of process engineering.',
+          },
+        ],
+      },
+      {
+        id: 'heat-exchanger',
+        title: 'Counterflow',
+        goal: 'Recover the heat',
+        realJob: 'Every refinery and power plant recovers waste heat with exchangers like this, and counter-current is the default for exactly this reason.',
+        why: [
+          {
+            icon: Thermometer,
+            title: 'Direction decides everything',
+            body: 'Run two fluids the same way through an exchanger and they both race to one shared temperature in the middle, where the heat swap stalls. That caps you at half the heat no matter how long the pipe.',
+          },
+          {
+            icon: Recycle,
+            title: 'Counter-current breaks the ceiling',
+            body: 'Turn one fluid around and every slice of the pipe always faces a fresh temperature gap, so the trade keeps going all the way down the length. Same hardware, nearly twice the heat, just from the direction of flow.',
+          },
+          {
+            icon: Zap,
+            title: 'Recovered heat is free energy',
+            body: 'Heat pulled out of a leaving stream and put back into an arriving one is fuel the plant never has to buy. Getting that recovery high is one of the biggest levers a chemical engineer has on running costs.',
+          },
+        ],
+      },
+      {
+        id: 'titration',
+        title: 'The Right Dose',
+        goal: 'Land on neutral',
+        realJob: 'Lab and process chemists neutralise batches to a target pH constantly, and the logarithmic cliff is exactly why it takes skill.',
+        why: [
+          {
+            icon: Droplets,
+            title: 'pH is a logarithm',
+            body: 'Each step on the pH scale is a tenfold change in acidity. That is why the flask barely moves for the first forty drops and then swings from sour to soapy across a single drop near the middle.',
+          },
+          {
+            icon: Scale,
+            title: 'The last drop is nothing like the first',
+            body: 'Far from neutral, a big pour hardly shifts the reading. Right at the equivalence point the curve is almost vertical, so control has to switch from big confident pours to tiny careful ones exactly when it matters most.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'The buffer region is the safe place to land',
+            body: 'Before the cliff, a weak acid holds a gentle buffer stretch where pours barely move the reading, so a batch can actually be parked there. It is the same trick your blood uses to keep its pH rock steady while you live.',
+          },
+        ],
+      },
+    ],
+    learn: {
+      heading: 'Why did that work?',
+      bigIdea:
+        'Chemical engineering is running reactions and separations at scale, where the obvious lever almost always has a hidden cost pulling the other way.',
+      tradeoff:
+        'Chemical engineers trade speed, yield, and purity against energy, equipment, and time.',
+      realWorld: {
+        intro: 'Your reactor and exchanger are shrunk-down versions of a real process plant.',
+        examples: [
+          'Ammonia for fertiliser is made at a warm-middle temperature for exactly the yield reason you found.',
+          'Refineries wrap themselves in counter-current exchangers to recover heat between streams.',
+          'Water and food plants neutralise batches to a target pH with the same careful last-drop control.',
+        ],
+      },
+    },
+    diy: {
+      title: 'Red cabbage pH indicator',
+      intro:
+        'Make a liquid that changes colour with acidity, the same way the flask does in the game, from things in your kitchen.',
+      materials: ['A few red cabbage leaves', 'Hot water and a bowl', 'Clear cups', 'Vinegar, lemon juice, and baking soda'],
+      steps: [
+        'Ask an adult to soak chopped red cabbage in hot water until it turns deep purple, then let it cool.',
+        'Pour the purple liquid into several clear cups.',
+        'Stir a little vinegar or lemon juice into one cup and watch it turn pink or red (acid).',
+        'Stir a pinch of baking soda into another and watch it turn blue or green (alkali).',
+        'Try adding acid then base to the same cup and neutralise it back towards purple.',
+      ],
+      experiment:
+        'Add baking soda one tiny pinch at a time to an acid cup. Notice how the colour barely moves, then changes fast, then barely moves again, exactly the pH cliff from the game.',
+      safety: 'An adult should handle the hot water. Do not drink any of the mixtures.',
     },
   },
   {
