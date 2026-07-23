@@ -275,3 +275,34 @@ the current pars are loose enough that one layout wins outright. Tightening the
 walking par toward ~430 or the front-traffic par would restore the intended
 "pick two" tension. Still clears and teaches as is.
 
+## Environmental Engineering
+
+### Solar Array — Fun 7.5/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Fit 6 panels: 30.4 kWh generated vs 19.6 used | Roof-tile placement is tactile; matching daily total is a gentle, clear opener. |
+| 5 | 5 panels + 7 battery modules: 0 kWh unmet at $7,850 of $8,000 | 2 of 3 pars (cost 50 over) — and a full panel/battery scan confirms no combo wins all three, the designed tradeoff. |
+
+L3 is the pivot: generating 3x your usage still leaves the house dark at 6pm
+because the sun is down, so the battery, not more panels, is the answer. No bugs.
+
+### Stormwater — Fun 7/10 · Difficulty 6/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Dug a 200 m³ basin: 0 overflow | A pond buys time is a clean first idea; painting the site is satisfying. |
+| 5 | 13 grass plots + a small basin: scheme cost $2,175, dry, still a car park | Well under par $5,500. Shrinking runoff at the source beats storing it, the L3 lesson. |
+
+L3 is the counterintuitive beat: no affordable pond holds the storm, but grass
+and permeable paving drink the rain before it becomes runoff. No bugs found.
+Note: the site plots paint on pointer-down/drag, not click (a genuine paint UI).
+
+### Clean Stream — Fun 8/10 · Difficulty 7.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Screen then sand filter: water runs clear | The pipe-building puzzle teaches itself; each stage pulls one thing out. |
+| 5 | Settling pond → screen → UV: cost 11, energy 7, 3 stages, all three pars | The clever answer uses the free settling pond first (it only works in still water) so UV can see through clear water. Not the obvious screen+sand+chlorine, which leaves chemicals behind. |
+
+The hardest-thinking game in the field. Order genuinely matters (trash shreds
+sand, UV cannot reach germs through murk), and the firstOnly/adds-chemicals
+catches are real engineering. No bugs found.
+
