@@ -306,3 +306,34 @@ The hardest-thinking game in the field. Order genuinely matters (trash shreds
 sand, UV cannot reach germs through murk), and the firstOnly/adds-chemicals
 catches are real engineering. No bugs found.
 
+## Structural Engineering
+
+### Sky High (Tower) — Fun 7.5/10 · Difficulty 6.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Steel core (stiffness 16 vs wind 12) | The wobbly-block-tower framing works; the sketched floors visibly shear as sway grows. |
+| 5 | Steel + wide base + damper: cost 15, sway 9.7, margin 1 — all three pars | Three ways to fight sway (stiffen, widen, tune a damper), and no single one is enough at L3, exactly the lesson. |
+
+Verified via the sway model (stiffness must beat wind; L5 needs 37 vs 36).
+No bugs found. The hatched floor slabs read well against the sky.
+
+### Beam Section — Fun 8/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Deepened the solid bar until it sagged 1.3 mm (limit 12) | Depth cubed into stiffness is tangible; the hatched cross section reads like a real drawing. |
+| 5 | I-beam at full depth: cost 27/m vs par 45, passes at 27 kg/m | The efficient I-beam beats the weight limit no solid bar can, the L3 payoff. |
+
+L3 is the standout: no solid bar passes the weight limit, because the metal
+near the neutral axis does almost nothing (verified against the inertia model).
+The stress readout at L4 draws exactly why. No bugs found.
+
+### Foundation — Fun 7/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Widened the footing to 3.0 m: holds at 150 kPa | Pressure = load over area, made physical; the hatched concrete footing looks the part. |
+| 5 | 1.5 m under the light column, 4.5 m under the heavy one: uneven sinking under 8 mm, best cost 900 | Both footings pass their own pressure check yet the frame tears unless they SINK together, the differential-settlement lesson. |
+
+L3 is the subtle beat: two footings each "safe" on pressure still crack the
+building if one sinks twice as far. Verified against the settlement model
+(diff must stay under 8 mm). No bugs found.
+
