@@ -371,3 +371,99 @@ L3 is the counterintuitive beat: money spent speeding up an off-path task
 different chain is what the project waits on. Verified against the CPM
 schedule. The slack/critical-path readout at L4 makes it visible. No bugs found.
 
+## Computer Engineering
+
+### Binary Bulbs — Fun 7.5/10 · Difficulty 5.5/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Lit 16 + 4 + 2 to make 22 | Place values doubling is a clean first idea; the lights-puzzle skin is friendly. |
+| 5 | 8-bit width, lit 128 + 16 + 4 = 148, headroom to spare | 2 of 3 pars (headroom vs width pull against each other, the designed tradeoff). |
+
+L3 (a sign bit costs half your range) is the counterintuitive beat. Easiest
+game in the field, which is right for an entry point. No bugs found.
+
+### Logic Lab — Fun 8/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | Picked AND for "both keys" | Gates-as-rules framing is clear; flipping switches to check yourself is good. |
+| 5 | Built NOR (OR + inverter bubble), proved all four truth-table rows before sign-off | The must-test-every-row gate is the standout: it teaches that a circuit and its truth table are the same thing, and that you do not ship on 3 of 4 rows. |
+
+L3 (no single gate does it, build NAND from two parts) is the real lesson.
+No bugs found. **Finding EC1 (harness only):** the inverter bubble is an SVG
+circle whose onClick reads the event; scripted `onClick({})` is ignored but a
+real click works, so no user impact. Noted only so future automation dispatches
+a real event.
+
+### Error Check — Fun 7.5/10 · Difficulty 7/10 (L1 + L5 played, L2-4 config review)
+| L | What I did | Notes |
+|---|---|---|
+| 1 | 2 check bits: 0.0% slipping through, 71% goodput | Check-bits-catch-errors lands; the sudoku-totals analogy in the teach is apt. |
+| 5 | 3 check bits at 3% noise: 0.0% silent, 70% throughput | Under all gates; check-bits ≤ 4 par. Safety-vs-speed made concrete. |
+
+L3 is the sharp turn: on a link too far away to ask for a resend, detecting an
+error is as useless as missing it, which is what forces real error correction
+(1 flip → corrected, not just flagged). Verified against the outcome model.
+No bugs found.
+
+---
+
+# Final ratings and summary
+
+All 33 games played: every game's level 1 played live, level 5 played live
+(reached via a tester level-select seed), and levels 2 to 4 verified against
+each game's own math. Every one of the 33 cleared.
+
+## The ranking, by fun
+
+| Rank | Game | Field | Fun | Difficulty |
+|---|---|---|---|---|
+| 1 | Catapult Lab | Mechanical | 9.0 | 5 |
+| 2 | Bridge Builder | Civil | 8.5 | 7 |
+| 2 | Claw Machine | Robotics | 8.5 | 6.5 |
+| 4 | Reactor Control | Nuclear | 8.5 | 6.5 |
+| 5 | Smooth Ride | Mechanical | 8.0 | 6 |
+| 5 | Power Up | Electrical | 8.0 | 6.5 |
+| 5 | Don't Trip | Electrical | 8.0 | 6 |
+| 5 | Orbit Insertion | Aerospace | 8.0 | 7 |
+| 5 | Re-entry | Aerospace | 8.0 | 6.5 |
+| 5 | Quality Gate | Industrial | 8.0 | 7 |
+| 5 | Clean Stream | Environmental | 8.0 | 7.5 |
+| 5 | Beam Section | Structural | 8.0 | 7 |
+| 5 | Backup Plan | Systems | 8.0 | 7 |
+| 5 | Logic Lab | Computer | 8.0 | 7 |
+| — | (19 more between 6.5 and 7.5) | — | — | — |
+
+Field averages (fun): Aerospace 7.8, Electrical 7.7, Systems 7.5,
+Nuclear 7.3, Civil 7.3, Robotics 7.3, Structural 7.5, Industrial 7.5,
+Environmental 7.5, Computer 7.7, Mechanical 7.8. The catalog is remarkably
+even: no field drags, and every field has at least one 8.0.
+
+## The difficulty curve
+
+Difficulty sits in a tight 5.0 to 7.5 band. Nothing is trivial and nothing
+is punishing. The signature move across the whole catalog is the same and it
+works: level 3 is always the counterintuitive turn where the obvious answer is
+wrong (resonance, blunt-beats-sharp, neutrons need hydrogen, spare the weakest
+part, crash only the critical path, detect-is-useless-when-you-cannot-resend).
+That single design rule is the app's strongest through-line.
+
+## Prioritized fix list
+
+1. **BR1 (Bridge, low):** the build canvas accepts a coordinate-less event and
+   makes a NaN,NaN joint. One-line `Number.isFinite` guard in svgPoint /
+   handleCanvasClick.
+2. **OV1 (Don't Trip, a11y):** circuit drop-targets are clickable divs with no
+   keyboard path. Add role="button" + tabIndex + Enter/Space.
+3. **W1 (Warehouse, design):** L5's "all three cannot have it" overstates the
+   tradeoff; the heavy-to-front layout wins all three pars. Tighten the walking
+   or front-traffic par to restore the intended tension.
+4. **B1 (Balance Act, minor):** crate positions are unlabeled before the L4
+   moment bars, so early levels play as guess-and-check. Add a distance label
+   under each crate from L1.
+5. **C1 (Circuit Lab, minor):** a stray wire across a bulb's own terminals
+   silently shorts the board with no feedback; refuse zero-length self-wires or
+   flag the shorting wire red.
+
+No crash bugs, no unsolvable levels, no dead-end states found in 33 games.
+The submit-gate + limited-attempts overhaul did its job: nothing clears by
+accident, and every win reads as earned.
