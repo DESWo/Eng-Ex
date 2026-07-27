@@ -64,7 +64,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Every beam costs',
     teach: 'Timber is billed by the length now. The sprawling bridge that worked when it was free suddenly prices itself out, so every beam has to earn its place.',
-    setup: { label: 'The loaded semi', load: 10, budget: 10500, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
+    setup: { label: 'The loaded semi', load: 10, budget: 10000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
   },
   {
     n: 3,
@@ -72,7 +72,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Spend strength where it goes',
     teach: 'Steel is more than twice the price but far stronger. No all-wood bridge can carry this load on budget, so the trick is steel only on the few beams doing the hardest work and wood everywhere else.',
-    setup: { label: 'The tank convoy', load: 16, budget: 15000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
+    setup: { label: 'The tank convoy', load: 16, budget: 14000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
   },
   {
     n: 4,
@@ -80,7 +80,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'analyze',
     concept: 'Tension and compression',
     teach: 'Turn on the force view. Every beam is either being stretched or squashed as the truck rolls over, and the solver knows which. Stretched beams are pulled apart, squashed ones can buckle, and buckling gives out sooner, which is why the two are drawn apart.',
-    setup: { label: 'The loaded semi', load: 14, budget: 14500, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
+    setup: { label: 'The loaded semi', load: 14, budget: 13800, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
   },
   {
     n: 5,

@@ -41,7 +41,7 @@ const LEVELS: ChallengeLevel<TrafficSetup>[] = [
     phase: 'play',
     concept: 'Green time clears cars',
     teach: 'A road only clears cars while its light is green, one car every two seconds. Drag the divider so both roads get enough green to keep up, then run the lights.',
-    setup: { label: 'A quiet morning', ns: 10, ew: 7, ped: 0, lostTime: false, queues: false, brief: 'Light traffic from two directions. Give each road enough green and everyone gets through.' },
+    setup: { label: 'A quiet morning', ns: 14, ew: 10, ped: 0, lostTime: false, queues: false, brief: 'Light traffic from two directions. Give each road enough green and everyone gets through.' },
   },
   {
     n: 2,
@@ -276,8 +276,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`Give both roads enough green to clear their traffic (NS needs ${round.ns}/min, EW ${round.ew}/min; a road clears ${CARS_PER_GREEN_SECOND} car per green second)`}
-        status={`this split clears NS ${capNS.toFixed(0)}/min, EW ${capEW.toFixed(0)}/min`}
+        goal={`Split the green so both roads clear their queues before the cycle ends (NS ${round.ns} cars/min, EW ${round.ew})`}
+        status={`your split: NS ${greenNS}s green · EW ${greenEW}s`}
         attemptsLeft={att.left}
         met={phase === 'passed'}
       />
