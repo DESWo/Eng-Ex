@@ -160,7 +160,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
       : overCost
         ? `That stack costs $${Math.round(cost)} and the budget is $${setup.costBudget}. Lead is the expensive part.`
         : neutron > gamma && neutron > setup.safeDose
-          ? `Failed: ${Math.round(neutron)} of neutrons still get through. Dense metal barely slows them, so try something light and hydrogen-rich.`
+          ? `Failed: ${Math.round(neutron)} of neutrons are still getting through, and piling on more lead is barely denting them.`
           : `Failed: ${dose < 10 ? dose.toFixed(1) : Math.round(dose)} is getting through and safe is ${setup.safeDose} or less.`
     if (att.spend()) {
       reset()

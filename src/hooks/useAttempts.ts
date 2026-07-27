@@ -22,11 +22,13 @@ export interface AttemptState {
 
 /**
  * The house rule: level 1 is unlimited (learn the controls in peace),
- * the level 5 optimization gets a longer leash, everything else gets 4.
+ * the level 5 optimization gets a longer leash to explore trade-offs, and the
+ * understand/analyze levels get 3, so a wrong guess costs something and you
+ * have to reason before you commit rather than fish for the answer.
  */
 export function attemptsFor(level: Pick<ChallengeLevel, 'n' | 'phase'>): number | null {
   if (level.n === 1) return null
-  return level.phase === 'optimize' ? 6 : 4
+  return level.phase === 'optimize' ? 5 : 3
 }
 
 export function useAttempts(allowance: number | null, levelN: number): AttemptState {

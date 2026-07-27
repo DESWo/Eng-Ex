@@ -142,9 +142,9 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
     }
     const text = overSeg
       ? `That is ${segments} sections and the limit is ${setup.maxSegments}. It has to fit in less.`
-      : flow === 'same' && setup.target > 0.5
-        ? `Stuck at ${Math.round(eff * 100)}%. Same-direction flow tops out near 50% however long you build it. Turn one fluid around.`
-        : `Only ${Math.round(eff * 100)}% crossed, and the target is ${Math.round(setup.target * 100)}%. It needs more length.`
+      : flow === 'same' && segments >= 6 && eff < setup.target
+        ? `Still stuck at ${Math.round(eff * 100)}%. You keep adding length and it has stopped helping. Target is ${Math.round(setup.target * 100)}%.`
+        : `Only ${Math.round(eff * 100)}% crossed, and the target is ${Math.round(setup.target * 100)}%.`
     if (att.spend()) {
       reset()
       att.refill()

@@ -101,7 +101,7 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     phase: 'understand',
     concept: 'Pad material',
     teach: 'This bulb cannot be held with rubber at all: the grip it takes to stop the slip is the grip that shatters it. A grippier, softer pad needs less squeeze AND spreads it over more glass.',
-    setup: { payload: PAYLOADS.bulb, pad: null, accel: 2, window: false, brief: 'A bare light bulb. Rubber pads will not do it, so swap them.' },
+    setup: { payload: PAYLOADS.bulb, pad: null, accel: 2, window: false, brief: 'A bare light bulb: thin glass that cracks under almost nothing.' },
   },
   {
     n: 4,
@@ -189,7 +189,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const lift = () => {
     if (won || lifting) return
     if (impossible) {
-      failLift(`These pads cannot do it: the item starts breaking at ${Math.round(crush)} before it stops slipping at ${Math.round(slip)}. Try a different pad.`)
+      failLift(`No squeeze works: it starts breaking at ${Math.round(crush)} before it even stops slipping at ${Math.round(slip)}.`)
       return
     }
     setVerdict(null)

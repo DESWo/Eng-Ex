@@ -140,14 +140,12 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
       return
     }
     const text = overEnergy
-      ? `That run burned ${energy} of fuel and the budget is ${setup.energyBudget}. Back the heat off.`
-      : temp > 560 && conv < setup.target
-        ? `Only ${Math.round(conv * 100)}% converted. The reactor is too hot: the product is turning back into reactant. Try cooler.`
-        : `Only ${Math.round(conv * 100)}% converted, and the target is ${Math.round(setup.target * 100)}%. It needs more heat or more time.`
+      ? `That run burned ${energy} of fuel and the budget is ${setup.energyBudget}.`
+      : `Only ${Math.round(conv * 100)}% converted, and the target is ${Math.round(setup.target * 100)}%.`
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'Batch dumped, reactor flushed. Read the curves before you set the dial this time.' })
+      setVerdict({ ok: false, text: 'Batch dumped, reactor flushed. Watch what the dial actually does to the yield this time.' })
     } else {
       setVerdict({ ok: false, text })
     }

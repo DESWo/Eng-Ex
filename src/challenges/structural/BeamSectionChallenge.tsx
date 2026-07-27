@@ -188,7 +188,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       return
     }
     const text = tooHeavy && sag <= setup.maxSag
-      ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg crane limit. ${setup.shapes.length > 1 ? 'A hollow section gets most of this stiffness for far less metal.' : 'Try a shallower beam.'}`
+      ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg crane limit. All that stiffness is costing you metal.`
       : `It sagged ${sag.toFixed(1)} mm underfoot and the limit is ${setup.maxSag} mm. Depth is what buys stiffness.`
     if (att.spend()) {
       reset()

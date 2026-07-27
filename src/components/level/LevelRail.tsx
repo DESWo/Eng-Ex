@@ -34,8 +34,8 @@ export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick 
               disabled={locked}
               onClick={() => onPick(l.n)}
               aria-current={isActive ? 'step' : undefined}
-              aria-label={locked ? `Level ${l.n}, locked` : `Level ${l.n}: ${l.concept}`}
-              title={locked ? 'Clear the level before this one to unlock' : l.concept}
+              aria-label={locked ? `Level ${l.n}, locked` : `Level ${l.n}: ${l.title}`}
+              title={locked ? 'Clear the level before this one to unlock' : l.title}
               className={cn(
                 'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-3',
                 'text-sm font-bold font-mono tabular-nums transition-colors duration-200',
@@ -69,11 +69,12 @@ export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick 
         </span>
       </div>
 
+      {/* Title only. The concept named the twist outright, which gave the
+          level away before the player had a chance to spot it themselves. */}
       <p className="mt-2 text-sm text-ink-soft dark:text-stone-400">
         <span className="font-display font-semibold text-ink dark:text-stone-200">
           Level {active.n}: {active.title}
-        </span>{' '}
-        &middot; {active.concept}
+        </span>
       </p>
     </div>
   )

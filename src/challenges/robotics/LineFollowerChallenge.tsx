@@ -447,7 +447,7 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
               : result.reason === 'flat-battery'
                 ? 'Battery flat before the wall. Those corrections were too aggressive to keep up all the way.'
                 : setup.damping && damp < 15
-                  ? 'Lost the line. It kept overshooting and weaving wider each time. Try adding damping.'
+                  ? 'Lost the line. It kept overshooting and weaving wider with every correction.'
                   : 'Lost the line. The bot drifted further off than its sensor can see.'}
           </motion.p>
         )}
