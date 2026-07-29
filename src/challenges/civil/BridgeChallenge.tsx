@@ -47,7 +47,29 @@ interface BridgeSetup {
   /** Level 5: the deck may only sag this far under the truck (px), or null. */
   maxDeflection: number | null
   brief: string
+  /**
+   * A part-built span to open on, as [x,y] pairs and the beams between them.
+   * Level 1 only: a free-build sandbox on a real solver is a brutal first
+   * screen next to the catapult's two sliders, so the first bridge arrives
+   * almost finished with one member missing.
+   */
+  starter?: { nodes: [number, number][]; links: [number, number][] }
 }
+
+/** The Warren truss level 1 opens on, minus one diagonal. */
+const STARTER_NODES: [number, number][] = [
+  // bottom chord (the road)
+  [160, 240], [240, 240], [320, 240], [400, 240], [480, 240], [560, 240], [640, 240],
+  // top chord
+  [200, 160], [280, 160], [360, 160], [440, 160], [520, 160], [600, 160],
+]
+/** Indices into STARTER_NODES. The 200-160 to 240-240 diagonal is left out. */
+const STARTER_LINKS: [number, number][] = [
+  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6],          // road
+  [7, 8], [8, 9], [9, 10], [10, 11], [11, 12],             // top chord
+  [0, 7], /* [7, 1] missing */ [1, 8], [8, 2], [2, 9], [9, 3],
+  [3, 10], [10, 4], [4, 11], [11, 5], [5, 12], [12, 6],    // diagonals
+]
 
 const LEVELS: ChallengeLevel<BridgeSetup>[] = [
   {
@@ -55,8 +77,13 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     title: 'Triangles hold',
     phase: 'play',
     concept: 'Shapes that keep their shape',
-    teach: 'It is the bridge-builder game you already know, running on a real solver. Build a road across the gap and send the van over. A square frame folds flat under load, but a triangle cannot change shape without changing the length of a beam, so triangles are what hold bridges up.',
-    setup: { label: 'The delivery van', load: 6, budget: null, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A van needs to cross the river. Materials are free, so just get it across.' },
+    teach: 'A square frame folds flat under load, but a triangle cannot change shape without changing the length of a beam, so triangles are what hold bridges up. This span is finished except for one diagonal. Find the gap, close it, and the truck gets across.',
+    setup: {
+      label: 'The delivery van', load: 6, budget: null, materials: ['wood'],
+      forces: false, maxDeflection: null,
+      brief: 'One diagonal is missing near the left bank. Click the two joints either side of the gap to bridge it.',
+      starter: { nodes: STARTER_NODES, links: STARTER_LINKS },
+    },
   },
   {
     n: 2,
@@ -145,8 +172,18 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
 
   // Each level starts on an empty span, and steel snaps back to wood if it is gone.
   useEffect(() => {
-    setJoints([ANCHOR_L, ANCHOR_R])
-    setBeams([])
+    const s = round.starter
+    if (s) {
+      const nodes = s.nodes.map(([x, y]) => {
+        const anchor = x === LEFT_X && y === ROAD_Y ? ANCHOR_L : x === RIGHT_X && y === ROAD_Y ? ANCHOR_R : null
+        return anchor ?? { id: jointId(x, y), x, y }
+      })
+      setJoints(nodes)
+      setBeams(s.links.map(([a, b]) => ({ key: memberKey(nodes[a].id, nodes[b].id), material: round.materials[0] })))
+    } else {
+      setJoints([ANCHOR_L, ANCHOR_R])
+      setBeams([])
+    }
     setSelected(null)
     setPhase('build')
     setTest(null)
@@ -317,8 +354,20 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const reset = () => {
     if (beams.length > 0 || joints.length > 2) pushHistory()
     edit(() => {
-      setJoints([ANCHOR_L, ANCHOR_R])
-      setBeams([])
+      // Reset means "back to how the level started", which on a guided level
+      // is the part-built span, not a bare gap.
+      const s = round.starter
+      if (s) {
+        const nodes = s.nodes.map(([x, y]) => {
+          const anchor = x === LEFT_X && y === ROAD_Y ? ANCHOR_L : x === RIGHT_X && y === ROAD_Y ? ANCHOR_R : null
+          return anchor ?? { id: jointId(x, y), x, y }
+        })
+        setJoints(nodes)
+        setBeams(s.links.map(([a, b]) => ({ key: memberKey(nodes[a].id, nodes[b].id), material: round.materials[0] })))
+      } else {
+        setJoints([ANCHOR_L, ANCHOR_R])
+        setBeams([])
+      }
       setSelected(null)
     })
   }
