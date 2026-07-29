@@ -22,6 +22,9 @@ const SPEED_SCALE = 7900 // our speed unit -> m/s
 const EARTH_KM = 6371
 const MAX_BURN = 1200 // m/s per burn
 const PULSE = 25 // one press of the engine
+// A long burn is ~500 m/s, which is twenty presses of the fine control. The
+// coarse button gets you into the neighbourhood; PULSE still trims the result.
+const COARSE = 100
 
 const vCirc = (r: number) => Math.sqrt(1 / r)
 const V_START = vCirc(R_START)
@@ -510,6 +513,14 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
                   disabled={b.value >= MAX_BURN}
                 >
                   Fire {PULSE} m/s
+                </Button>
+                <Button
+                  variant="accent"
+                  size="sm"
+                  onClick={() => b.set((v) => Math.min(MAX_BURN, v + COARSE))}
+                  disabled={b.value >= MAX_BURN}
+                >
+                  +{COARSE}
                 </Button>
                 <Button
                   variant="ghost"

@@ -85,7 +85,10 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     phase: 'play',
     concept: 'Grip enough to hold',
     teach: 'It is the steady-hand buzzer game, played with real force. Set a starting squeeze, then HOLD it through the lift: the pull of accelerating upwards raises the slip line mid-ride, so keep dragging to stay above it.',
-    setup: { payload: PAYLOADS.can, pad: 'rubber', accel: 2, window: false, brief: 'A warehouse gripper needs to lift a soup can off the belt.' },
+    // window on for the first level: the slip and crush lines already draw
+    // mid-ride, so hiding them beforehand only bought one guaranteed blind
+    // failure before the player could see what they were aiming at.
+    setup: { payload: PAYLOADS.can, pad: 'rubber', accel: 2, window: true, brief: 'A warehouse gripper needs to lift a soup can off the belt.' },
   },
   {
     n: 2,
@@ -214,7 +217,12 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       minMargin = Math.min(minMargin, Math.min(g - slipNow, crush - g))
       if (g > crush) crushTime += dt
       else crushTime = 0
+      // Symmetric with crushTime: recovering the grip has to clear the clock.
+      // Without the reset, brief dips accumulated across the whole ride and
+      // eventually tripped the grace period even though the player had already
+      // corrected each one.
       if (g < slipNow) slipTime += dt
+      else slipTime = 0
       const end = (fn: () => void) => {
         if (rideInterval.current) clearInterval(rideInterval.current)
         setRide(null)

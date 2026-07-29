@@ -53,7 +53,12 @@ const LEVELS: ChallengeLevel<SlotSetup>[] = [
     phase: 'play',
     concept: 'Trips times distance',
     teach: 'It is a tidying game scored in footsteps. A product picked forty times a day is walked to forty times a day. Move the busiest products to the front aisle and watch the walking fall.',
-    setup: { maxWalk: 280, maxEffort: null, weighted: false, readout: false, brief: 'Pickers are walking miles in this warehouse. Rearrange the aisles.' },
+    // 290, not 280: of the twelve moves available from the starting layout only
+    // one improves it at all (Tape to Middle, 286). At 280 that best-possible
+    // first move still failed, so level 1 opened on a puzzle where the correct
+    // idea looked wrong. 290 makes it a one-move lesson and leaves level 2's
+    // 260 to demand the tight layout.
+    setup: { maxWalk: 290, maxEffort: null, weighted: false, readout: false, brief: 'Pickers are walking miles in this warehouse. Rearrange the aisles.' },
   },
   {
     n: 2,
@@ -168,8 +173,18 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
       if (prev[item] === zone) return prev
       const next = [...prev]
       if (countIn(zone) >= ZONES[zone].slots) {
-        const displaced = prev.findIndex((v, i) => v === zone && i !== item)
-        if (displaced === -1) return prev
+        // Evict the QUIETEST product in the target aisle, not the first one in
+        // the list. findIndex evicted whichever product was declared earliest,
+        // which is the busiest, so following the level's own advice ("move the
+        // busiest products to the front") kicked an even busier product out of
+        // the front aisle and made the walk worse.
+        const occupants = prev
+          .map((v, i) => ({ i, v }))
+          .filter(({ i, v }) => v === zone && i !== item)
+        if (occupants.length === 0) return prev
+        const displaced = occupants.reduce((quietest, o) =>
+          ITEMS[o.i].picks < ITEMS[quietest.i].picks ? o : quietest,
+        ).i
         next[displaced] = prev[item]
       }
       next[item] = zone

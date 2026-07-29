@@ -165,7 +165,12 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
   const cost = kgPerM * shape.costPerKg
 
   const tooHeavy = setup.maxKg !== null && kgPerM > setup.maxKg
-  const solved = sag <= setup.maxSag && !tooHeavy
+  // Judge the number the player can actually see. Comparing the raw float
+  // against a limit we print to one decimal meant a 12.021 mm sag displayed as
+  // "12.0 mm", was rejected against a "12 mm" limit, and the failure text then
+  // repeated both numbers as if they agreed.
+  const shownSag = Number(sag.toFixed(1))
+  const solved = shownSag <= setup.maxSag && !tooHeavy
 
   const reset = () => {
     setShapeId(setup.shapes[0])
@@ -187,7 +192,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
-    const text = tooHeavy && sag <= setup.maxSag
+    const text = tooHeavy && shownSag <= setup.maxSag
       ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg crane limit. All that stiffness is costing you metal.`
       : `It sagged ${sag.toFixed(1)} mm underfoot and the limit is ${setup.maxSag} mm. Depth is what buys stiffness.`
     if (att.spend()) {

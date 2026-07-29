@@ -175,7 +175,11 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Light the bulbs so the wire carries exactly ${setup.target}`}
-        status={`${litCount} lit`}
+        // Show the running value, not just how many bulbs are on. Level 1 hides
+        // the per-place breakdown (that is level 4's payoff), which left the
+        // player committing to an eight-toggle sum with no feedback until after
+        // they pressed send. The catapult tells you where the shot landed.
+        status={`sending ${value} · ${litCount} lit`}
         attemptsLeft={att.left}
         met={won}
       />
