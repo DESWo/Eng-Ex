@@ -9,7 +9,8 @@ import { disciplines } from '@/data/disciplines'
 const chips = [
   { icon: Compass, text: `${disciplines.length} fields to explore` },
   { icon: Timer, text: 'About 10 minutes each' },
-  { icon: HeartHandshake, text: 'No grades, no pressure' },
+  // Stars are personal bests, not marks, so the low-pressure promise stands.
+  { icon: HeartHandshake, text: 'No grades, just your own best' },
 ]
 
 export function Hero() {

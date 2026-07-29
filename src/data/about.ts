@@ -25,7 +25,7 @@ export const aboutWhy = {
 
 export const aboutGoal = {
   heading: 'The goal',
-  body: 'Help middle school and high school students discover which kind of engineering fits them, through short, hands-on simulations. No grades, no pressure, just exploration. Every challenge ends by showing the real engineering principle behind it and where that idea shows up in industry, so students leave thinking, "I just did what real engineers do."',
+  body: 'Help middle school and high school students discover which kind of engineering fits them, through short, hands-on simulations. No grades and nothing compared against anyone else. Levels earn up to three stars for solving them unaided, and replaying can only improve a rating, never lower it. Every challenge ends by showing the real engineering principle behind it and where that idea shows up in industry, so students leave thinking, "I just did what real engineers do."',
   pillars: [
     { icon: Gamepad2, label: 'Learn by doing', text: 'Interactive simulations, not walls of text.' },
     { icon: FlaskConical, label: 'Real concepts', text: 'Forces, budgets, and tradeoffs, made visual.' },
