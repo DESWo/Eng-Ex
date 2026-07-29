@@ -9,7 +9,7 @@ const KEY = 'progress'
 
 /**
  * Per-discipline progress, persisted to localStorage.
- * Each of the four flow steps is worth 25%.
+ * Each of the five flow steps in STEP_ORDER is worth an equal share.
  */
 export function useProgress() {
   const [progress, setProgress] = useState<ProgressMap>(() => loadJson(KEY, {}))

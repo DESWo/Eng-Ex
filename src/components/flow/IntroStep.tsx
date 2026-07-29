@@ -46,9 +46,12 @@ export function IntroStep({ discipline, onNext }: IntroStepProps) {
         </div>
       </motion.div>
 
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
-        <VideoPlaceholder videoId={intro.videoId} title={`${discipline.name} intro video`} />
-      </motion.div>
+      {/* No video yet for most disciplines: show nothing rather than a promise. */}
+      {intro.videoId && (
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
+          <VideoPlaceholder videoId={intro.videoId} title={`${discipline.name} intro video`} />
+        </motion.div>
+      )}
 
       <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
         <Card className="accent-softer accent-border border-2 p-6">

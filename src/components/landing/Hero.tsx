@@ -4,9 +4,10 @@ import { ArrowDown, Compass, HeartHandshake, Timer } from 'lucide-react'
 import { buttonClasses } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { RoughLine } from '@/components/ui/Sketchy'
+import { disciplines } from '@/data/disciplines'
 
 const chips = [
-  { icon: Compass, text: '12 fields to explore' },
+  { icon: Compass, text: `${disciplines.length} fields to explore` },
   { icon: Timer, text: 'About 10 minutes each' },
   { icon: HeartHandshake, text: 'No grades, no pressure' },
 ]

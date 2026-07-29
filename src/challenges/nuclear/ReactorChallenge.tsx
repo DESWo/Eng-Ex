@@ -284,6 +284,9 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
               <motion.circle
                 key={x} cx={x} r={4 + coolant / 22}
                 className="fill-sky-200/80 dark:fill-sky-400/40"
+                // cy must be seeded via `initial`, not a plain attribute, or
+                // framer-motion has no baseline to animate from.
+                initial={{ cy: 200, opacity: 0.7 }}
                 animate={{ cy: [200, 150], opacity: [0.7, 0] }}
                 transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.35 }}
               />

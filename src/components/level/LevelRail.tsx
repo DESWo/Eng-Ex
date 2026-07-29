@@ -1,6 +1,7 @@
-import { Check, Lock } from 'lucide-react'
+import { Check, Lock, Star } from 'lucide-react'
 import type { ChallengeLevel } from '@/lib/types'
 import { PHASE_META } from './levelMeta'
+import { Stars } from './Stars'
 import { cn } from '@/lib/utils'
 
 interface LevelRailProps {
@@ -10,6 +11,8 @@ interface LevelRailProps {
   unlockedThrough: number
   isCleared: (n: number) => boolean
   onPick: (n: number) => void
+  /** Best stars earned per level, 0 when never cleared. */
+  starsFor: (n: number) => number
 }
 
 /**
@@ -17,8 +20,16 @@ interface LevelRailProps {
  * Cleared levels stay clickable so a student can revisit an early design
  * once a later level has taught them something new.
  */
-export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick }: LevelRailProps) {
+export function LevelRail({
+  levels,
+  current,
+  unlockedThrough,
+  isCleared,
+  onPick,
+  starsFor,
+}: LevelRailProps) {
   const active = levels.find((l) => l.n === current) ?? levels[0]
+  const earned = levels.reduce((sum, l) => sum + starsFor(l.n), 0)
 
   return (
     <div>
@@ -34,7 +45,11 @@ export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick 
               disabled={locked}
               onClick={() => onPick(l.n)}
               aria-current={isActive ? 'step' : undefined}
-              aria-label={locked ? `Level ${l.n}, locked` : `Level ${l.n}: ${l.title}`}
+              aria-label={
+                locked
+                  ? `Level ${l.n}, locked`
+                  : `Level ${l.n}: ${l.title}${cleared ? `, ${starsFor(l.n)} of 3 stars` : ''}`
+              }
               title={locked ? 'Clear the level before this one to unlock' : l.title}
               className={cn(
                 'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-3',
@@ -67,14 +82,22 @@ export function LevelRail({ levels, current, unlockedThrough, isCleared, onPick 
         >
           {PHASE_META[active.phase].label}
         </span>
+
+        {earned > 0 && (
+          <span className="ml-auto flex items-center gap-1.5 font-mono text-xs font-bold tabular-nums text-ink-soft dark:text-stone-400">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+            {earned}/{levels.length * 3}
+          </span>
+        )}
       </div>
 
       {/* Title only. The concept named the twist outright, which gave the
           level away before the player had a chance to spot it themselves. */}
-      <p className="mt-2 text-sm text-ink-soft dark:text-stone-400">
+      <p className="mt-2 flex items-center gap-2 text-sm text-ink-soft dark:text-stone-400">
         <span className="font-display font-semibold text-ink dark:text-stone-200">
           Level {active.n}: {active.title}
         </span>
+        {isCleared(active.n) && <Stars earned={starsFor(active.n)} size="xs" />}
       </p>
     </div>
   )

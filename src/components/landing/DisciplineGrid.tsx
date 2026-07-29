@@ -32,10 +32,12 @@ function Grid({ items }: { items: Discipline[] }) {
 /** Shown while the deeper fields are still locked. */
 function LockedMore({
   core,
+  more,
   doneCount,
   percentFor,
 }: {
   core: Discipline[]
+  more: Discipline[]
   doneCount: number
   percentFor: (slug: string) => number
 }) {
@@ -55,8 +57,12 @@ function LockedMore({
           Go deeper into engineering
         </h2>
         <p className="mx-auto mt-3 max-w-md text-ink-soft dark:text-stone-400">
-          Finish the three core fields first. Then four more unlock: Nuclear, Aerospace, Industrial,
-          and Systems.
+          Finish the {core.length} core fields first. Then {more.length} more unlock, including{' '}
+          {more
+            .slice(0, 3)
+            .map((d) => d.shortName)
+            .join(', ')}
+          , and more.
         </p>
 
         {/* progress toward the unlock */}
@@ -162,7 +168,7 @@ export function DisciplineGrid() {
           Choose a field to study
         </h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
-          Three core fields to start, nine more to unlock, zero tests.
+          {core.length} core fields to start, {more.length} more to unlock, zero tests.
         </p>
       </Reveal>
 
@@ -172,12 +178,12 @@ export function DisciplineGrid() {
         (unlocked ? (
           <UnlockedMore core={core} more={more} />
         ) : (
-          <LockedMore core={core} doneCount={doneCount} percentFor={percentFor} />
+          <LockedMore core={core} more={more} doneCount={doneCount} percentFor={percentFor} />
         ))}
 
       <p className="mt-16 flex items-center justify-center gap-2 text-center text-sm text-ink-soft dark:text-stone-400">
         <Sparkles className="h-4 w-4 shrink-0" />
-        Even more on the way: chemical, biomedical, software, and beyond.
+        Even more on the way: biomedical, materials, software, and beyond.
       </p>
     </section>
   )

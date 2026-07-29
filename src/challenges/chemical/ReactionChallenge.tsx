@@ -226,6 +226,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
                 cx={bx + 10}
                 r="5"
                 fill="rgba(255,255,255,0.5)"
+                initial={{ cy: 140 }}
                 animate={{ cy: [140, 30] }}
                 transition={{ duration: Math.max(0.6, 2.4 - heatFrac * 1.8), repeat: Infinity, delay: i * 0.4, ease: 'easeIn' }}
               />

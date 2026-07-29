@@ -36,7 +36,7 @@ export function Navbar() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Engineering Explorer home">
             <LogoMark />
-            <span className="font-display text-lg font-bold tracking-tight">
+            <span className="hidden font-display text-lg font-bold tracking-tight sm:inline">
               Engineering Explorer
             </span>
           </Link>
@@ -66,6 +66,7 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={signOut}
+                  aria-label="Sign out"
                   className={cn(tabClass(false), 'flex items-center gap-1.5')}
                 >
                   <LogOut className="h-4 w-4" />
@@ -76,10 +77,11 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setDialogOpen(true)}
+                aria-label="Sign in"
                 className={cn(tabClass(false), 'flex items-center gap-1.5')}
               >
                 <LogIn className="h-4 w-4" />
-                Sign in
+                <span className="hidden sm:inline">Sign in</span>
               </button>
             )}
 

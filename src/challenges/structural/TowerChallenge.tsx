@@ -197,14 +197,16 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
           {[60, 110, 160].map((y) => (
             <motion.line
               key={y}
-              x1="40"
+              x1={40}
               y1={y}
-              x2="180"
+              x2={180}
               y2={y}
               strokeWidth="3"
               strokeLinecap="round"
               className="stroke-sky-300 dark:stroke-sky-700"
-              animate={{ x1: [40, 90], x2: [180, 230], opacity: [0.2, 0.7, 0.2] }}
+              // framer-motion cannot animate <line> endpoint attributes; slide the
+              // whole streak with a transform instead (same motion, no NaN attrs).
+              animate={{ x: [0, 50], opacity: [0.2, 0.7, 0.2] }}
               transition={{ duration: 1.4, repeat: Infinity, delay: y / 200 }}
             />
           ))}

@@ -123,6 +123,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const [tool, setToolState] = useState<'build' | 'remove'>('build')
   /** Where the pointer is hovering on the grid, for the placement preview. */
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+  /** Bumped when a click is rejected for reach, so the hint can re-announce. */
+  const [tooLongTick, setTooLongTick] = useState(0)
   /** Snapshots taken before every change, so undo covers removals too. */
   const [history, setHistory] = useState<{ joints: TrussJoint[]; beams: { key: string; material: MaterialId }[] }[]>([])
   const [phase, setPhase] = useState<Phase>('build')
@@ -263,6 +265,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     // Too far for one beam: hop the chain to an existing joint, but never
     // drop a stranded new joint (the preview line shows red out there).
     if (from && len > MAX_LEN) {
+      // Say so. Silently ignoring the click reads as a broken app.
+      setTooLongTick((n) => n + 1)
       if (exists) edit(() => setSelected(id))
       return
     }
@@ -760,6 +764,18 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           <p className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
             {beams.length} beams{!deckComplete && ' · the road does not reach across yet'}
           </p>
+          {tooLongTick > 0 && (
+            <motion.p
+              key={tooLongTick}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: [0, 1, 1, 0], y: 0 }}
+              transition={{ duration: 2.6, times: [0, 0.12, 0.75, 1] }}
+              role="status"
+              className="mt-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400"
+            >
+              That beam is too long. Drop a joint partway and chain two shorter ones.
+            </motion.p>
+          )}
         </div>
       </div>
 

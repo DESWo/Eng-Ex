@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Check, Factory, Heart, Lightbulb, RotateCcw, Scale } from 'lucide-react'
+import { ArrowRight, Check, Factory, Heart, Lightbulb, Lock, RotateCcw, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useLevelCounts } from '@/hooks/useLevelCounts'
@@ -72,19 +72,29 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
               ) : null}
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {challenge.why.map(({ icon: Icon, title, body }) => (
-              <Card key={title} className="h-full p-6">
-                <span className="accent-soft mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-                  <Icon className="accent-text h-6 w-6" />
-                </span>
-                <h4 className="font-display font-bold">{title}</h4>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft dark:text-stone-400">
-                  {body}
-                </p>
-              </Card>
-            ))}
-          </div>
+          {/* The idea is the reward for playing: don't hand it over first. */}
+          {multi && !solved[challenge.id] ? (
+            <Card className="flex items-center gap-3 border-2 border-dashed border-stone-300 bg-stone-50/60 p-6 dark:border-white/15 dark:bg-white/[0.02]">
+              <Lock className="h-4 w-4 shrink-0 text-ink-soft dark:text-stone-400" />
+              <p className="text-sm text-ink-soft dark:text-stone-400">
+                Beat a level of {challenge.title} to unlock the idea behind it.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {challenge.why.map(({ icon: Icon, title, body }) => (
+                <Card key={title} className="h-full p-6">
+                  <span className="accent-soft mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
+                    <Icon className="accent-text h-6 w-6" />
+                  </span>
+                  <h4 className="font-display font-bold">{title}</h4>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-soft dark:text-stone-400">
+                    {body}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          )}
         </motion.div>
       ))}
 
@@ -145,8 +155,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
             <Heart className="h-5 w-5 shrink-0 text-rose-500" fill="currentColor" />
             <p className="text-[15px]">
               You said you loved this one.{' '}
-              <span className="font-display font-bold">{discipline.name.toLowerCase()}</span> might
-              be your thing!
+              <span className="font-display font-bold">{discipline.name}</span> might be your thing!
             </p>
           </Card>
         </motion.div>

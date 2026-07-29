@@ -13,7 +13,14 @@ import { cn } from '@/lib/utils'
  * get stuck, one tap opens the same explanation. Collapses again on each new
  * level, so the help is always earned, never forced.
  */
-export function ConceptCard({ level }: { level: ChallengeLevel<unknown> }) {
+export function ConceptCard({
+  level,
+  onReveal,
+}: {
+  level: ChallengeLevel<unknown>
+  /** Fires the first time the hint is opened on this level: it costs a star. */
+  onReveal?: () => void
+}) {
   const [open, setOpen] = useState(false)
 
   // Re-collapse whenever the level changes.
@@ -23,7 +30,10 @@ export function ConceptCard({ level }: { level: ChallengeLevel<unknown> }) {
     <div className="accent-soft overflow-hidden rounded-2xl">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) onReveal?.()
+          setOpen((v) => !v)
+        }}
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
