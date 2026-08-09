@@ -530,7 +530,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
             disabled={busy}
             className={cn(
               'flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-150',
-              tool === 'build' ? 'accent-bg text-white' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
+              tool === 'build' ? 'accent-bg on-accent' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
             )}
           >
             <Hammer className="h-3.5 w-3.5" />

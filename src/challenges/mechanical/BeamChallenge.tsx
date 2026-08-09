@@ -372,7 +372,8 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
                 textAnchor="middle"
                 fontSize="14"
                 fontWeight="700"
-                className="fill-white font-display"
+                style={{ fill: 'var(--accent-ink, #ffffff)' }}
+                className="font-display"
               >
                 {weight}
               </text>

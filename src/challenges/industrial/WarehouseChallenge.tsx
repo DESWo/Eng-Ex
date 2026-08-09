@@ -240,7 +240,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
                     className={cn(
                       'rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-200',
                       zoneOf[i] === zi
-                        ? 'accent-bg text-white shadow-clay'
+                        ? 'accent-bg on-accent shadow-clay'
                         : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/10 dark:text-stone-400',
                     )}
                   >

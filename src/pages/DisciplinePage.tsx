@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { accentVars } from '@/lib/accent'
 import { Doodle } from '@/components/ui/Doodle'
-import type { CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -21,7 +21,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 function LockedField({ discipline }: { discipline: Discipline }) {
   return (
     <div
-      style={{ '--accent': discipline.accent } as CSSProperties}
+      style={accentVars(discipline.accent)}
       className="mx-auto flex max-w-md flex-col items-center px-6 py-24 text-center"
     >
       {/* Someone studying until the field opens (Open Doodles, CC0). */}
@@ -75,7 +75,7 @@ export function DisciplinePage() {
   const Icon = discipline.icon
 
   return (
-    <div style={{ '--accent': discipline.accent } as CSSProperties}>
+    <div style={accentVars(discipline.accent)}>
       {/* Discipline header */}
       <section className="accent-softer paper-grid-lg">
         <div className="mx-auto max-w-4xl px-6 py-8 sm:py-10">

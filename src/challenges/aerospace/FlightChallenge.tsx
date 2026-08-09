@@ -318,7 +318,7 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
                 className={cn(
                   'rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors duration-200',
                   cargo === c
-                    ? 'accent-bg text-white shadow-clay'
+                    ? 'accent-bg on-accent shadow-clay'
                     : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                 )}
               >

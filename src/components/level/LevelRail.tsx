@@ -54,7 +54,7 @@ export function LevelRail({
               className={cn(
                 'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-3',
                 'text-sm font-bold font-mono tabular-nums transition-colors duration-200',
-                isActive && 'accent-bg text-white shadow-clay',
+                isActive && 'accent-bg on-accent shadow-clay',
                 !isActive && cleared && 'accent-soft accent-text hover:brightness-105',
                 !isActive &&
                   !cleared &&

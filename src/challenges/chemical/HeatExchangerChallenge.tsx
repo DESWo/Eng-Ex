@@ -283,7 +283,7 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
                 aria-pressed={flow === f}
                 className={cn(
                   'flex-1 rounded-xl px-3 py-2 font-display text-sm font-semibold transition-colors duration-200 disabled:opacity-40',
-                  flow === f ? 'accent-bg text-white shadow-clay' : 'bg-white text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
+                  flow === f ? 'accent-bg on-accent shadow-clay' : 'bg-white text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                 )}
               >
                 {f === 'same' ? 'Same way' : 'Opposite ways'}

@@ -48,7 +48,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full',
                   solved[challenge.id]
-                    ? 'accent-bg text-white'
+                    ? 'accent-bg on-accent'
                     : 'bg-stone-200 text-ink-soft dark:bg-white/10 dark:text-stone-400',
                 )}
               >

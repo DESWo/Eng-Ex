@@ -211,7 +211,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
                 onClick={() => bump(i, 1)}
                 disabled={p.spares === MAX_SPARES}
                 aria-label={`One more spare ${p.name}`}
-                className="accent-bg rounded-full p-1.5 text-white transition-opacity hover:brightness-110 disabled:opacity-30"
+                className="accent-bg on-accent rounded-full p-1.5 transition-opacity hover:brightness-110 disabled:opacity-30"
               >
                 <Plus className="h-4 w-4" />
               </button>

@@ -358,7 +358,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
                 onClick={() => bump(t.id, 1)}
                 disabled={used === t.maxCrash}
                 aria-label={`Speed ${t.name} up`}
-                className="accent-bg rounded-full p-1.5 text-white transition-opacity hover:brightness-110 disabled:opacity-30"
+                className="accent-bg on-accent rounded-full p-1.5 transition-opacity hover:brightness-110 disabled:opacity-30"
               >
                 <Plus className="h-4 w-4" />
               </button>

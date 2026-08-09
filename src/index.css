@@ -88,6 +88,16 @@
     background-color: color-mix(in oklab, var(--accent) 12%, var(--color-night-panel));
   }
 
+  /*
+   * Text sitting ON an accent-colored surface. Ten of the twelve discipline
+   * accents are too light for white at WCAG AA, so each accent scope sets
+   * --accent-ink (white or the app ink, whichever passes 4.5:1) and this
+   * class uses it. Falls back to white for the two accents where white wins.
+   */
+  .on-accent {
+    color: var(--accent-ink, #ffffff);
+  }
+
   .accent-border {
     border-color: color-mix(in oklab, var(--accent) 40%, transparent);
   }

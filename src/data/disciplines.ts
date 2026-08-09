@@ -325,7 +325,7 @@ export const disciplines: Discipline[] = [
     description:
       'From giant power grids to the chip inside your phone, electrical engineers keep the lights on.',
     icon: Zap,
-    accent: '#7b6cf0',
+    accent: '#7163dd',
     difficulty: 'Intermediate',
     intro: {
       heading: 'What do electrical engineers do?',
@@ -1462,7 +1462,7 @@ export const disciplines: Discipline[] = [
     description:
       'Chips, logic, and the tiny switches that run everything. Computer engineers design the hardware that thinks.',
     icon: CircuitBoard,
-    accent: '#6366f1',
+    accent: '#6164ec',
     tier: 'more',
     parent: 'electrical',
     difficulty: 'Advanced',

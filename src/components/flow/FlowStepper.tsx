@@ -53,7 +53,7 @@ export function FlowStepper({ current, isDone, onSelect }: FlowStepperProps) {
                 className={cn(
                   'flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200',
                   active
-                    ? 'accent-bg text-white shadow-clay'
+                    ? 'accent-bg on-accent shadow-clay'
                     : done
                       ? 'accent-soft accent-text'
                       : 'bg-stone-100 text-stone-400 dark:bg-white/5 dark:text-stone-500',

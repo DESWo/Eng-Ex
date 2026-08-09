@@ -11,7 +11,7 @@ const variants: Record<Variant, string> = {
   primary:
     'bg-ink text-cream shadow-clay hover:bg-stone-700 dark:bg-stone-100 dark:text-ink dark:hover:bg-white',
   // Filled with the current discipline accent.
-  accent: 'accent-bg text-white shadow-clay hover:brightness-110',
+  accent: 'accent-bg on-accent shadow-clay hover:brightness-110',
   // Soft tinted background with accent text.
   soft: 'accent-soft accent-text hover:brightness-97 dark:hover:brightness-110',
   ghost:

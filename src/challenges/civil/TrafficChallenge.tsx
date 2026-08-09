@@ -426,7 +426,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
             className="relative flex h-9 w-full cursor-ew-resize overflow-hidden rounded-full select-none"
             style={{ touchAction: 'none' }}
           >
-            <div className="accent-bg flex h-full items-center justify-center font-display text-xs font-bold text-white" style={{ width: `${(greenNS / CYCLE) * 100}%` }}>
+            <div className="accent-bg on-accent flex h-full items-center justify-center font-display text-xs font-bold" style={{ width: `${(greenNS / CYCLE) * 100}%` }}>
               {greenNS >= 14 ? `NS ${greenNS}s` : ''}
             </div>
             <div className="flex h-full items-center justify-center bg-stone-300 font-display text-xs font-bold text-ink-soft dark:bg-white/15 dark:text-stone-300" style={{ width: `${(greenEW / CYCLE) * 100}%` }}>

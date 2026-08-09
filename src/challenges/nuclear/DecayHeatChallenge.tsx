@@ -311,11 +311,11 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                     aria-pressed={active}
                     className={cn(
                       'rounded-2xl px-4 py-2 text-left font-display text-sm font-semibold transition-colors duration-200',
-                      active ? 'accent-bg text-white shadow-clay' : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
+                      active ? 'accent-bg on-accent shadow-clay' : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                     )}
                   >
                     <span className="block">{MODES[m].label}</span>
-                    <span className={cn('block text-xs font-medium', active ? 'text-white/80' : 'opacity-70')}>
+                    <span className={cn('block text-xs font-medium', active ? 'on-accent opacity-80' : 'opacity-70')}>
                       {MODES[m].mw} MW{MODES[m].kwhPerHour > 0 ? ` · ${MODES[m].kwhPerHour} kWh/h` : ' · free'}
                     </span>
                   </button>

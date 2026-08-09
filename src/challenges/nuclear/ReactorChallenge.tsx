@@ -454,7 +454,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
                 className={cn(
                   'rounded-2xl px-3.5 py-2.5 font-display text-sm font-semibold transition-colors duration-200',
                   coolant === v
-                    ? 'accent-bg text-white shadow-clay'
+                    ? 'accent-bg on-accent shadow-clay'
                     : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                 )}
               >

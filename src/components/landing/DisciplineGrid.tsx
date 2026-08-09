@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { accentVars } from '@/lib/accent'
 import { motion } from 'framer-motion'
 import { Check, Compass, Lock } from 'lucide-react'
 import { Doodle } from '@/components/ui/Doodle'
@@ -128,7 +128,7 @@ function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }
               <div className="mb-6 flex items-center gap-3">
                 <span
                   className="accent-soft flex h-11 w-11 items-center justify-center rounded-2xl"
-                  style={{ '--accent': parent.accent } as CSSProperties}
+                  style={accentVars(parent.accent)}
                 >
                   <ParentIcon className="accent-text h-6 w-6" />
                 </span>

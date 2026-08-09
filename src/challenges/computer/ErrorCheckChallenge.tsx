@@ -287,7 +287,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
                 className={cn(
                   'h-8 w-8 rounded-md font-display text-xs font-bold transition-colors duration-150 disabled:opacity-40',
                   filled
-                    ? 'accent-bg text-white shadow-clay'
+                    ? 'accent-bg on-accent shadow-clay'
                     : 'border-2 border-dashed border-stone-300 text-stone-300 hover:border-stone-400 hover:text-stone-400 dark:border-white/15 dark:text-white/20',
                 )}
               >

@@ -484,12 +484,12 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
                   className={cn(
                     'rounded-2xl px-4 py-2.5 text-left font-display text-sm font-semibold transition-colors duration-200',
                     active
-                      ? 'accent-bg text-white shadow-clay'
+                      ? 'accent-bg on-accent shadow-clay'
                       : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                   )}
                 >
                   <span className="block">{spec.label}</span>
-                  <span className={cn('block text-xs font-medium', active ? 'text-white/80' : 'opacity-70')}>
+                  <span className={cn('block text-xs font-medium', active ? 'on-accent opacity-80' : 'opacity-70')}>
                     {spec.note}
                   </span>
                 </button>
@@ -517,7 +517,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
                 className={cn(
                   'rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors duration-200',
                   accel === g.v
-                    ? 'accent-bg text-white shadow-clay'
+                    ? 'accent-bg on-accent shadow-clay'
                     : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
                 )}
               >

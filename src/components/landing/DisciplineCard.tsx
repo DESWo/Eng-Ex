@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { accentVars } from '@/lib/accent'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -24,7 +24,7 @@ export function DisciplineCard({ discipline }: DisciplineCardProps) {
     <Link
       to={`/explore/${discipline.slug}`}
       className="group block h-full"
-      style={{ '--accent': discipline.accent } as CSSProperties}
+      style={accentVars(discipline.accent)}
     >
       <motion.div
         whileHover={{ y: -6 }}
