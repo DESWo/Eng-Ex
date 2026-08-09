@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import { Check, Compass, Lock, Sparkles } from 'lucide-react'
+import { Check, Compass, Lock } from 'lucide-react'
+import { Doodle } from '@/components/ui/Doodle'
 import { DisciplineCard } from '@/components/landing/DisciplineCard'
 import { Card } from '@/components/ui/Card'
 import { Reveal } from '@/components/ui/Reveal'
@@ -106,7 +107,7 @@ function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }
           transition={{ type: 'spring', stiffness: 260, damping: 18 }}
           className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 font-display text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
         >
-          <Sparkles className="h-4 w-4" />
+          <Doodle name="star" className="h-4 w-4" />
           Unlocked
         </motion.span>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
@@ -182,7 +183,7 @@ export function DisciplineGrid() {
         ))}
 
       <p className="mt-16 flex items-center justify-center gap-2 text-center text-sm text-ink-soft dark:text-stone-400">
-        <Sparkles className="h-4 w-4 shrink-0" />
+        <Doodle name="star" className="h-4 w-4 shrink-0" />
         Even more on the way: biomedical, materials, software, and beyond.
       </p>
     </section>

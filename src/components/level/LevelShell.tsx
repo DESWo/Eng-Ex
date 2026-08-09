@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, PartyPopper, RotateCcw } from 'lucide-react'
+import { ArrowRight, RotateCcw } from 'lucide-react'
+import { Doodle } from '@/components/ui/Doodle'
 import { Button } from '@/components/ui/Button'
 import type { LevelState } from '@/hooks/useLevels'
 import { LevelRail } from './LevelRail'
@@ -48,7 +49,7 @@ export function LevelComplete({ lv, message, onReplay }: LevelCompleteProps) {
     >
       <div className="flex flex-col gap-1">
         <p className="flex items-center gap-2.5 font-display text-sm font-semibold">
-          <PartyPopper className="accent-text h-5 w-5 shrink-0" />
+          <Doodle name="trophy" className="accent-text h-5 w-5 shrink-0" />
           {message}
         </p>
         <p className="flex items-center gap-2 pl-[30px] text-xs text-ink-soft dark:text-stone-400">

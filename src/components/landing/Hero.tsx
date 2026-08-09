@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowDown, Compass, HeartHandshake, Timer } from 'lucide-react'
 import { buttonClasses } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Doodle } from '@/components/ui/Doodle'
 import { RoughLine } from '@/components/ui/Sketchy'
 import { disciplines } from '@/data/disciplines'
 
@@ -43,6 +44,12 @@ export function Hero() {
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
+
+      {/* A real reader, drawn by a real hand (Pablo Stanley, CC0). */}
+      <Doodle
+        name="sitting-reading"
+        className="pointer-events-none absolute -bottom-2 right-[4%] hidden w-52 text-ink/85 lg:block dark:text-stone-200/90"
+      />
 
       <div className="mx-auto max-w-4xl px-6 pb-16 pt-20 text-center sm:pt-28">
         <motion.div

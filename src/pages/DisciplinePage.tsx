@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Doodle } from '@/components/ui/Doodle'
 import type { CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, Lock } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DifficultyBadge } from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
@@ -23,9 +24,8 @@ function LockedField({ discipline }: { discipline: Discipline }) {
       style={{ '--accent': discipline.accent } as CSSProperties}
       className="mx-auto flex max-w-md flex-col items-center px-6 py-24 text-center"
     >
-      <span className="accent-soft mb-6 flex h-20 w-20 items-center justify-center rounded-3xl">
-        <Lock className="accent-text h-10 w-10" />
-      </span>
+      {/* Someone studying until the field opens (Open Doodles, CC0). */}
+      <Doodle name="reading" className="mb-6 h-44 text-ink/85 dark:text-stone-200/90" />
       <h1 className="font-display text-3xl font-extrabold tracking-tight">
         {discipline.name} is locked
       </h1>

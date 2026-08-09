@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Lightbulb } from 'lucide-react'
+import { Doodle } from '@/components/ui/Doodle'
 import type { ChallengeLevel } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +37,7 @@ export function ConceptCard({
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
-        <Lightbulb className="accent-text h-5 w-5 shrink-0" />
+        <Doodle name="bulb" className="accent-text h-6 w-5 shrink-0" />
         <span className="accent-text font-display text-sm font-bold">
           {open ? 'Hint' : 'Stuck? Tap for a hint'}
         </span>
