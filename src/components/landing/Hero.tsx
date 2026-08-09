@@ -26,25 +26,6 @@ export function Hero() {
   return (
     <section ref={ref} className="relative overflow-hidden">
       <motion.div aria-hidden className="paper-grid-lg absolute inset-0 -z-20" style={{ y: paperY }} />
-      {/* Soft floating color blobs behind the headline. */}
-      <div aria-hidden className="absolute inset-0 -z-10">
-        <motion.div
-          className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#f2695c]/15 blur-3xl"
-          animate={{ y: [0, 18, 0] }}
-          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-[#7b6cf0]/15 blur-3xl"
-          animate={{ y: [0, -22, 0] }}
-          transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute left-1/2 top-64 h-64 w-64 -translate-x-1/2 rounded-full bg-[#2fb98b]/15 blur-3xl"
-          animate={{ y: [0, 14, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </div>
-
       {/* A real reader, drawn by a real hand (Pablo Stanley, CC0). */}
       <Doodle
         name="sitting-reading"
@@ -58,7 +39,7 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
-          <Badge className="mb-6">For future engineers</Badge>
+          <p className="label-caps mb-6 text-ink-soft dark:text-stone-400">For future engineers</p>
 
           <h1 className="font-display text-5xl font-extrabold tracking-tight sm:text-7xl">
             Explore{' '}

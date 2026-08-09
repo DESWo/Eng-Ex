@@ -182,8 +182,8 @@ export function DisciplineGrid() {
           <LockedMore core={core} more={more} doneCount={doneCount} percentFor={percentFor} />
         ))}
 
-      <p className="mt-16 flex items-center justify-center gap-2 text-center text-sm text-ink-soft dark:text-stone-400">
-        <Doodle name="star" className="h-4 w-4 shrink-0" />
+      <p className="mt-16 text-center text-sm text-ink-soft dark:text-stone-400">
+        <Doodle name="star" className="mr-1.5 inline-block h-4 w-4 align-[-2px]" />
         Even more on the way: biomedical, materials, software, and beyond.
       </p>
     </section>

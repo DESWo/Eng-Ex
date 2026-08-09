@@ -82,7 +82,7 @@ export function AboutPage() {
         <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
           <Card className="p-6 sm:p-8">
             <div className="flex items-center gap-4">
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-rose-400 font-display text-2xl font-extrabold text-white">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 to-rose-600 font-display text-2xl font-extrabold text-white">
                 {aboutCreator.name.charAt(0)}
               </span>
               <div>

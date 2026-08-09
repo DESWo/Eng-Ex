@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { loadJson, saveJson } from '@/lib/storage'
-import { fadeUp, staggerContainer } from '@/lib/animations'
+import { staggerContainer } from '@/lib/animations'
 import type { Discipline, Enjoyment, Reflection, TryAnother } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -55,14 +55,14 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
       className="mx-auto max-w-2xl space-y-6"
       variants={staggerContainer}
     >
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="text-center">
+      <motion.div  className="text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">How was that?</h2>
         <p className="mt-2 text-ink-soft dark:text-stone-400">
           No wrong answers here. This just helps you figure out what fits you.
         </p>
       </motion.div>
 
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
+      <motion.div >
         <Card className="p-6">
           <h3 className="font-display text-lg font-bold">Did you enjoy this challenge?</h3>
           <div className="mt-4 grid grid-cols-3 gap-3">
@@ -85,7 +85,7 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
+      <motion.div >
         <Card className="p-6">
           <h3 className="font-display text-lg font-bold">How hard did it feel?</h3>
           <div className="mt-4 flex justify-between gap-2 sm:justify-start sm:gap-3">
@@ -112,7 +112,7 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
+      <motion.div >
         <Card className="p-6">
           <h3 className="font-display text-lg font-bold">Would you try another challenge?</h3>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -134,7 +134,7 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="flex flex-col items-center gap-2 pb-4">
+      <motion.div  className="flex flex-col items-center gap-2 pb-4">
         <Button variant="accent" size="lg" onClick={onNext} disabled={!complete}>
           Continue
           <ArrowRight className="h-5 w-5" />
