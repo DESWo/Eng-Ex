@@ -188,6 +188,11 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
   const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
+  // Levels 2, 3 and 5 do not preview the loss rate or throughput: the numbers
+  // only exist once a night of traffic has actually run. Level 1 shows them to
+  // teach the dials, level 4's packet stream is the readout by design.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setCheckBits(setup.checkBits ?? 0)
     setWon(false)
@@ -247,7 +252,11 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`${setup.canResend ? 'Silent errors' : 'Lost data'} at ${(setup.maxSilent * 100).toFixed(1)}% or less${setup.budget !== null ? `, packets within ${setup.budget} bits` : ''}`}
-        status={`this protocol: ${(lostRate * 100).toFixed(1)}% · ${packetSize}-bit packets`}
+        status={
+          outcomeVisible
+            ? `this protocol: ${(lostRate * 100).toFixed(1)}% · ${packetSize}-bit packets`
+            : `this protocol: ${packetSize}-bit packets · commission it to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -355,15 +364,19 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label={setup.canResend ? 'Silent errors' : 'Data lost for good'}
-          display={`${(lostRate * 100).toFixed(1)}% of ${(setup.maxSilent * 100).toFixed(1)}% allowed`}
-          fraction={Math.min(1, lostRate / (setup.maxSilent * 2))}
+          display={
+            outcomeVisible
+              ? `${(lostRate * 100).toFixed(1)}% of ${(setup.maxSilent * 100).toFixed(1)}% allowed`
+              : `${(setup.maxSilent * 100).toFixed(1)}% allowed · not yet measured`
+          }
+          fraction={outcomeVisible ? Math.min(1, lostRate / (setup.maxSilent * 2)) : 0}
           markerFraction={0.5}
-          barClass={lostRate <= setup.maxSilent ? 'bg-emerald-500' : 'bg-rose-500'}
+          barClass={!outcomeVisible ? 'bg-stone-400 dark:bg-stone-500' : lostRate <= setup.maxSilent ? 'bg-emerald-500' : 'bg-rose-500'}
         />
         <Meter
           label="Useful throughput"
-          display={`${(r.throughput * 100).toFixed(0)}% of the channel`}
-          fraction={r.throughput}
+          display={outcomeVisible ? `${(r.throughput * 100).toFixed(0)}% of the channel` : 'not yet measured'}
+          fraction={outcomeVisible ? r.throughput : 0}
           barClass="bg-sky-500"
         />
       </div>
@@ -384,7 +397,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ silent: r.silentRate * 100, through: r.throughput * 100, check: bits }}
+            values={outcomeVisible ? { silent: r.silentRate * 100, through: r.throughput * 100, check: bits } : {}}
             best={lv.best}
             scored={won}
           />

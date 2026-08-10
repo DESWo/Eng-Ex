@@ -172,6 +172,11 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
   const shownSag = Number(sag.toFixed(1))
   const solved = shownSag <= setup.maxSag && !tooHeavy
 
+  // Levels 2, 3 and 5 hide the sag until the section is ordered: the mill
+  // grades the design, not a live meter. Levels 1 and 4 keep their readouts,
+  // and any verdict shows the numbers until the section changes again.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setShapeId(setup.shapes[0])
     setDepth(80)
@@ -216,6 +221,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
     if (e.key === 'ArrowUp') setDepth((d) => Math.min(300, d + 10))
     else if (e.key === 'ArrowDown') setDepth((d) => Math.max(80, d - 10))
     else return
+    setVerdict(null)
     e.preventDefault()
   }
 
@@ -240,7 +246,11 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Sag ${setup.maxSag} mm or less${setup.maxKg !== null ? `, beam under ${setup.maxKg} kg/m` : ''}`}
-        status={`this section: ${sag.toFixed(1)} mm · ${kgPerM.toFixed(0)} kg/m`}
+        status={
+          outcomeVisible
+            ? `this section: ${sag.toFixed(1)} mm · ${kgPerM.toFixed(0)} kg/m`
+            : `this section: ${shape.label.toLowerCase()} · ${depth} mm deep · ${kgPerM.toFixed(0)} kg/m`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -353,13 +363,19 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
             fill="none"
             strokeWidth="10"
             strokeLinecap="round"
-            className={cn(sag <= setup.maxSag ? 'stroke-emerald-500' : 'stroke-amber-500')}
+            className={cn(
+              !outcomeVisible
+                ? 'stroke-slate-500 dark:stroke-slate-400'
+                : sag <= setup.maxSag
+                  ? 'stroke-emerald-500'
+                  : 'stroke-amber-500',
+            )}
           />
           <line x1="460" y1="110" x2="460" y2="150" strokeWidth="6" className="stroke-stone-400 dark:stroke-stone-600" />
           <line x1="740" y1="110" x2="740" y2="150" strokeWidth="6" className="stroke-stone-400 dark:stroke-stone-600" />
           <path d="M600 60 L600 96 M592 88 L600 98 L608 88" strokeWidth="3" fill="none" className="stroke-ink dark:stroke-stone-300" />
           <text x="600" y={190} textAnchor="middle" fontSize="14" fontWeight="700" className="fill-ink font-display dark:fill-stone-200">
-            sags {sag.toFixed(1)} mm
+            {outcomeVisible ? `sags ${sag.toFixed(1)} mm` : 'sag: order it to find out'}
           </text>
           <text x="600" y={212} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
             limit {setup.maxSag} mm
@@ -388,13 +404,19 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Meter
-          label="Sag"
-          display={`${sag.toFixed(1)} of ${setup.maxSag} mm`}
-          fraction={Math.min(1, sag / (setup.maxSag * 2))}
-          markerFraction={0.5}
-          barClass={sag <= setup.maxSag ? 'bg-emerald-500' : 'bg-rose-500'}
-        />
+        {outcomeVisible ? (
+          <Meter
+            label="Sag"
+            display={`${sag.toFixed(1)} of ${setup.maxSag} mm`}
+            fraction={Math.min(1, sag / (setup.maxSag * 2))}
+            markerFraction={0.5}
+            barClass={sag <= setup.maxSag ? 'bg-emerald-500' : 'bg-rose-500'}
+          />
+        ) : (
+          <p className="self-center font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
+            Sag: order the section to find out.
+          </p>
+        )}
         {setup.maxKg !== null && (
           <Meter
             label="Weight"
@@ -454,7 +476,12 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ sag, mass: kgPerM, cost }} best={lv.best} scored={won} />
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={outcomeVisible ? { sag, mass: kgPerM, cost } : {}}
+            best={lv.best}
+            scored={won}
+          />
         </div>
       )}
 

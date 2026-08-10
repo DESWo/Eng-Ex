@@ -120,6 +120,8 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the odds hidden until the mission actually flies.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   /** Light the candle. Reliability is only a number until launch day. */
   const launch = () => {
@@ -170,7 +172,11 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Mission survival odds of ${setup.minReliability}% or better${setup.maxMass !== null ? `, at most ${setup.maxMass} kg on the pad` : ''}`}
-        status={`this build: ${reliability.toFixed(2)}% · ${mass} kg`}
+        status={
+          outcomeVisible
+            ? `this build: ${reliability.toFixed(2)}% · ${mass} kg`
+            : `this build: ${mass} kg · launch to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -257,10 +263,10 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label="Mission survives"
-          display={`${reliability.toFixed(2)}% of ${setup.minReliability}% needed`}
-          fraction={Math.max(0, (reliability - 80) / 20)}
+          display={outcomeVisible ? `${reliability.toFixed(2)}% of ${setup.minReliability}% needed` : 'launch to find out'}
+          fraction={outcomeVisible ? Math.max(0, (reliability - 80) / 20) : 0}
           markerFraction={Math.max(0, (setup.minReliability - 80) / 20)}
-          barClass={reliability >= setup.minReliability ? 'bg-emerald-500' : 'bg-amber-500'}
+          barClass={!outcomeVisible ? 'accent-bg' : reliability >= setup.minReliability ? 'bg-emerald-500' : 'bg-amber-500'}
         />
         {setup.maxMass !== null && (
           <Meter
@@ -290,7 +296,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ rel: reliability, mass, cost }}
+            values={outcomeVisible ? { rel: reliability, mass, cost } : {}}
             best={lv.best}
             scored={won}
           />

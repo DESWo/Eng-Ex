@@ -182,6 +182,9 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
     ? madeEnough && !overBudget
     : r.unmet <= (setup.maxUnmet ?? 0) && !overBudget
 
+  // Levels 2, 3 and 5 keep the outcome hidden until the house is switched over.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setPanelKw(1)
     setBatteryKwh(0)
@@ -240,9 +243,11 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
             : `No more than ${setup.maxUnmet} kWh of dark hours${setup.budget !== null ? `, spending at most $${setup.budget.toLocaleString()}` : ''}`
         }
         status={
-          setup.matchDailyTotal
-            ? `making ${r.generated.toFixed(1)} kWh now`
-            : `short ${r.unmet.toFixed(1)} kWh now · $${Math.round(r.cost).toLocaleString()}`
+          !outcomeVisible
+            ? `${panelKw.toFixed(1)} kW of panels${setup.battery ? ` · ${battery} kWh of battery` : ''} · $${Math.round(r.cost).toLocaleString()}`
+            : setup.matchDailyTotal
+              ? `making ${r.generated.toFixed(1)} kWh now`
+              : `short ${r.unmet.toFixed(1)} kWh now · $${Math.round(r.cost).toLocaleString()}`
         }
         attemptsLeft={att.left}
         met={won}
@@ -283,12 +288,13 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
             strokeWidth="2.5"
             className="stroke-amber-500"
           />
-          {/* hours where the house went without */}
-          {r.hours.map((h, i) =>
-            h.short > 0.01 ? (
-              <rect key={i} x={px(i) - 5} y={H - 8} width="10" height="8" rx="2" className="fill-rose-500" />
-            ) : null,
-          )}
+          {/* hours where the house went without, revealed by the switchover */}
+          {outcomeVisible &&
+            r.hours.map((h, i) =>
+              h.short > 0.01 ? (
+                <rect key={i} x={px(i) - 5} y={H - 8} width="10" height="8" rx="2" className="fill-rose-500" />
+              ) : null,
+            )}
           <line x1={X0} y1={H} x2={px(23)} y2={H} strokeWidth="1.5" className="stroke-stone-400 dark:stroke-stone-600" />
           {[0, 6, 12, 18, 23].map((h) => (
             <text key={h} x={px(h)} y={H + 20} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
@@ -301,7 +307,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
           <text x={X0 + 60} y={14} fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
             house
           </text>
-          {r.darkHours > 0 && (
+          {outcomeVisible && r.darkHours > 0 && (
             <text x={px(23)} y={14} textAnchor="end" fontSize="12" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
               {r.darkHours} hours short
             </text>
@@ -333,11 +339,13 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
         <Meter
           label={setup.matchDailyTotal ? 'Generated per day' : 'Energy gone without'}
           display={
-            setup.matchDailyTotal
-              ? `${r.generated.toFixed(1)} of ${DAILY_DEMAND.toFixed(1)} kWh`
-              : `${r.unmet.toFixed(1)} kWh over ${r.darkHours} hours`
+            !outcomeVisible
+              ? 'switch over to find out'
+              : setup.matchDailyTotal
+                ? `${r.generated.toFixed(1)} of ${DAILY_DEMAND.toFixed(1)} kWh`
+                : `${r.unmet.toFixed(1)} kWh over ${r.darkHours} hours`
           }
-          fraction={setup.matchDailyTotal ? r.generated / (DAILY_DEMAND * 1.6) : Math.min(1, r.unmet / 8)}
+          fraction={!outcomeVisible ? 0 : setup.matchDailyTotal ? r.generated / (DAILY_DEMAND * 1.6) : Math.min(1, r.unmet / 8)}
           markerFraction={setup.matchDailyTotal ? 1 / 1.6 : undefined}
           barClass={solved ? 'bg-emerald-500' : 'bg-amber-500'}
         />
@@ -426,14 +434,14 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">Spilled {r.wasted.toFixed(1)} kWh</Badge>
+        {outcomeVisible && <Badge className="ml-auto">Spilled {r.wasted.toFixed(1)} kWh</Badge>}
       </div>
 
       {lv.level.metrics && (
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ unmet: r.unmet, cost: r.cost, waste: r.wasted }}
+            values={outcomeVisible ? { unmet: r.unmet, cost: r.cost, waste: r.wasted } : {}}
             best={lv.best}
             scored={won}
           />

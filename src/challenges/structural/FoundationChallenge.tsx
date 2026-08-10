@@ -133,6 +133,11 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
   const cracked = setup.maxDiff !== null && diff > setup.maxDiff
   const solved = !anyOverloaded && !overBudget && !cracked
 
+  // Levels 2, 3 and 5 keep the ground quiet before the pour: the clay grades
+  // the design, not a live readout. Levels 1 and 4 keep their readouts, and
+  // any verdict shows the numbers until the footings change again.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setWidths([1, 1])
     setWon(false)
@@ -204,9 +209,11 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
       <Objective
         goal={`Keep every footing under ${BEARING} kPa${setup.maxDiff !== null ? ` and uneven sinking under ${setup.maxDiff} mm` : ''}${setup.budget !== null ? `, spending at most ${setup.budget}` : ''}`}
         status={
-          feet.length > 1
-            ? `now: ${feet.map((f) => Math.round(f.press) + ' kPa').join(' / ')} · ${diff.toFixed(0)} mm uneven`
-            : `now: ${Math.round(feet[0].press)} kPa`
+          outcomeVisible
+            ? feet.length > 1
+              ? `now: ${feet.map((f) => Math.round(f.press) + ' kPa').join(' / ')} · ${diff.toFixed(0)} mm uneven`
+              : `now: ${Math.round(feet[0].press)} kPa`
+            : `footings: ${feet.map((f) => f.width.toFixed(2) + ' m').join(' / ')} wide`
         }
         attemptsLeft={att.left}
         met={won}
@@ -230,9 +237,9 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                 y2={GROUND_Y - 92 + sinkPx(feet[1].settle)}
                 strokeWidth="12"
                 strokeLinecap="round"
-                className={cn(cracked ? 'stroke-rose-500' : 'stroke-stone-500 dark:stroke-stone-400')}
+                className={cn(outcomeVisible && cracked ? 'stroke-rose-500' : 'stroke-stone-500 dark:stroke-stone-400')}
               />
-              {cracked && (
+              {outcomeVisible && cracked && (
                 <text x="400" y={GROUND_Y - 106} textAnchor="middle" fontSize="13" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
                   the frame is tearing
                 </text>
@@ -257,7 +264,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                     cy={GROUND_Y + drop + f.width * PX_PER_M * 0.75}
                     rx={w * 0.75}
                     ry={f.width * PX_PER_M * 0.85}
-                    className={f.safe ? 'fill-sky-400/25' : 'fill-rose-400/30'}
+                    className={!outcomeVisible || f.safe ? 'fill-sky-400/25' : 'fill-rose-400/30'}
                   />
                 )}
                 {/* column, drawn as hatched concrete in section */}
@@ -282,8 +289,8 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                     y={GROUND_Y + drop}
                     width={w}
                     height={16}
-                    className={f.safe ? 'stroke-slate-700 dark:stroke-slate-200' : 'stroke-rose-600'}
-                    fillClassName={f.safe ? 'stroke-slate-500 dark:stroke-slate-400' : 'stroke-rose-500'}
+                    className={!outcomeVisible || f.safe ? 'stroke-slate-700 dark:stroke-slate-200' : 'stroke-rose-600'}
+                    fillClassName={!outcomeVisible || f.safe ? 'stroke-slate-500 dark:stroke-slate-400' : 'stroke-rose-500'}
                   />
                 </g>
                 <rect
@@ -304,6 +311,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                     if (e.key === 'ArrowRight') setWidths((p) => p.map((v, j) => (j === i ? Math.min(6, v + step) : v)))
                     else if (e.key === 'ArrowLeft') setWidths((p) => p.map((v, j) => (j === i ? Math.max(1, v - step) : v)))
                     else return
+                    setVerdict(null)
                     e.preventDefault()
                   }}
                   fill="transparent"
@@ -315,7 +323,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                 <text x={x} y={GROUND_Y + drop + 40} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
                   {f.width.toFixed(2)} m wide
                 </text>
-                {setup.ground && showGround && (
+                {setup.ground && showGround && outcomeVisible && (
                   <text x={x} y={GROUND_Y + drop + 58} textAnchor="middle" fontSize="12" fontWeight="700" className={cn('font-display', f.safe ? 'fill-sky-700 dark:fill-sky-300' : 'fill-rose-600 dark:fill-rose-300')}>
                     {Math.round(f.press)} kPa · sinks {f.settle.toFixed(0)} mm
                   </text>
@@ -347,15 +355,20 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {setup.maxDiff !== null && (
-          <Meter
-            label="Uneven sinking"
-            display={`${diff.toFixed(0)} of ${setup.maxDiff} mm allowed`}
-            fraction={Math.min(1, diff / (setup.maxDiff * 2))}
-            markerFraction={0.5}
-            barClass={cracked ? 'bg-rose-500' : 'bg-emerald-500'}
-          />
-        )}
+        {setup.maxDiff !== null &&
+          (outcomeVisible ? (
+            <Meter
+              label="Uneven sinking"
+              display={`${diff.toFixed(0)} of ${setup.maxDiff} mm allowed`}
+              fraction={Math.min(1, diff / (setup.maxDiff * 2))}
+              markerFraction={0.5}
+              barClass={cracked ? 'bg-rose-500' : 'bg-emerald-500'}
+            />
+          ) : (
+            <p className="self-center font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
+              Uneven sinking: pour to find out.
+            </p>
+          ))}
         {setup.budget !== null && (
           <Meter
             label="Groundworks"
@@ -390,7 +403,12 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ cost, settle: worstSettle, diff }} best={lv.best} scored={won} />
+          <Scorecard
+            metrics={lv.level.metrics}
+            values={outcomeVisible ? { cost, settle: worstSettle, diff } : {}}
+            best={lv.best}
+            scored={won}
+          />
         </div>
       )}
 

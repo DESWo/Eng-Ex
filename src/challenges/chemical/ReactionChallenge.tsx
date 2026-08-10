@@ -118,6 +118,9 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
   const energy = energyOf(temp, time)
   const overEnergy = setup.energyBudget !== null && energy > setup.energyBudget
   const solved = conv >= setup.target && !overEnergy
+  // Levels 2, 3 and 5 hide the conversion readout until the batch actually
+  // runs, so the player reasons about heat instead of tuning to a live number.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   const reset = () => {
     setTemp(360)
@@ -188,7 +191,9 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Convert at least ${Math.round(setup.target * 100)}% of the batch${setup.energyBudget !== null ? ` on ${setup.energyBudget} of fuel` : ''}`}
-        status={`this run: ${Math.round(conv * 100)}% converted · ${energy} fuel`}
+        status={outcomeVisible
+          ? `this run: ${Math.round(conv * 100)}% converted · ${energy} fuel`
+          : `set ${temp}°C for ${time} min · ${energy} fuel`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -232,7 +237,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
               />
             ))}
             <text x="75" y="80" textAnchor="middle" fontSize="22" fontWeight="800" className="fill-ink font-display dark:fill-white">
-              {Math.round(conv * 100)}%
+              {outcomeVisible ? `${Math.round(conv * 100)}%` : '?'}
             </text>
             <text x="75" y="100" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
               converted
@@ -295,13 +300,23 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-3">
-        <Meter
-          label="Conversion"
-          display={`${Math.round(conv * 100)}% of ${Math.round(setup.target * 100)}% needed`}
-          fraction={conv / Math.max(0.01, setup.target)}
-          markerFraction={1 / Math.max(0.01, 1)}
-          barClass={conv >= setup.target ? 'bg-emerald-500' : 'bg-amber-500'}
-        />
+        {outcomeVisible ? (
+          <Meter
+            label="Conversion"
+            display={`${Math.round(conv * 100)}% of ${Math.round(setup.target * 100)}% needed`}
+            fraction={conv / Math.max(0.01, setup.target)}
+            markerFraction={1 / Math.max(0.01, 1)}
+            barClass={conv >= setup.target ? 'bg-emerald-500' : 'bg-amber-500'}
+          />
+        ) : (
+          <Meter
+            label="Conversion"
+            display="run the batch to find out"
+            fraction={0}
+            markerFraction={1 / Math.max(0.01, 1)}
+            barClass="bg-stone-300 dark:bg-white/15"
+          />
+        )}
         {setup.energyBudget !== null && (
           <div className="mt-2">
             <Meter
@@ -327,7 +342,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ yield: Math.round(conv * 100), energy, time }} best={lv.best} scored={won} />
+          <Scorecard metrics={lv.level.metrics} values={outcomeVisible ? { yield: Math.round(conv * 100), energy, time } : {}} best={lv.best} scored={won} />
         </div>
       )}
 

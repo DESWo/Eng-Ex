@@ -131,6 +131,8 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const [running, setRunning] = useState(false)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the pace secret until the shift has actually run.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || wonRound
 
   /** Start the shift: the line runs, piles form, THEN the verdict lands. */
   const startShift = () => {
@@ -192,7 +194,9 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Hit ${round.targetRate} units/min with ${round.workers} workers`}
-        status={`current pace: ${rate}/min · ${spare} spare worker${spare === 1 ? '' : 's'}`}
+        status={outcomeVisible
+          ? `current pace: ${rate}/min · ${spare} spare worker${spare === 1 ? '' : 's'}`
+          : `${used} of ${round.workers} workers placed · start the shift to see the pace`}
         attemptsLeft={att.left}
         met={wonRound}
       />
@@ -328,10 +332,10 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Meter
           label="Output rate"
-          display={`${rate} / min (need ${round.targetRate})`}
-          fraction={rate / (round.targetRate * 1.3)}
+          display={outcomeVisible ? `${rate} / min (need ${round.targetRate})` : `? / min (need ${round.targetRate})`}
+          fraction={outcomeVisible ? rate / (round.targetRate * 1.3) : 0}
           markerFraction={round.targetRate / (round.targetRate * 1.3)}
-          barClass={win ? 'bg-emerald-500' : 'bg-amber-400'}
+          barClass={!outcomeVisible ? 'accent-bg' : win ? 'bg-emerald-500' : 'bg-amber-400'}
         />
         <div className="flex items-center gap-3">
           <Badge className={cn('px-4 py-1.5 text-sm', spare === 0 ? 'accent-soft accent-text' : '')}>
@@ -369,14 +373,14 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">Busyness {utilization}%</Badge>
+        <Badge className="ml-auto">Busyness {outcomeVisible ? `${utilization}%` : '?'}</Badge>
       </div>
 
       {lv.level.metrics && (
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ workers: used, util: utilization, rate }}
+            values={outcomeVisible ? { workers: used, util: utilization, rate } : {}}
             best={lv.best}
             scored={wonRound}
           />

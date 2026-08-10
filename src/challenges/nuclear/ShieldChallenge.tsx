@@ -136,6 +136,9 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
   const overCost = setup.costBudget !== null && cost > setup.costBudget
   const solved = dose <= setup.safeDose && !overMass && !overCost
 
+  /** Levels 2, 3 and 5 hide the dose until the player certifies the wall. */
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setThick({ lead: 0, concrete: 0, water: 0, poly: 0 })
     setWon(false)
@@ -247,7 +250,11 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Get the dose to ${setup.safeDose} or less${setup.massBudget !== null ? `, wall under ${setup.massBudget} kg` : ''}${setup.costBudget !== null ? `, under $${setup.costBudget}` : ''}`}
-        status={`getting through now: ${dose < 10 ? dose.toFixed(1) : Math.round(dose)}`}
+        status={
+          outcomeVisible
+            ? `getting through now: ${dose < 10 ? dose.toFixed(1) : Math.round(dose)}`
+            : `wall so far: ${totalCm} cm · certify to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -374,10 +381,10 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label="Dose outside the shield"
-          display={`${dose < 10 ? dose.toFixed(2) : Math.round(dose)} of ${setup.safeDose} allowed`}
-          fraction={Math.min(1, dose / (setup.safeDose * 2))}
+          display={outcomeVisible ? `${dose < 10 ? dose.toFixed(2) : Math.round(dose)} of ${setup.safeDose} allowed` : 'certify to find out'}
+          fraction={outcomeVisible ? Math.min(1, dose / (setup.safeDose * 2)) : 0}
           markerFraction={0.5}
-          barClass={dose <= setup.safeDose ? 'bg-emerald-500' : 'bg-rose-500'}
+          barClass={!outcomeVisible ? 'accent-bg' : dose <= setup.safeDose ? 'bg-emerald-500' : 'bg-rose-500'}
         />
         {setup.massBudget !== null && (
           <Meter
@@ -441,7 +448,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ dose, mass, cost }} best={lv.best} scored={won} />
+          <Scorecard metrics={lv.level.metrics} values={outcomeVisible ? { dose, mass, cost } : {}} best={lv.best} scored={won} />
         </div>
       )}
 

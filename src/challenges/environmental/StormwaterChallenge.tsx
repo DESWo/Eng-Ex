@@ -175,6 +175,9 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
   const overBudget = setup.budget !== null && r.cost > setup.budget
   const solved = r.overflow <= setup.maxOverflow && !overBudget
 
+  // Levels 2, 3 and 5 keep the overflow hidden until the scheme is submitted.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setPond(0)
     setCells(Array(20).fill('paving'))
@@ -229,7 +232,11 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Keep road overflow to ${setup.maxOverflow} m³${setup.budget !== null ? ` on a ${setup.budget.toLocaleString()} budget` : ''}`}
-        status={`this storm: ${r.overflow.toFixed(0)} m³ on the road · ${Math.round(r.cost).toLocaleString()} spent`}
+        status={
+          outcomeVisible
+            ? `this storm: ${r.overflow.toFixed(0)} m³ on the road · ${Math.round(r.cost).toLocaleString()} spent`
+            : `pond ${pond} m³ · ${Math.round(paving).toLocaleString()} m² tarmac · ${Math.round(r.cost).toLocaleString()} spent`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -250,7 +257,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
             return (
               <g key={i}>
                 <rect x={x} y={H - h} width={barW} height={h} rx="3" className="fill-sky-400/70" />
-                {s.spill > 0.05 && (
+                {outcomeVisible && s.spill > 0.05 && (
                   <rect x={x} y={H - h - 8} width={barW} height="6" rx="2" className="fill-rose-500" />
                 )}
               </g>
@@ -280,7 +287,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
               pond filling
             </text>
           )}
-          {r.overflow > 0.05 && (
+          {outcomeVisible && r.overflow > 0.05 && (
             <text x={X0 + W} y={14} textAnchor="end" fontSize="12" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
               {r.overflow.toFixed(0)} m³ onto the road
             </text>
@@ -311,8 +318,8 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label="Water on the road"
-          display={`${r.overflow.toFixed(0)} m³`}
-          fraction={Math.min(1, r.overflow / 150)}
+          display={outcomeVisible ? `${r.overflow.toFixed(0)} m³` : 'submit to find out'}
+          fraction={outcomeVisible ? Math.min(1, r.overflow / 150) : 0}
           barClass={r.overflow <= setup.maxOverflow ? 'bg-emerald-500' : 'bg-rose-500'}
         />
         <Meter
@@ -418,7 +425,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ cost: r.cost, overflow: r.overflow, paving }}
+            values={outcomeVisible ? { cost: r.cost, overflow: r.overflow, paving } : {}}
             best={lv.best}
             scored={won}
           />

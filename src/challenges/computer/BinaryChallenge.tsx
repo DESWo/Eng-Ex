@@ -119,6 +119,11 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
   const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
+  // Levels 2, 3 and 5 hide the running total until a send: summing the place
+  // values in your head is the whole skill. Level 1 keeps it to teach the
+  // controls, level 4 IS the readout.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setBits(Array(MAX_BITS).fill(false))
     setWon(false)
@@ -158,6 +163,7 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
   /** Click an empty socket to wire up more signal lines, or a bulb to pull them out. */
   const setWidthTo = (nextWidth: number) => {
     if (setup.width !== null) return
+    setVerdict(null)
     const clamped = Math.max(2, Math.min(MAX_BITS, nextWidth))
     // Anything above the new top place is no longer wired in, so switch it off.
     setBits((b) => b.map((v, p) => (p >= clamped ? false : v)))
@@ -175,11 +181,14 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Light the bulbs so the wire carries exactly ${setup.target}`}
-        // Show the running value, not just how many bulbs are on. Level 1 hides
-        // the per-place breakdown (that is level 4's payoff), which left the
-        // player committing to an eight-toggle sum with no feedback until after
-        // they pressed send. The catapult tells you where the shot landed.
-        status={`sending ${value} · ${litCount} lit`}
+        // Level 1 shows the running value so the shot lands somewhere visible,
+        // like the catapult. Later levels only reveal what the receiver read
+        // after a send, so the sum has to happen in the player's head.
+        status={
+          outcomeVisible
+            ? `sending ${value} · ${litCount} lit`
+            : `${litCount} lit of ${w} bulbs · send it to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -263,7 +272,8 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
                   .filter((p) => !(setup.signed && p === signPlace) && bits[p])
                   .map((p) => Math.pow(2, p))
                   .join(' + ')}{' '}
-                = <span className="font-bold text-ink dark:text-stone-200">{value}</span>
+                {/* The per-place breakdown is the insight; the total is the answer. */}
+                = <span className="font-bold text-ink dark:text-stone-200">{outcomeVisible ? value : '?'}</span>
               </>
             )}
           </p>
@@ -308,7 +318,7 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ width: w, headroom, lit: litCount }}
+            values={outcomeVisible ? { width: w, headroom, lit: litCount } : {}}
             best={lv.best}
             scored={won}
           />

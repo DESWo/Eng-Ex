@@ -124,6 +124,8 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the pass/fail state hidden until the design goes to review.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || wonRound
 
   /** Take the design to the flight readiness review. */
   const review = () => {
@@ -201,7 +203,11 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Meet the science and comms goals with every check green, within ${round.massBudget} kg`}
-        status={`checks passing: ${Object.values(checks).filter(Boolean).length} of ${Object.values(checks).length} · ${usedMass} kg`}
+        status={
+          outcomeVisible
+            ? `checks passing: ${Object.values(checks).filter(Boolean).length} of ${Object.values(checks).length} · ${usedMass} kg`
+            : `${usedMass} kg allocated · review to find out`
+        }
         attemptsLeft={att.left}
         met={wonRound}
       />
@@ -224,47 +230,52 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
           <line x1="230" y1="110" x2="250" y2="110" strokeWidth="4" className="stroke-slate-400" />
           <line x1="550" y1="110" x2="570" y2="110" strokeWidth="4" className="stroke-slate-400" />
 
-          {/* body + modules */}
-          {modules.map((m) => (
-            <g key={m.key}>
-              <motion.rect
-                x={m.x - 40}
-                y="80"
-                width="80"
-                height="60"
-                rx="8"
-                animate={{ opacity: m.ok ? 1 : 0.55 }}
-                className={m.ok ? '' : 'fill-slate-300 dark:fill-slate-700'}
-                style={m.ok ? { fill: 'var(--accent)' } : undefined}
-              />
-              <text x={m.x} y="66" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">{m.name}</text>
-              {m.ok ? (
-                <text x={m.x} y="118" textAnchor="middle" fontSize="20" className="fill-white">✓</text>
-              ) : (
-                <text x={m.x} y="118" textAnchor="middle" fontSize="18" className="fill-slate-500 dark:fill-slate-400">…</text>
-              )}
-            </g>
-          ))}
+          {/* body + modules; pass state only lights up once the design has been reviewed */}
+          {modules.map((m) => {
+            const lit = outcomeVisible && m.ok
+            return (
+              <g key={m.key}>
+                <motion.rect
+                  x={m.x - 40}
+                  y="80"
+                  width="80"
+                  height="60"
+                  rx="8"
+                  animate={{ opacity: !outcomeVisible || m.ok ? 1 : 0.55 }}
+                  className={lit ? '' : 'fill-slate-300 dark:fill-slate-700'}
+                  style={lit ? { fill: 'var(--accent)' } : undefined}
+                />
+                <text x={m.x} y="66" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">{m.name}</text>
+                {!outcomeVisible ? (
+                  <text x={m.x} y="118" textAnchor="middle" fontSize="18" className="fill-slate-500 dark:fill-slate-400">?</text>
+                ) : m.ok ? (
+                  <text x={m.x} y="118" textAnchor="middle" fontSize="20" className="fill-white">✓</text>
+                ) : (
+                  <text x={m.x} y="118" textAnchor="middle" fontSize="18" className="fill-slate-500 dark:fill-slate-400">…</text>
+                )}
+              </g>
+            )
+          })}
           {/* dish */}
           <path d="M400 80 q 0 -30 26 -34" fill="none" className="stroke-slate-400" strokeWidth="3" />
         </svg>
       </div>
 
-      {/* Requirements checklist */}
+      {/* Requirements checklist: names always, pass state only after the review */}
       <div className="mt-4 flex flex-wrap gap-2">
         {requirements.map((r) => (
           <span
             key={r.label}
             className={cn(
               'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-display font-semibold',
-              r.ok
+              outcomeVisible && r.ok
                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
                 : 'bg-stone-100 text-ink-soft dark:bg-white/5 dark:text-stone-400',
             )}
           >
-            {r.ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+            {outcomeVisible && (r.ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />)}
             {r.label}
-            <span className="font-mono tabular-nums opacity-70">({r.value})</span>
+            {outcomeVisible && <span className="font-mono tabular-nums opacity-70">({r.value})</span>}
           </span>
         ))}
       </div>
@@ -379,11 +390,15 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{
-              science: Math.round(science),
-              spare: round.massBudget - usedMass,
-              power: Math.round(powerSupply - powerDemand),
-            }}
+            values={
+              outcomeVisible
+                ? {
+                    science: Math.round(science),
+                    spare: round.massBudget - usedMass,
+                    power: Math.round(powerSupply - powerDemand),
+                  }
+                : {}
+            }
             best={lv.best}
             scored={wonRound}
           />

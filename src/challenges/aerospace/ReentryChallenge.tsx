@@ -187,6 +187,16 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
 
+  // Levels 2, 3 and 5 fly blind: the outcome numbers only appear once the
+  // player commits to an entry. Level 1 is for learning the corridor and
+  // level 4 exists to show the readouts.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
+  /** Any pre-flight tweak makes the last verdict stale, which re-hides the outcome. */
+  const touch = () => {
+    if (!won) setVerdict(null)
+  }
+
   /** Commit to the entry corridor. The capsule only flies once per call. */
   const beginEntry = () => {
     if (won) return
@@ -231,11 +241,13 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
     // The path is drawn with an exaggerated vertical scale, so undo that here.
     const deg = (Math.atan2(dy / 4, dx) * 180) / Math.PI
     setAngle(Math.max(1, Math.min(8, Math.round(deg * 2) / 2)))
+    touch()
   })
   const nudgeAngle = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') setAngle((a) => Math.min(8, a + 0.5))
     else if (e.key === 'ArrowUp') setAngle((a) => Math.max(1, a - 0.5))
     else return
+    touch()
     e.preventDefault()
   }
 
@@ -281,7 +293,7 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
           <Badge
             className={cn(
               'px-4 py-1.5 text-sm',
-              overG ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-stone-100 text-ink-soft dark:bg-white/10 dark:text-stone-300',
+              outcomeVisible && overG ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-stone-100 text-ink-soft dark:bg-white/10 dark:text-stone-300',
             )}
           >
             Crew limit {setup.gLimit} g
@@ -324,7 +336,11 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
 
           {/* capsule, glowing according to how hot it is getting */}
           <g transform={`translate(${70 + dx * 0.62} ${52 + dy * 0.62})`}>
-            <ellipse rx={f.peakQ > 200 ? 34 : 24} ry={f.peakQ > 200 ? 20 : 14} className={f.fail === 'burnt' ? 'fill-rose-500/60' : 'fill-amber-400/40'} />
+            <ellipse
+              rx={outcomeVisible && f.peakQ > 200 ? 34 : 24}
+              ry={outcomeVisible && f.peakQ > 200 ? 20 : 14}
+              className={outcomeVisible && f.fail === 'burnt' ? 'fill-rose-500/60' : 'fill-amber-400/40'}
+            />
             <path
               d={shape === 'blunt' ? 'M-16 10 L16 10 L10 -8 L-10 -8 Z' : shape === 'rounded' ? 'M-13 10 L13 10 L7 -10 L-7 -10 Z' : 'M-9 10 L9 10 L0 -14 Z'}
               className="fill-stone-300"
@@ -348,7 +364,9 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
               <polyline points={tracePath('q', maxQ)} fill="none" strokeWidth="2.5" className="stroke-amber-400" />
               <polyline points={tracePath('g', maxG)} fill="none" strokeWidth="2" className="stroke-white/70" />
               <text x="66" y={TR_TOP + 14} fontSize="11" fontWeight="700" className="fill-white/60 font-display">
-                peak {Math.round(f.peakQ)} W/cm² · {f.peakG.toFixed(1)} g · {f.minutes.toFixed(1)} min
+                {outcomeVisible
+                  ? `peak ${Math.round(f.peakQ)} W/cm² · ${f.peakG.toFixed(1)} g · ${f.minutes.toFixed(1)} min`
+                  : 'fly it to put numbers on the peaks'}
               </text>
             </g>
           )}
@@ -378,9 +396,13 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3">
         <Meter
           label="Heat shield"
-          display={`${Math.round(f.totalQ).toLocaleString()} of ${Math.round(f.capacity).toLocaleString()} soaked up`}
-          fraction={f.totalQ / f.capacity}
-          barClass={f.fail === 'burnt' ? 'bg-rose-500' : 'bg-emerald-500'}
+          display={
+            outcomeVisible
+              ? `${Math.round(f.totalQ).toLocaleString()} of ${Math.round(f.capacity).toLocaleString()} soaked up`
+              : `can soak ${Math.round(f.capacity).toLocaleString()} · fly it to find out`
+          }
+          fraction={outcomeVisible ? f.totalQ / f.capacity : 0}
+          barClass={outcomeVisible && f.fail === 'burnt' ? 'bg-rose-500' : 'bg-emerald-500'}
         />
       </div>
 
@@ -396,7 +418,10 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setShapeId(id)}
+                  onClick={() => {
+                    setShapeId(id)
+                    touch()
+                  }}
                   aria-pressed={active}
                   className={cn(
                     'rounded-2xl px-4 py-2.5 text-left font-display text-sm font-semibold transition-colors duration-200',
@@ -424,7 +449,10 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setShieldCm(on ? Math.max(2, i) : i + 1)}
+                  onClick={() => {
+                    setShieldCm(on ? Math.max(2, i) : i + 1)
+                    touch()
+                  }}
                   aria-pressed={on}
                   aria-label={on ? `Remove shield layer ${i + 1}` : `Add shield layer ${i + 1}`}
                   className={cn(
@@ -459,7 +487,7 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ peakG: f.peakG, mass: f.shieldMass, peakQ: f.peakQ }}
+            values={outcomeVisible ? { peakG: f.peakG, mass: f.shieldMass, peakQ: f.peakQ } : {}}
             best={lv.best}
             scored={won}
           />

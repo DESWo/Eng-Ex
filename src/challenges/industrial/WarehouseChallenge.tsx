@@ -128,6 +128,8 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the totals secret until a picking day has actually run.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   /** Lock the layout in and run a picking day against it. */
   const runDay = () => {
@@ -205,7 +207,9 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`${setup.maxWalk !== null ? `Walking under ${setup.maxWalk}` : ''}${setup.maxWalk !== null && setup.maxEffort !== null ? ' and ' : ''}${setup.maxEffort !== null ? `carrying work under ${setup.maxEffort}` : ''}`}
-        status={`this layout: ${walk} walking${setup.weighted ? ` · ${effort} carrying` : ''}`}
+        status={outcomeVisible
+          ? `this layout: ${walk} walking${setup.weighted ? ` · ${effort} carrying` : ''}`
+          : 'run a picking day to count the cost'}
         attemptsLeft={att.left}
         met={won}
       />
@@ -288,19 +292,19 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
         {setup.maxWalk !== null && (
           <Meter
             label="Walking"
-            display={`${walk} of ${setup.maxWalk}`}
-            fraction={walk / (setup.maxWalk * 1.6)}
+            display={outcomeVisible ? `${walk} of ${setup.maxWalk}` : `? of ${setup.maxWalk}`}
+            fraction={outcomeVisible ? walk / (setup.maxWalk * 1.6) : 0}
             markerFraction={1 / 1.6}
-            barClass={overWalk ? 'bg-rose-500' : 'bg-emerald-500'}
+            barClass={!outcomeVisible ? 'accent-bg' : overWalk ? 'bg-rose-500' : 'bg-emerald-500'}
           />
         )}
         {setup.maxEffort !== null && (
           <Meter
             label="Carrying work"
-            display={`${effort} of ${setup.maxEffort}`}
-            fraction={effort / (setup.maxEffort * 2)}
+            display={outcomeVisible ? `${effort} of ${setup.maxEffort}` : `? of ${setup.maxEffort}`}
+            fraction={outcomeVisible ? effort / (setup.maxEffort * 2) : 0}
             markerFraction={0.5}
-            barClass={overEffort ? 'bg-rose-500' : 'bg-emerald-500'}
+            barClass={!outcomeVisible ? 'accent-bg' : overEffort ? 'bg-rose-500' : 'bg-emerald-500'}
           />
         )}
       </div>
@@ -315,7 +319,9 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
           Reset
         </Button>
         <Badge className="ml-auto">
-          {setup.weighted ? `${effort} carrying · ${walk} walking` : `${walk} walking`}
+          {!outcomeVisible
+            ? 'run a day to measure it'
+            : setup.weighted ? `${effort} carrying · ${walk} walking` : `${walk} walking`}
         </Badge>
       </div>
 
@@ -323,7 +329,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ effort, walk, front: frontTrips }}
+            values={outcomeVisible ? { effort, walk, front: frontTrips } : {}}
             best={lv.best}
             scored={won}
           />

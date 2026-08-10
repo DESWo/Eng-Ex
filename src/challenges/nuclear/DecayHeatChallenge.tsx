@@ -135,6 +135,9 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
   const melted = peak > setup.limit
   const solved = !melted && !overBattery
 
+  /** Levels 2, 3 and 5 hide the temperatures until the procedure is run. */
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+
   const reset = () => {
     setPicks(['off', 'off', 'off'])
     setWon(false)
@@ -181,7 +184,11 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Keep the fuel under ${setup.limit}°C for 24 hours${setup.battery !== null ? ` on ${setup.battery} kWh of battery` : ''}`}
-        status={`this plan peaks at ${Math.round(peak)}°C · ${Math.round(battery)} kWh`}
+        status={
+          outcomeVisible
+            ? `this plan peaks at ${Math.round(peak)}°C · ${Math.round(battery)} kWh`
+            : `plan drains ${Math.round(battery)} kWh · run it to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -233,19 +240,23 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                     </text>
                   </>
                 )}
-                <text
-                  x={x + 30}
-                  y="182"
-                  textAnchor="middle"
-                  fontSize="12"
-                  fontWeight="700"
-                  className={cn('font-display', short ? 'fill-rose-600 dark:fill-rose-300' : 'fill-emerald-700 dark:fill-emerald-300')}
-                >
-                  {short ? 'heating up' : 'cooling down'}
-                </text>
-                <text x={x + 30} y="204" textAnchor="middle" fontSize="13" fontWeight="700" className="fill-ink font-display dark:fill-stone-200">
-                  {Math.round(b.temp)}°C
-                </text>
+                {outcomeVisible && (
+                  <>
+                    <text
+                      x={x + 30}
+                      y="182"
+                      textAnchor="middle"
+                      fontSize="12"
+                      fontWeight="700"
+                      className={cn('font-display', short ? 'fill-rose-600 dark:fill-rose-300' : 'fill-emerald-700 dark:fill-emerald-300')}
+                    >
+                      {short ? 'heating up' : 'cooling down'}
+                    </text>
+                    <text x={x + 30} y="204" textAnchor="middle" fontSize="13" fontWeight="700" className="fill-ink font-display dark:fill-stone-200">
+                      {Math.round(b.temp)}°C
+                    </text>
+                  </>
+                )}
               </g>
             )
           })}
@@ -256,8 +267,8 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
           <rect x="24" y="82" width="14" height="14" rx="3" className="fill-sky-400" />
           <text x="44" y="94" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">cooling</text>
 
-          <text x="24" y="240" fontSize="12" fontWeight="700" className={cn('font-display', melted ? 'fill-rose-600 dark:fill-rose-300' : 'fill-ink-soft dark:fill-stone-400')}>
-            Peak fuel temperature {Math.round(peak)}°C
+          <text x="24" y="240" fontSize="12" fontWeight="700" className={cn('font-display', outcomeVisible && melted ? 'fill-rose-600 dark:fill-rose-300' : 'fill-ink-soft dark:fill-stone-400')}>
+            {outcomeVisible ? `Peak fuel temperature ${Math.round(peak)}°C` : 'Run the procedure to read the temperatures'}
           </text>
         </svg>
       </div>
@@ -340,7 +351,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ peak, battery, final: temp }} best={lv.best} scored={won} />
+          <Scorecard metrics={lv.level.metrics} values={outcomeVisible ? { peak, battery, final: temp } : {}} best={lv.best} scored={won} />
         </div>
       )}
 

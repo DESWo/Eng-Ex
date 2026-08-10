@@ -117,6 +117,9 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
   const inBand = ph >= setup.band[0] && ph <= setup.band[1]
   const bandMid = (setup.band[0] + setup.band[1]) / 2
   const offset = Math.round(Math.abs(ph - bandMid) * 10)
+  // Levels 2, 3 and 5 hide the numeric pH until the batch is called done:
+  // the flask colour stays, because reading the colour IS the skill.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   const reset = () => {
     setBase(0)
@@ -187,7 +190,9 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Bring the flask to pH ${setup.band[0]} to ${setup.band[1]}`}
-        status={`now pH ${ph.toFixed(2)} · ${base} mL added`}
+        status={outcomeVisible
+          ? `now pH ${ph.toFixed(2)} · ${base} mL added`
+          : `${base} mL added · watch the colour`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -208,7 +213,7 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
           {/* beaker */}
           <path d="M90 120 L90 210 Q90 224 104 224 L210 224 Q224 224 224 210 L224 120 Z" className="fill-stone-100/60 stroke-stone-400 dark:fill-white/5 dark:stroke-stone-500" strokeWidth="2.5" />
           <rect x="92" y={222 - fillH} width="130" height={fillH} rx="4" style={{ fill: phColor(ph) }} opacity="0.85" />
-          <text x="157" y="180" textAnchor="middle" fontSize="26" fontWeight="800" className="fill-white font-display">{ph.toFixed(1)}</text>
+          <text x="157" y="180" textAnchor="middle" fontSize="26" fontWeight="800" className="fill-white font-display">{outcomeVisible ? ph.toFixed(1) : '?'}</text>
           <text x="157" y="200" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-white/80 font-display">pH</text>
 
           {/* titration curve */}
@@ -246,13 +251,23 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-3">
-        <Meter
-          label="pH"
-          display={`${ph.toFixed(2)} · band ${setup.band[0]}–${setup.band[1]}`}
-          fraction={ph / 14}
-          markerFraction={bandMid / 14}
-          barClass={inBand ? 'bg-emerald-500' : ph < setup.band[0] ? 'bg-rose-500' : 'bg-violet-500'}
-        />
+        {outcomeVisible ? (
+          <Meter
+            label="pH"
+            display={`${ph.toFixed(2)} · band ${setup.band[0]}–${setup.band[1]}`}
+            fraction={ph / 14}
+            markerFraction={bandMid / 14}
+            barClass={inBand ? 'bg-emerald-500' : ph < setup.band[0] ? 'bg-rose-500' : 'bg-violet-500'}
+          />
+        ) : (
+          <Meter
+            label="pH"
+            display={`read the colour · band ${setup.band[0]}–${setup.band[1]}`}
+            fraction={0}
+            markerFraction={bandMid / 14}
+            barClass="bg-stone-300 dark:bg-white/15"
+          />
+        )}
       </div>
 
       {/* Controls: coarse and fine pours */}
@@ -279,7 +294,7 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ offset, reagent: base, pours }} best={lv.best} scored={won} />
+          <Scorecard metrics={lv.level.metrics} values={outcomeVisible ? { offset, reagent: base, pours } : {}} best={lv.best} scored={won} />
         </div>
       )}
 

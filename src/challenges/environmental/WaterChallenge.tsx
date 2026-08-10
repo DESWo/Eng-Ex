@@ -172,6 +172,9 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
   const overBudget = round.budget !== null && r.cost > round.budget
   const win = r.clean && !overBudget
 
+  // Levels 2, 3 and 5 keep the water's state hidden until the taps are opened.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || wonRound
+
   /** Open the taps and drink the result. */
   const openTaps = () => {
     if (wonRound) return
@@ -222,6 +225,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
       return next
     })
     setWonRound(false)
+    setVerdict(null)
   }
 
   const reset = () => {
@@ -243,7 +247,11 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Outflow clean enough to drink${round.budget !== null ? ` for $${round.budget} or less` : ''}`}
-        status={`still in the water: ${r.left.length === 0 ? 'nothing' : r.left.map((pl) => POLLUTANTS[pl].label).join(', ')} · $${r.cost}`}
+        status={
+          outcomeVisible
+            ? `still in the water: ${r.left.length === 0 ? 'nothing' : r.left.map((pl) => POLLUTANTS[pl].label).join(', ')} · $${r.cost}`
+            : `${order.length} ${order.length === 1 ? 'stage' : 'stages'} in line · $${r.cost}`
+        }
         attemptsLeft={att.left}
         met={wonRound}
       />
@@ -259,7 +267,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
           In the water:
         </span>
         {round.pollutants.map((p) => {
-          const gone = !r.left.includes(p)
+          const gone = outcomeVisible && !r.left.includes(p)
           return (
             <span
               key={p}
@@ -275,7 +283,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
             </span>
           )
         })}
-        {r.left.filter((p) => !round.pollutants.includes(p)).map((p) => (
+        {outcomeVisible && r.left.filter((p) => !round.pollutants.includes(p)).map((p) => (
           <span key={p} className="flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 font-display text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: POLLUTANTS[p].color }} />
             {POLLUTANTS[p].label} (added by a stage!)
@@ -298,7 +306,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
 
           {order.map((id, i) => {
             const s = stageById(id)
-            const isClogged = r.clogged.includes(id)
+            const isClogged = outcomeVisible && r.clogged.includes(id)
             return (
               <div
                 key={id}
@@ -351,9 +359,15 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
 
           <motion.div
             className="flex w-16 flex-col items-center justify-center rounded-xl px-2 py-3 text-center"
-            animate={{ backgroundColor: r.clean ? 'rgba(56,189,248,0.9)' : `rgba(56,189,248,${0.25 + clarity * 0.4})` }}
+            animate={{
+              backgroundColor: !outcomeVisible
+                ? 'rgba(56,189,248,0.45)'
+                : r.clean
+                  ? 'rgba(56,189,248,0.9)'
+                  : `rgba(56,189,248,${0.25 + clarity * 0.4})`,
+            }}
           >
-            <span className="font-display text-xs font-bold text-white">{r.clean ? 'clean!' : 'out'}</span>
+            <span className="font-display text-xs font-bold text-white">{outcomeVisible && r.clean ? 'clean!' : 'out'}</span>
           </motion.div>
         </div>
       </div>
@@ -438,7 +452,7 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ cost: r.cost, energy: r.energy, stages: order.length }}
+            values={outcomeVisible ? { cost: r.cost, energy: r.energy, stages: order.length } : {}}
             best={lv.best}
             scored={wonRound}
           />

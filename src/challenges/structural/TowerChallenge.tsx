@@ -124,6 +124,11 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
   const swayTop = swayOf(round.wind, stiffness)
   const win = strongEnough && !overBudget
 
+  // Levels 2, 3 and 5 keep quiet before sign-off: the storm grades the design,
+  // not a live meter. Levels 1 and 4 keep their readouts, and any verdict shows
+  // the numbers until the design changes again.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || wonRound
+
   /** Put your name on the drawings and let the storm answer. */
   const signOff = () => {
     if (wonRound) return
@@ -177,7 +182,11 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Beat wind ${round.wind} with stiffness${round.budget !== null ? ` on a $${round.budget} budget` : ''}`}
-        status={`this design: stiffness ${stiffness} · $${cost}`}
+        status={
+          outcomeVisible
+            ? `this design: stiffness ${stiffness} · $${cost}`
+            : `this design: ${core.label.toLowerCase()}${wide ? ' + wide base' : ''}${damper ? ' + damper' : ''} · $${cost}`
+        }
         attemptsLeft={att.left}
         met={wonRound}
       />
@@ -285,14 +294,20 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
             No budget this level. Cost so far: ${cost}
           </p>
         )}
-        <Meter
-          label="Stiffness"
-          display={`${stiffness} vs wind ${round.wind}`}
-          fraction={stiffness / 48}
-          markerFraction={round.wind / 48}
-          barClass={strongEnough ? 'bg-emerald-500' : 'bg-amber-400'}
-        />
-        {round.swayReadout && showSway && (
+        {outcomeVisible ? (
+          <Meter
+            label="Stiffness"
+            display={`${stiffness} vs wind ${round.wind}`}
+            fraction={stiffness / 48}
+            markerFraction={round.wind / 48}
+            barClass={strongEnough ? 'bg-emerald-500' : 'bg-amber-400'}
+          />
+        ) : (
+          <p className="self-center font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
+            Stiffness vs wind: sign off to find out.
+          </p>
+        )}
+        {round.swayReadout && showSway && outcomeVisible && (
           <Meter
             label="Top-floor sway"
             display={`${swayTop}`}
@@ -399,7 +414,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ cost, sway: swayTop, margin: stiffness - round.wind }}
+            values={outcomeVisible ? { cost, sway: swayTop, margin: stiffness - round.wind } : {}}
             best={lv.best}
             scored={wonRound}
           />

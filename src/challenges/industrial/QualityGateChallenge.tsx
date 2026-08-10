@@ -194,6 +194,8 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the counts secret until the shift has actually run.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   /** Run the shift with the quality plan as it stands. */
   const runShift = () => {
@@ -237,6 +239,7 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
     setGates((g) => g.map((v, j) => (j === i ? !v : v)))
   }
   const onlyEndGate = gates[3] && !gates[0] && !gates[1] && !gates[2]
+  const desks = gates.filter(Boolean).length
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -249,7 +252,9 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`At most ${setup.maxEscaped} faulty units reaching customers${setup.inspectBudget !== null ? `, inspection under ${setup.inspectBudget}` : ''}${setup.maxTotal !== null ? `, total quality cost under ${setup.maxTotal}` : ''}`}
-        status={`this plan: ${Math.round(r.escaped)} escapes · ${Math.round(r.total)} total`}
+        status={outcomeVisible
+          ? `this plan: ${Math.round(r.escaped)} escapes · ${Math.round(r.total)} total`
+          : `${desks} desk${desks === 1 ? '' : 's'} placed · run the shift to count the escapes`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -392,9 +397,11 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
               textAnchor="middle"
               fontSize="11"
               fontWeight="700"
-              className={r.escaped <= setup.maxEscaped ? 'fill-emerald-700 font-display dark:fill-emerald-300' : 'fill-rose-600 font-display dark:fill-rose-300'}
+              className={!outcomeVisible
+                ? 'fill-ink-soft font-display dark:fill-stone-400'
+                : r.escaped <= setup.maxEscaped ? 'fill-emerald-700 font-display dark:fill-emerald-300' : 'fill-rose-600 font-display dark:fill-rose-300'}
             >
-              {Math.round(r.escaped)} faulty
+              {outcomeVisible ? `${Math.round(r.escaped)} faulty` : '? faulty'}
             </text>
           </g>
 
@@ -468,20 +475,20 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <Meter
           label="Reached customers"
-          display={`${Math.round(r.escaped)} units`}
-          fraction={Math.min(1, r.escaped / 250)}
-          barClass={r.escaped <= setup.maxEscaped ? 'bg-emerald-500' : 'bg-rose-500'}
+          display={outcomeVisible ? `${Math.round(r.escaped)} units` : '? units'}
+          fraction={outcomeVisible ? Math.min(1, r.escaped / 250) : 0}
+          barClass={!outcomeVisible ? 'accent-bg' : r.escaped <= setup.maxEscaped ? 'bg-emerald-500' : 'bg-rose-500'}
         />
         <Meter
           label="Inspection"
-          display={`${Math.round(r.inspectCost)}`}
-          fraction={Math.min(1, r.inspectCost / 6000)}
+          display={outcomeVisible ? `${Math.round(r.inspectCost)}` : '?'}
+          fraction={outcomeVisible ? Math.min(1, r.inspectCost / 6000) : 0}
           barClass="bg-sky-500"
         />
         <Meter
           label="Wasted work"
-          display={`${Math.round(r.waste)}`}
-          fraction={Math.min(1, r.waste / 18000)}
+          display={outcomeVisible ? `${Math.round(r.waste)}` : '?'}
+          fraction={outcomeVisible ? Math.min(1, r.waste / 18000) : 0}
           barClass="bg-amber-500"
         />
       </div>
@@ -495,14 +502,14 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Clear
         </Button>
-        <Badge className="ml-auto">Cost of quality {Math.round(r.total)}</Badge>
+        <Badge className="ml-auto">Cost of quality {outcomeVisible ? Math.round(r.total) : '?'}</Badge>
       </div>
 
       {lv.level.metrics && (
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ escaped: r.escaped, inspect: r.inspectCost, waste: r.waste }}
+            values={outcomeVisible ? { escaped: r.escaped, inspect: r.inspectCost, waste: r.waste } : {}}
             best={lv.best}
             scored={won}
           />

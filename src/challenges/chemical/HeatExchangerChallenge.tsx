@@ -119,6 +119,9 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
   const pumping = segments * segments * 2 // grows fast with length
   const overSeg = setup.maxSegments !== null && segments > setup.maxSegments
   const solved = eff >= setup.target && !overSeg
+  // Levels 2, 3 and 5 hide the effectiveness readout until the rig is
+  // commissioned, so direction and length are reasoned about, not tuned to.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   const reset = () => {
     setFlow(setup.fixedFlow ?? 'same')
@@ -190,7 +193,9 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Move at least ${Math.round(setup.target * 100)}% of the heat across${setup.maxSegments !== null ? ` on ${setup.maxSegments} sections or fewer` : ''}`}
-        status={`this rig: ${Math.round(eff * 100)}% crossed · ${segments} sections`}
+        status={outcomeVisible
+          ? `this rig: ${Math.round(eff * 100)}% crossed · ${segments} sections`
+          : `set ${flow === 'opposite' ? 'opposite ways' : 'same way'} · ${segments} sections`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -243,9 +248,14 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
             </g>
           )}
 
-          {/* outlet temperatures */}
-          <text x={PIPE_X1 + 6} y={hotY + 5} fontSize="12" fontWeight="800" className="fill-rose-600 font-display dark:fill-rose-300">{Math.round(hotAt(1))}°</text>
-          <text x={flow === 'opposite' ? PIPE_X0 - 8 : PIPE_X1 + 6} y={coldY + 5} textAnchor={flow === 'opposite' ? 'end' : 'start'} fontSize="12" fontWeight="800" className="fill-sky-600 font-display dark:fill-sky-300">{Math.round(coldAt(flow === 'opposite' ? 0 : 1))}°</text>
+          {/* outlet temperatures: hidden until commissioning, since they read
+              the effectiveness straight off the answer */}
+          {outcomeVisible && (
+            <g>
+              <text x={PIPE_X1 + 6} y={hotY + 5} fontSize="12" fontWeight="800" className="fill-rose-600 font-display dark:fill-rose-300">{Math.round(hotAt(1))}°</text>
+              <text x={flow === 'opposite' ? PIPE_X0 - 8 : PIPE_X1 + 6} y={coldY + 5} textAnchor={flow === 'opposite' ? 'end' : 'start'} fontSize="12" fontWeight="800" className="fill-sky-600 font-display dark:fill-sky-300">{Math.round(coldAt(flow === 'opposite' ? 0 : 1))}°</text>
+            </g>
+          )}
         </svg>
       </div>
 
@@ -303,12 +313,21 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-3">
-        <Meter
-          label="Heat recovered"
-          display={`${Math.round(eff * 100)}% of ${Math.round(setup.target * 100)}% needed`}
-          fraction={eff / Math.max(0.01, setup.target)}
-          barClass={eff >= setup.target ? 'bg-emerald-500' : 'bg-amber-500'}
-        />
+        {outcomeVisible ? (
+          <Meter
+            label="Heat recovered"
+            display={`${Math.round(eff * 100)}% of ${Math.round(setup.target * 100)}% needed`}
+            fraction={eff / Math.max(0.01, setup.target)}
+            barClass={eff >= setup.target ? 'bg-emerald-500' : 'bg-amber-500'}
+          />
+        ) : (
+          <Meter
+            label="Heat recovered"
+            display="commission the rig to find out"
+            fraction={0}
+            barClass="bg-stone-300 dark:bg-white/15"
+          />
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -325,7 +344,7 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
 
       {lv.level.metrics && (
         <div className="mt-4">
-          <Scorecard metrics={lv.level.metrics} values={{ heat: Math.round(eff * 100), sections: segments, pumping }} best={lv.best} scored={won} />
+          <Scorecard metrics={lv.level.metrics} values={outcomeVisible ? { heat: Math.round(eff * 100), sections: segments, pumping } : {}} best={lv.best} scored={won} />
         </div>
       )}
 

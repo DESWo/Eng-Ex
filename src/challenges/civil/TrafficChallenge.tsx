@@ -83,28 +83,36 @@ const LEVELS: ChallengeLevel<TrafficSetup>[] = [
 
 type Phase = 'idle' | 'running' | 'passed' | 'failed'
 
-/** One road's live report card. */
+/** One road's report card. The capacity verdict waits until the lights have run. */
 function RoadCard({
   name,
   arriving,
   clearing,
   queue,
   showQueue,
+  revealed,
 }: {
   name: string
   arriving: number
   clearing: number
   queue: number
   showQueue: boolean
+  revealed: boolean
 }) {
   const ok = clearing >= arriving
   return (
-    <div className={cn('rounded-2xl border-2 p-4', ok ? 'border-stone-200 dark:border-white/10' : 'border-rose-300 dark:border-rose-500/40')}>
+    <div className={cn('rounded-2xl border-2 p-4', !revealed || ok ? 'border-stone-200 dark:border-white/10' : 'border-rose-300 dark:border-rose-500/40')}>
       <p className="font-display text-sm font-bold">{name}</p>
       <p className="mt-2 text-sm font-mono tabular-nums text-ink-soft dark:text-stone-300">
         <span className="font-bold">{arriving}</span> cars arrive each minute.
         <br />
-        Its green clears <span className={cn('font-bold', ok ? '' : 'text-rose-600 dark:text-rose-400')}>{clearing.toFixed(0)}</span> each minute.
+        {revealed ? (
+          <>
+            Its green clears <span className={cn('font-bold', ok ? '' : 'text-rose-600 dark:text-rose-400')}>{clearing.toFixed(0)}</span> each minute.
+          </>
+        ) : (
+          <>Run the lights to find out what its green clears.</>
+        )}
       </p>
       {showQueue && (
         <div className="mt-2">
@@ -266,6 +274,11 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
 
   const won = phase === 'passed'
 
+  // Levels 2, 3 and 5 hold the capacity verdict back until the lights have
+  // actually run. Level 1 shows it to teach the split, level 4's whole point
+  // is reading the queue bars.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {phase === 'passed' && <Confetti />}
@@ -392,8 +405,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <RoadCard name="North-South road" arriving={round.ns} clearing={capNS} queue={queueNS} showQueue={round.queues && showQueues} />
-        <RoadCard name="East-West road" arriving={round.ew} clearing={capEW} queue={queueEW} showQueue={round.queues && showQueues} />
+        <RoadCard name="North-South road" arriving={round.ns} clearing={capNS} queue={queueNS} showQueue={round.queues && showQueues} revealed={outcomeVisible} />
+        <RoadCard name="East-West road" arriving={round.ew} clearing={capEW} queue={queueEW} showQueue={round.queues && showQueues} revealed={outcomeVisible} />
       </div>
 
       {/* Feedback */}
@@ -472,7 +485,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ total: totalDelay, worst: worstDelay }}
+            values={outcomeVisible ? { total: totalDelay, worst: worstDelay } : {}}
             best={lv.best}
             scored={won}
           />

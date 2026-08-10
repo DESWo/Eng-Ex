@@ -158,6 +158,8 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
+  // Levels 2, 3 and 5 keep the finish date hidden until the schedule is committed.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   /** Commit the schedule to the customer and run the project. */
   const commit = () => {
@@ -216,7 +218,11 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Finish in ${setup.deadline} days${setup.budget !== null ? ` with overtime under ${setup.budget}` : ''}`}
-        status={`this plan: ${s.finish} days · ${s.cost} overtime`}
+        status={
+          outcomeVisible
+            ? `this plan: ${s.finish} days · ${s.cost} overtime`
+            : `this plan: ${s.cost} overtime · commit to find out`
+        }
         attemptsLeft={att.left}
         met={won}
       />
@@ -313,10 +319,10 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label="Project length"
-          display={`${s.finish} of ${setup.deadline} days`}
-          fraction={s.finish / (setup.deadline * 1.7)}
+          display={outcomeVisible ? `${s.finish} of ${setup.deadline} days` : 'commit to find out'}
+          fraction={outcomeVisible ? s.finish / (setup.deadline * 1.7) : 0}
           markerFraction={1 / 1.7}
-          barClass={s.finish <= setup.deadline ? 'bg-emerald-500' : 'bg-rose-500'}
+          barClass={!outcomeVisible ? 'accent-bg' : s.finish <= setup.deadline ? 'bg-emerald-500' : 'bg-rose-500'}
         />
         {setup.budget !== null && (
           <Meter
@@ -377,7 +383,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
           Reset
         </Button>
         <Badge className="ml-auto">
-          {s.finish} days · {s.cost} overtime
+          {outcomeVisible ? `${s.finish} days · ${s.cost} overtime` : `${s.cost} overtime`}
         </Badge>
       </div>
 
@@ -385,7 +391,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ days: s.finish, cost: s.cost, squeeze: s.worstSqueeze }}
+            values={outcomeVisible ? { days: s.finish, cost: s.cost, squeeze: s.worstSqueeze } : {}}
             best={lv.best}
             scored={won}
           />
