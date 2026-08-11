@@ -1,15 +1,13 @@
-import { Fragment } from 'react'
-import { BookOpen, Check, Gamepad2, Hammer, Lightbulb, MessagesSquare } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { STEP_ORDER, type StepId } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const stepMeta: Record<StepId, { label: string; icon: LucideIcon }> = {
-  intro: { label: 'Learn', icon: BookOpen },
-  challenge: { label: 'Play', icon: Gamepad2 },
-  reflection: { label: 'Reflect', icon: MessagesSquare },
-  learn: { label: 'Why it works', icon: Lightbulb },
-  diy: { label: 'Try it at home', icon: Hammer },
+const stepMeta: Record<StepId, { label: string; short: string }> = {
+  intro: { label: 'Learn', short: 'Learn' },
+  challenge: { label: 'Play', short: 'Play' },
+  reflection: { label: 'Reflect', short: 'Reflect' },
+  learn: { label: 'Why it works', short: 'Why' },
+  diy: { label: 'Try it at home', short: 'Home' },
 }
 
 interface FlowStepperProps {
@@ -18,61 +16,50 @@ interface FlowStepperProps {
   onSelect: (step: StepId) => void
 }
 
-/** The four dots at the top of every discipline page. */
+/**
+ * Folder tabs across the top of the discipline flow, like the divider tabs in
+ * a real binder. The open tab sits proud of the rule with the accent along its
+ * top edge; finished tabs earn a check; locked ones lie flat until you get
+ * there. (This replaced a generic disc-and-dots stepper on purpose.)
+ */
 export function FlowStepper({ current, isDone, onSelect }: FlowStepperProps) {
   return (
-    <nav aria-label="Progress" className="flex items-center justify-center">
-      {STEP_ORDER.map((step, i) => {
-        const { label, icon: Icon } = stepMeta[step]
-        const done = isDone(step)
-        const active = step === current
-        const clickable = done || active
+    <nav aria-label="Progress" className="border-b border-ink/10 dark:border-white/10">
+      <div className="flex items-end gap-1">
+        {STEP_ORDER.map((step) => {
+          const { label, short } = stepMeta[step]
+          const done = isDone(step)
+          const active = step === current
+          const clickable = done || active
 
-        return (
-          <Fragment key={step}>
-            {i > 0 && (
-              <span
-                aria-hidden
-                className={cn(
-                  'mx-1 h-1 w-5 rounded-full sm:mx-2 sm:w-10',
-                  isDone(STEP_ORDER[i - 1]) ? 'accent-bg' : 'bg-stone-200 dark:bg-white/10',
-                )}
-              />
-            )}
+          return (
             <button
+              key={step}
               type="button"
               disabled={!clickable}
               onClick={() => onSelect(step)}
               aria-current={active ? 'step' : undefined}
               className={cn(
-                'flex flex-col items-center gap-1.5 rounded-2xl px-1 py-1',
-                !clickable && 'cursor-default',
+                'relative -mb-px rounded-t-lg px-2 py-2.5 font-display text-xs font-semibold transition-colors duration-200 sm:px-4 sm:text-sm',
+                active
+                  ? 'accent-text border border-b-0 border-ink/10 bg-white dark:border-white/10 dark:bg-night-panel'
+                  : done
+                    ? 'text-ink-soft hover:text-ink dark:text-stone-400 dark:hover:text-stone-200'
+                    : 'cursor-default text-stone-400 dark:text-stone-600',
               )}
             >
-              <span
-                className={cn(
-                  'flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200',
-                  active
-                    ? 'accent-bg on-accent shadow-clay'
-                    : done
-                      ? 'accent-soft accent-text'
-                      : 'bg-stone-100 text-stone-400 dark:bg-white/5 dark:text-stone-500',
-                )}
-              >
-                {done && !active ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-              </span>
-              <span
-                className={cn(
-                  'hidden font-display text-xs font-semibold sm:block',
-                  active ? 'accent-text' : 'text-ink-soft dark:text-stone-500',
-                )}
-              >
-                {label}
-              </span>
+              {active && (
+                <span aria-hidden className="accent-bg absolute inset-x-0 top-0 h-0.5 rounded-full" />
+              )}
+              {done && !active && (
+                <Check aria-hidden className="mr-1 hidden h-3.5 w-3.5 align-[-2px] sm:inline-block" />
+              )}
+              <span className="sm:hidden">{short}</span>
+              <span className="hidden sm:inline">{label}</span>
             </button>
-          </Fragment>
-        )
-      })}
+          )
+        })}
+      </div>
     </nav>
   )
 }

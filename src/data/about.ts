@@ -1,9 +1,7 @@
 import {
-  Compass,
   FlaskConical,
-  Gamepad2,
+  GraduationCap,
   Layers,
-  Sparkles,
   Trophy,
   Users,
 } from 'lucide-react'
@@ -27,10 +25,10 @@ export const aboutGoal = {
   heading: 'The goal',
   body: 'Help middle school and high school students discover which kind of engineering fits them, through short, hands-on simulations. No grades and nothing compared against anyone else. Levels earn up to three stars for solving them unaided, and replaying can only improve a rating, never lower it. Every challenge ends by showing the real engineering principle behind it and where that idea shows up in industry, so students leave thinking, "I just did what real engineers do."',
   pillars: [
-    { icon: Gamepad2, label: 'Learn by doing', text: 'Interactive simulations, not walls of text.' },
-    { icon: FlaskConical, label: 'Real concepts', text: 'Forces, budgets, and tradeoffs, made visual.' },
-    { icon: Compass, label: 'Find your fit', text: 'Sample many fields and see what excites you.' },
-  ] as { icon: LucideIcon; label: string; text: string }[],
+    { label: 'Learn by doing', text: 'Interactive simulations, not walls of text.' },
+    { label: 'Real concepts', text: 'Forces, budgets, and tradeoffs, made visual.' },
+    { label: 'Find your fit', text: 'Sample many fields and see what excites you.' },
+  ] as { label: string; text: string }[],
 }
 
 // Personalize this. It is written in first person as the creator.
@@ -61,7 +59,7 @@ export const aboutRoadmap: { heading: string; items: RoadmapItem[] } = {
       status: 'building',
     },
     {
-      icon: Sparkles,
+      icon: GraduationCap,
       title: 'Quick tutorials',
       body: 'A 30-second hands-on intro before each game: the concept, the goal, the controls, and how you score.',
       status: 'building',

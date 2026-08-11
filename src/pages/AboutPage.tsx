@@ -16,7 +16,7 @@ export function AboutPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="text-center"
       >
-        <Badge className="mb-5">About</Badge>
+        <p className="label-caps mb-5 text-ink-soft dark:text-stone-400">About</p>
         <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
           Engineering, made something you can touch
         </h1>
@@ -57,19 +57,24 @@ export function AboutPage() {
         <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="mt-4 text-lg leading-relaxed text-ink-soft dark:text-stone-300">
           {aboutGoal.body}
         </motion.p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          {aboutGoal.pillars.map(({ icon: Icon, label, text }) => (
-            <motion.div key={label} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }}>
-              <Card sketch className="h-full p-5">
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 dark:bg-white/10">
-                  <Icon className="h-6 w-6 text-ink-soft dark:text-stone-300" />
-                </span>
-                <h3 className="font-display font-bold">{label}</h3>
-                <p className="mt-1 text-sm text-ink-soft dark:text-stone-400">{text}</p>
-              </Card>
-            </motion.div>
+        {/*
+         * The pillars, set like the metadata block of a lab handout: hairline
+         * rules and a small-caps left column instead of three icon cards.
+         */}
+        <motion.dl
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-70px' }}
+          className="mt-8"
+        >
+          {aboutGoal.pillars.map(({ label, text }) => (
+            <div key={label} className="rule grid gap-1 py-4 sm:grid-cols-[11rem_1fr] sm:gap-6">
+              <dt className="label-caps pt-0.5 text-ink-soft dark:text-stone-400">{label}</dt>
+              <dd className="text-[15px] leading-relaxed text-ink-soft dark:text-stone-300">{text}</dd>
+            </div>
           ))}
-        </div>
+        </motion.dl>
       </motion.section>
 
       {/* Creator */}

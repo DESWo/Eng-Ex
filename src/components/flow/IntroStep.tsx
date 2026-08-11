@@ -64,7 +64,7 @@ export function IntroStep({ discipline, onNext }: IntroStepProps) {
           <p className="mt-3 text-sm text-ink-soft dark:text-stone-400">
             {discipline.challenges.length === 1
               ? 'One challenge is waiting. Beat it to keep exploring.'
-              : `${discipline.challenges.length} challenges await. Beat one to keep going, or master them all.`}
+              : `${discipline.challenges.length} challenges. Beat one to keep going, or clear all of them.`}
           </p>
         </Card>
       </motion.div>

@@ -1,18 +1,10 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { ArrowDown, Compass, HeartHandshake, Timer } from 'lucide-react'
+import { ArrowDown } from 'lucide-react'
 import { buttonClasses } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Doodle } from '@/components/ui/Doodle'
 import { RoughLine } from '@/components/ui/Sketchy'
 import { disciplines } from '@/data/disciplines'
-
-const chips = [
-  { icon: Compass, text: `${disciplines.length} fields to explore` },
-  { icon: Timer, text: 'About 10 minutes each' },
-  // Stars are personal bests, not marks, so the low-pressure promise stands.
-  { icon: HeartHandshake, text: 'No grades, just your own best' },
-]
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null)
@@ -67,19 +59,21 @@ export function Hero() {
 
           <div className="mt-10 flex justify-center">
             <a href="#disciplines" className={buttonClasses('primary', 'lg')}>
-              Start Exploring
+              Start exploring
               <ArrowDown className="h-5 w-5" />
             </a>
           </div>
 
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-            {chips.map(({ icon: Icon, text }) => (
-              <Badge key={text} className="bg-white px-4 py-2 text-sm shadow-clay dark:bg-night-panel">
-                <Icon className="mr-1 h-4 w-4" />
-                {text}
-              </Badge>
-            ))}
-          </div>
+          {/*
+           * One quiet caption under the button, the way a drawing carries a
+           * note in its margin. Stars are personal bests, not marks, so the
+           * low-pressure promise stands.
+           */}
+          <p className="mx-auto mt-6 max-w-md text-sm text-ink-soft dark:text-stone-400">
+            <span className="whitespace-nowrap">{disciplines.length} fields ·</span>{' '}
+            <span className="whitespace-nowrap">about 10 minutes each ·</span>{' '}
+            <span className="whitespace-nowrap">no grades, just your own best</span>
+          </p>
         </motion.div>
       </div>
     </section>

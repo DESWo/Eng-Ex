@@ -1,6 +1,6 @@
 import { accentVars } from '@/lib/accent'
 import { motion } from 'framer-motion'
-import { Check, Compass, Lock } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import { Doodle } from '@/components/ui/Doodle'
 import { DisciplineCard } from '@/components/landing/DisciplineCard'
 import { Card } from '@/components/ui/Card'
@@ -161,10 +161,7 @@ export function DisciplineGrid() {
   return (
     <section id="disciplines" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-16">
       <Reveal className="mb-10 text-center">
-        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-stone-900/5 px-4 py-1.5 label-caps text-ink-soft dark:bg-white/10 dark:text-stone-300">
-          <Compass className="h-4 w-4" />
-          Start here
-        </span>
+        <p className="label-caps mb-4 text-ink-soft dark:text-stone-400">Start here</p>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
           Choose a field to study
         </h2>
