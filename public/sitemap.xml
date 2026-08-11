@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Only the root: the app is a single-page bundle, and GitHub Pages serves
+     deep routes with a 404 status, which crawlers refuse to index. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://deswo.github.io/Eng-Ex/</loc>
+    <lastmod>2026-08-10</lastmod>
+  </url>
+</urlset>

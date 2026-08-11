@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://deswo.github.io/Eng-Ex/sitemap.xml
