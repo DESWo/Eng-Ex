@@ -628,8 +628,8 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
 
   const goal =
     `Keep every storey under ${DRIFT_CAP * 1000} mm of lean per metre` +
-    (round.gates.joltCap !== undefined ? `, every floor under ${round.gates.joltCap} %g` : '') +
-    (round.gates.moat !== undefined ? `, the base inside its ${round.gates.moat * 100} cm moat` : '') +
+    (round.gates.joltCap !== undefined ? `, the floors under ${round.gates.joltCap} %g` : '') +
+    (round.gates.moat !== undefined ? `, bearings inside their ${round.gates.moat * 100} cm moat` : '') +
     (round.budget !== null ? `, for ${money(round.budget)} or less` : '')
 
   const failLine = () => {
@@ -679,7 +679,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
       {/* Scene: the frame, the brace yard, the drift profile */}
       <div className="overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
         <svg
-          viewBox={`0 0 ${SCENE_W} ${sceneH}`}
+          viewBox={`0 0 ${SCENE_W} ${Math.round(sceneH)}`}
           className="w-full touch-none select-none"
           role="img"
           aria-label={sceneLabel}
@@ -731,10 +731,13 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                 />
               </g>
             )}
-          </g>
 
-          {/* the brace yard: one drawn panel per brace left in the rack */}
-          <g>
+            {/*
+              The brace yard: one drawn panel per brace left in the rack, so the
+              budget is a pile of objects you watch drain rather than a number
+              in a box. It sits inside the ground group because it is stacked on
+              the ground, and slides with it when the shaking starts.
+            */}
             <text
               x={YARD_X}
               y={groundY + 22}
@@ -1301,10 +1304,10 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           )}
           {round.gates.moat !== undefined && (
             <Meter
-              label={isolated ? 'Bearing slide' : 'Bearing slide (no bearings fitted)'}
+              label="Bearing slide"
               display={
                 !isolated
-                  ? 'nothing to slide'
+                  ? 'no bearings fitted, so nothing slides'
                   : outcomeVisible
                     ? `${shown.bearingTravel.toFixed(0)} cm of a ${round.gates.moat * 100} cm moat`
                     : 'shake it to find out'
