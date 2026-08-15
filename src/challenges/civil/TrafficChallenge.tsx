@@ -1,14 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Play, RotateCcw } from 'lucide-react'
+import { Layers, Play, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
-import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
+import {
+  ApprovalStamp,
+  Arrowhead,
+  CursorMark,
+  DimString,
+  DraftingSheet,
+  DrawingKey,
+  INK,
+  LETTER,
+  Leader,
+  NoteBlock,
+  PEN,
+  Redline,
+  RevisionStamp,
+  ScaleBar,
+  Schedule,
+  SheetTool,
+  SnapGrid,
+  TRACK,
+  TitleBlock,
+  useSheetCursor,
+  type ScheduleColumn,
+  type ScheduleFoot,
+  type SheetStatus,
+} from '@/components/instruments/drafting'
 import { useLevels } from '@/hooks/useLevels'
 import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
@@ -86,51 +109,166 @@ const LEVELS: ChallengeLevel<TrafficSetup>[] = [
 
 type Phase = 'idle' | 'running' | 'passed' | 'failed'
 
-/** One road's report card. The capacity verdict waits until the lights have run. */
-function RoadCard({
-  name,
-  arriving,
-  clearing,
-  queue,
-  showQueue,
-  revealed,
-}: {
-  name: string
-  arriving: number
-  clearing: number
-  queue: number
-  showQueue: boolean
-  revealed: boolean
-}) {
-  const ok = clearing >= arriving
+/* ------------------- sheet geometry ------------------- */
+const VIEW_W = 800
+const VIEW_H = 440
+/** One second of cycle time, in drawing px along the timing band. */
+const PX_PER_S = 11
+/** A grid module is two seconds, which is also what the changeover snaps to. */
+const STEP = 2 * PX_PER_S
+const BAND_X = 60 // t = 0
+const BAND_Y = 300
+const BAND_H = 40
+const BAND_W = CYCLE * PX_PER_S
+const CURSOR_Y = BAND_Y + BAND_H / 2
+/** Cycle seconds to a station along the band. */
+const tx = (s: number) => BAND_X + s * PX_PER_S
+
+/* the junction, in plan */
+const JX = 300 // north-south centreline
+const JY = 200 // east-west centreline
+const LANE = 22 // half a carriageway
+const NS_STOP = JY - LANE - 4
+const EW_STOP = JX - LANE - 4
+const CAR = 13 // a vehicle, nose to tail
+const PITCH = 16 // stop line spacing in a standing queue
+const ZEB_X = 336 // the crossing, on the east arm
+
+/** A vehicle waiting on the north approach, drawn in plan. */
+function CarNS({ y }: { y: number }) {
   return (
-    <div className={cn('rounded-2xl border-2 p-4', !revealed || ok ? 'border-stone-200 dark:border-white/10' : 'border-rose-300 dark:border-rose-500/40')}>
-      <p className="font-display text-sm font-bold">{name}</p>
-      <p className="mt-2 text-sm font-mono tabular-nums text-ink-soft dark:text-stone-300">
-        <span className="font-bold">{arriving}</span> cars arrive each minute.
-        <br />
-        {revealed ? (
-          <>
-            Its green clears <span className={cn('font-bold', ok ? '' : 'text-rose-600 dark:text-rose-400')}>{clearing.toFixed(0)}</span> each minute.
-          </>
-        ) : (
-          <>Run the lights to find out what its green clears.</>
-        )}
-      </p>
-      {showQueue && (
-        <div className="mt-2">
-          <div className="h-3 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
-            <div
-              className={cn('h-full rounded-full', queue > 0 ? 'bg-rose-500' : 'bg-emerald-500')}
-              style={{ width: `${Math.min(100, (queue / 12) * 100)}%` }}
-            />
-          </div>
-          <p className="mt-1 text-xs font-semibold text-ink-soft dark:text-stone-400">
-            {queue > 0 ? `${queue.toFixed(0)} cars still waiting each minute` : 'queue stays clear'}
-          </p>
-        </div>
+    <g aria-hidden>
+      <rect x={JX - 9} y={y} width="18" height={CAR} rx="2" fill={INK.paper} stroke={INK.line} strokeWidth={PEN.thin} />
+      <line x1={JX - 9} y1={y + 4} x2={JX + 9} y2={y + 4} stroke={INK.soft} strokeWidth={PEN.hair} />
+    </g>
+  )
+}
+
+/** A vehicle waiting on the west approach. */
+function CarEW({ x }: { x: number }) {
+  return (
+    <g aria-hidden>
+      <rect x={x} y={JY - 9} width={CAR} height="18" rx="2" fill={INK.paper} stroke={INK.line} strokeWidth={PEN.thin} />
+      <line x1={x + CAR - 4} y1={JY - 9} x2={x + CAR - 4} y2={JY + 9} stroke={INK.soft} strokeWidth={PEN.hair} />
+    </g>
+  )
+}
+
+/** A signal head with two aspects. Nothing is lit until the lights are running. */
+function SignalHead({
+  x,
+  y,
+  vertical,
+  mark,
+  running,
+  go,
+}: {
+  x: number
+  y: number
+  vertical: boolean
+  mark: string
+  running: boolean
+  go: boolean
+}) {
+  const w = vertical ? 18 : 34
+  const h = vertical ? 34 : 18
+  const stop = vertical ? { cx: x + 9, cy: y + 10 } : { cx: x + 10, cy: y + 9 }
+  const goAt = vertical ? { cx: x + 9, cy: y + 24 } : { cx: x + 24, cy: y + 9 }
+  const lit = (on: boolean, tone: string) => (on ? tone : INK.paper)
+  return (
+    <g aria-hidden>
+      <rect x={x} y={y} width={w} height={h} rx="3" fill={INK.paper} stroke={INK.line} strokeWidth={PEN.thin} />
+      <circle cx={stop.cx} cy={stop.cy} r="5" fill={lit(running && !go, INK.red)} stroke={INK.red} strokeWidth={PEN.hair} />
+      <circle cx={goAt.cx} cy={goAt.cy} r="5" fill={lit(go, INK.check)} stroke={INK.check} strokeWidth={PEN.hair} />
+      <text
+        x={vertical ? x + 9 : x - 5}
+        y={vertical ? y - 5 : y + 13}
+        textAnchor={vertical ? 'middle' : 'end'}
+        className={LETTER}
+        style={{ letterSpacing: TRACK.normal }}
+        fontSize="9"
+        fill={INK.soft}
+      >
+        {mark}
+      </text>
+    </g>
+  )
+}
+
+/** A stage on the key: who moves, who is held, and for how long. */
+function StageKey({
+  x,
+  y,
+  kind,
+  name,
+  detail,
+  live,
+}: {
+  x: number
+  y: number
+  kind: 'ns' | 'ew' | 'walk'
+  name: string
+  detail: string
+  live: boolean
+}) {
+  const cx = x + 34
+  const cy = y + 31
+  return (
+    <g aria-hidden className="pointer-events-none">
+      <rect
+        x={x}
+        y={y}
+        width="200"
+        height="62"
+        fill="none"
+        stroke={live ? INK.line : INK.soft}
+        strokeWidth={live ? PEN.thin : PEN.hair}
+        strokeDasharray={live ? undefined : '5 4'}
+        opacity={live ? 1 : 0.7}
+      />
+      {/* the junction, kerbs broken through the middle */}
+      <path
+        d={`M${cx - 26} ${cy - 9} H${cx - 9} M${cx + 9} ${cy - 9} H${cx + 26} M${cx - 26} ${cy + 9} H${cx - 9} M${cx + 9} ${cy + 9} H${cx + 26}`}
+        stroke={INK.soft}
+        strokeWidth={PEN.hair}
+        fill="none"
+      />
+      <path
+        d={`M${cx - 9} ${cy - 24} V${cy - 9} M${cx - 9} ${cy + 9} V${cy + 24} M${cx + 9} ${cy - 24} V${cy - 9} M${cx + 9} ${cy + 9} V${cy + 24}`}
+        stroke={INK.soft}
+        strokeWidth={PEN.hair}
+        fill="none"
+      />
+      {kind === 'ns' && (
+        <>
+          <line x1={cx} y1={cy - 22} x2={cx} y2={cy + 16} stroke={INK.line} strokeWidth={PEN.dim} />
+          <Arrowhead x={cx} y={cy + 22} ux={0} uy={1} size={7} fill={INK.line} />
+          <line x1={cx - 9} y1={cy - 9} x2={cx - 9} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.member} />
+        </>
       )}
-    </div>
+      {kind === 'ew' && (
+        <>
+          <line x1={cx - 22} y1={cy} x2={cx + 16} y2={cy} stroke={INK.line} strokeWidth={PEN.dim} />
+          <Arrowhead x={cx + 22} y={cy} ux={1} uy={0} size={7} fill={INK.line} />
+          <line x1={cx - 9} y1={cy - 9} x2={cx + 9} y2={cy - 9} stroke={INK.line} strokeWidth={PEN.member} />
+        </>
+      )}
+      {kind === 'walk' && (
+        <>
+          {[13, 17, 21, 25].map((d) => (
+            <line key={d} x1={cx + d} y1={cy - 9} x2={cx + d} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.dim} />
+          ))}
+          <line x1={cx - 9} y1={cy - 9} x2={cx - 9} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.member} />
+          <line x1={cx - 9} y1={cy - 9} x2={cx + 9} y2={cy - 9} stroke={INK.line} strokeWidth={PEN.member} />
+        </>
+      )}
+      <text x={x + 70} y={y + 28} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fontWeight="700" fill={INK.line}>
+        {name}
+      </text>
+      <text x={x + 70} y={y + 43} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="9" fill={INK.soft}>
+        {detail}
+      </text>
+    </g>
   )
 }
 
@@ -155,10 +293,12 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const simInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [showQueues, setShowQueues] = useState(true)
-  const barRef = useRef<HTMLDivElement | null>(null)
+  const [showStages, setShowStages] = useState(true)
+  /** Runs of the lights so far, which is the revision this sheet is at. */
+  const [runs, setRuns] = useState(0)
+  const svgRef = useRef<SVGSVGElement | null>(null)
   const draggingSplit = useRef(false)
   const completedRef = useRef(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const greenEW = available - greenNS
 
@@ -166,40 +306,45 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     setGreenNS(6)
     setPhase('idle')
     setSettled(null)
+    setRuns(0)
+    board.setCursor({ x: tx(6), y: CURSOR_Y })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
-  const applySplit = (clientX: number) => {
-    const el = barRef.current
-    if (!el || phase === 'running') return
-    const rect = el.getBoundingClientRect()
-    const seconds = ((clientX - rect.left) / rect.width) * CYCLE
+  /** Book the changeover at `seconds` into the cycle. Snaps to the 2 s module. */
+  function setChangeover(seconds: number) {
+    if (phase === 'running' || !Number.isFinite(seconds)) return
     const snapped = Math.round(seconds / 2) * 2
-    setGreenNS(Math.max(6, Math.min(available - 6, snapped)))
+    const next = Math.max(6, Math.min(available - 6, snapped))
+    setGreenNS(next)
+    board.setCursor({ x: tx(next), y: CURSOR_Y })
     setPhase('idle')
     setSettled(null)
   }
-  const startSplit = (e: React.PointerEvent<HTMLDivElement>) => {
+
+  /** Pointer station on the band, in cycle seconds. */
+  const bandSeconds = (clientX: number) => {
+    const svg = svgRef.current
+    if (!svg || !Number.isFinite(clientX)) return null
+    const rect = svg.getBoundingClientRect()
+    if (rect.width === 0) return null
+    return (((clientX - rect.left) / rect.width) * VIEW_W - BAND_X) / PX_PER_S
+  }
+
+  const startSplit = (e: React.PointerEvent<SVGRectElement>) => {
     if (phase === 'running') return
     draggingSplit.current = true
-    barRef.current?.setPointerCapture(e.pointerId)
-    applySplit(e.clientX)
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const s = bandSeconds(e.clientX)
+    if (s !== null) setChangeover(s)
   }
-  const moveSplit = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (draggingSplit.current) applySplit(e.clientX)
+  const moveSplit = (e: React.PointerEvent<SVGRectElement>) => {
+    if (!draggingSplit.current) return
+    const s = bandSeconds(e.clientX)
+    if (s !== null) setChangeover(s)
   }
   const endSplit = () => {
     draggingSplit.current = false
-  }
-  const nudgeSplit = (e: React.KeyboardEvent) => {
-    if (phase === 'running') return
-    const step = e.shiftKey ? 6 : 2
-    if (e.key === 'ArrowLeft') setGreenNS((v) => Math.max(6, v - step))
-    else if (e.key === 'ArrowRight') setGreenNS((v) => Math.min(available - 6, v + step))
-    else return
-    e.preventDefault()
-    setPhase('idle')
-    setSettled(null)
   }
 
   const capNS = greenNS * CARS_PER_GREEN_SECOND
@@ -219,13 +364,10 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const totalDelay = Math.round(delayNS + delayEW)
   const worstDelay = Math.round(Math.max(delayNS, delayEW))
 
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-  }, [])
-
   const run = () => {
     if (phase === 'running') return
     setPhase('running')
+    setRuns((r) => r + 1)
     setSimT(0)
     setSettled(null)
     simQ.current = { ns: 0, ew: 0 }
@@ -260,6 +402,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         } else {
           if (att.spend()) {
             setGreenNS(6)
+            board.setCursor({ x: tx(6), y: CURSOR_Y })
             att.refill()
           }
           setPhase('failed')
@@ -271,6 +414,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const reset = () => {
     if (simInterval.current) clearInterval(simInterval.current)
     setGreenNS(6)
+    board.setCursor({ x: tx(6), y: CURSOR_Y })
     setPhase('idle')
     setSimT(0)
     setSettled(null)
@@ -279,6 +423,21 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => () => {
     if (simInterval.current) clearInterval(simInterval.current)
   }, [])
+
+  /**
+   * The changeover is drawn, so it is driven from the board: arrows walk the
+   * mark along the band, enter books it there, escape puts it back, delete
+   * rubs the plan out.
+   */
+  const board = useSheetCursor({
+    step: STEP,
+    bounds: { minX: tx(6), maxX: tx(available - 6), minY: CURSOR_Y, maxY: CURSOR_Y },
+    start: { x: tx(6), y: CURSOR_Y },
+    onCommit: (p) => setChangeover((p.x - BAND_X) / PX_PER_S),
+    onCancel: () => board.setCursor({ x: tx(greenNS), y: CURSOR_Y }),
+    onDelete: () => reset(),
+    disabled: phase === 'running',
+  })
 
   /* What the signals show right now, derived from where we are in the cycle. */
   const running = phase === 'running'
@@ -298,6 +457,88 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   // (teaching the split) and level 4 (reading the queue bars).
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
 
+  /* ---------- the sheet ---------- */
+  const status: SheetStatus = phase === 'passed' ? 'approved' : phase === 'failed' ? 'revise' : 'draft'
+  const tail = round.ped + lost // walk time plus the seconds lost at each change
+  const booked = greenNS + greenEW + tail
+  const showQueue = round.queues && showQueues
+  const cursorSeconds = Math.round((board.cursor.x - BAND_X) / PX_PER_S)
+  const parTotal = lv.level.metrics?.find((m) => m.id === 'total')?.target ?? 0
+  const parWorst = lv.level.metrics?.find((m) => m.id === 'worst')?.target ?? 0
+
+  const approachColumns: ScheduleColumn[] = [
+    { key: 'mark', label: 'approach' },
+    { key: 'arrives', label: 'arrives', align: 'right' },
+    { key: 'green', label: 'green', align: 'right' },
+    { key: 'clears', label: 'clears', align: 'right' },
+    ...(showQueue ? [{ key: 'queue', label: 'left waiting', align: 'right' } as ScheduleColumn] : []),
+    ...(lv.level.metrics ? [{ key: 'delay', label: 'delay', align: 'right' } as ScheduleColumn] : []),
+  ]
+
+  const approachRow = (
+    mark: string,
+    arriving: number,
+    green: number,
+    clearing: number,
+    queue: number,
+    delay: number,
+    ok: boolean,
+  ) => ({
+    key: mark,
+    over: outcomeVisible && !ok,
+    cells: {
+      mark,
+      arrives: `${arriving}/min`,
+      green: `${green} s`,
+      clears: outcomeVisible ? `${clearing.toFixed(0)}/min` : 'run the lights',
+      queue: queue > 0 ? `${queue.toFixed(0)}/min` : 'clears',
+      delay: outcomeVisible ? `${Math.round(delay)} car-s` : 'run the lights',
+    },
+  })
+
+  const approachFoot: ScheduleFoot[] = lv.level.metrics
+    ? [
+        { label: 'total delay', value: outcomeVisible ? `${totalDelay} car-s` : 'run the lights' },
+        { label: 'par', value: `${parTotal} car-s` },
+        {
+          label: 'worst road against its par',
+          value: outcomeVisible ? `${worstDelay} of ${parWorst} car-s` : 'run the lights',
+          tone: outcomeVisible ? (worstDelay <= parWorst ? 'ok' : 'over') : 'normal',
+        },
+      ]
+    : [
+        { label: 'cars arriving each minute', value: `${round.ns + round.ew}` },
+        { label: 'cars cleared each minute', value: outcomeVisible ? `${(capNS + capEW).toFixed(0)}` : 'run the lights' },
+        {
+          label: 'short on the worst approach',
+          value: outcomeVisible ? `${Math.max(0, round.ns - capNS, round.ew - capEW).toFixed(0)}/min` : 'run the lights',
+          tone: outcomeVisible ? (okNS && okEW ? 'ok' : 'over') : 'normal',
+        },
+      ]
+
+  const cycleRows = [
+    { key: 'ns', cells: { item: 'a · north-south green', from: '0 s', secs: `${greenNS} s` } },
+    { key: 'ew', cells: { item: 'b · east-west green', from: `${greenNS} s`, secs: `${greenEW} s` } },
+    ...(round.ped > 0
+      ? [{ key: 'walk', cells: { item: 'c · walk phase', from: `${greenNS + greenEW} s`, secs: `${round.ped} s` } }]
+      : []),
+    ...(lost > 0
+      ? [{ key: 'lost', cells: { item: `lost at ${phases} changes`, from: `${greenNS + greenEW + round.ped} s`, secs: `${lost} s` } }]
+      : []),
+  ]
+
+  const stages: { kind: 'ns' | 'ew' | 'walk'; name: string; detail: string; live: boolean }[] = [
+    { kind: 'ns', name: 'stage 1', detail: `north-south, ${greenNS} s`, live: nsGo },
+    { kind: 'ew', name: 'stage 2', detail: `east-west, ${greenEW} s`, live: ewGo },
+    ...(round.ped > 0
+      ? [{ kind: 'walk' as const, name: 'stage 3', detail: `walk, ${round.ped} s`, live: walkNow }]
+      : []),
+  ]
+
+  const markX = tx(greenNS) // where the changeover is booked
+  const nsCars = Math.min(9, Math.round(shownQNS))
+  const ewCars = Math.min(9, Math.round(shownQEW))
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {phase === 'passed' && <Confetti />}
@@ -309,196 +550,445 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Split the green so both roads clear their queues before the cycle ends (NS ${round.ns} cars/min, EW ${round.ew})`}
-        status={`your split: NS ${greenNS}s green · EW ${greenEW}s`}
+        status={`your split: ns ${greenNS} s green, ew ${greenEW} s`}
         attemptsLeft={att.left}
         met={phase === 'passed'}
       />
 
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
-        <div className="flex flex-col items-end gap-2">
-          <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">{round.label}</Badge>
-          {round.ped > 0 && (
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-              Walkers take {round.ped}s{round.lostTime ? `, changes lose ${lost}s` : ''}
-            </Badge>
-          )}
-        </div>
-      </div>
+      <p className="mb-3 max-w-2xl text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
 
-      {/* Scene */}
-      <div className="overflow-hidden rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/40">
-        <svg viewBox="0 0 800 300" className="w-full" role="img" aria-label="Intersection running the light cycle">
-          {/* roads */}
-          <rect x="0" y="200" width="800" height="64" className="fill-stone-500 dark:fill-stone-700" />
-          <rect x="360" y="0" width="44" height="300" className="fill-stone-500 dark:fill-stone-700" />
-          <line x1="0" y1="232" x2="352" y2="232" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
-          <line x1="412" y1="232" x2="800" y2="232" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
-          <line x1="382" y1="0" x2="382" y2="192" strokeDasharray="14 12" strokeWidth="3" className="stroke-amber-300/80" />
+      <DraftingSheet
+        tools={
+          <>
+            <SheetTool
+              active={showStages}
+              onClick={() => setShowStages((v) => !v)}
+              icon={<Layers className="h-3.5 w-3.5" />}
+              label="stage key"
+            />
+            <p id="band-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">
+              Drag the changeover mark along the timing band to share the minute out. Everything left of the mark is green for
+              the north-south road, everything right of it up to the walk block is green for the east-west road. Keyboard: arrow
+              keys walk the mark in 2 s steps, enter books the changeover there, escape puts it back, delete rubs out the plan.
+            </p>
+          </>
+        }
+        titleBlock={
+          <TitleBlock
+            project="Fifth and Main junction"
+            drawing={`${lv.level.n}. ${lv.level.title}`}
+            sheetNo={`T-0${lv.level.n}`}
+            scale="1 square = 2 s"
+            checking={`${round.label.toLowerCase()}, ns ${round.ns}/min, ew ${round.ew}/min${round.ped > 0 ? `, walk ${round.ped} s` : ''}${lost > 0 ? `, lost ${lost} s` : ''}`}
+            rev={runs}
+            status={status}
+          />
+        }
+        footer={
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft,#6c6252)]">
+              <span
+                role="status"
+                aria-live={board.active ? 'polite' : 'off'}
+                className={cn(LETTER, 'tabular-nums')}
+                style={{ letterSpacing: TRACK.normal }}
+              >
+                cursor {cursorSeconds} s into the cycle · changeover booked at {greenNS} s
+              </span>
+              <span className={cn(LETTER, 'tabular-nums')} style={{ letterSpacing: TRACK.normal }}>
+                cycle {CYCLE} s · booked {booked} s{running ? ` · running, ${Math.floor(simT)} s` : ''}
+              </span>
+            </div>
 
-          {/* zebra crossing, striped while the walk phase is on */}
+            <DrawingKey
+              title="key"
+              items={[
+                {
+                  label: 'north-south green',
+                  sample: (
+                    <>
+                      <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
+                      <path d="M4 9.5 L9 0.5 M11 9.5 L16 0.5 M18 9.5 L23 0.5" stroke={INK.line} strokeWidth="0.6" fill="none" />
+                    </>
+                  ),
+                },
+                {
+                  label: 'east-west green',
+                  sample: (
+                    <>
+                      <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
+                      <path d="M4 0.5 L9 9.5 M11 0.5 L16 9.5 M18 0.5 L23 9.5" stroke={INK.line} strokeWidth="0.6" fill="none" />
+                    </>
+                  ),
+                },
+                ...(round.ped > 0
+                  ? [
+                      {
+                        label: 'walk phase',
+                        sample: (
+                          <>
+                            <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
+                            <path d="M6 1 v8 M11 1 v8 M16 1 v8 M21 1 v8" stroke={INK.soft} strokeWidth="0.9" fill="none" />
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(lost > 0
+                  ? [
+                      {
+                        label: 'lost at each change',
+                        sample: (
+                          <>
+                            <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
+                            <path d="M3 9.5 L8 0.5 M11 9.5 L16 0.5 M19 9.5 L24 0.5 M3 0.5 L8 9.5 M11 0.5 L16 9.5 M19 0.5 L24 9.5" stroke={INK.soft} strokeWidth="0.5" fill="none" />
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+                {
+                  label: 'changeover mark',
+                  sample: (
+                    <>
+                      <line x1="13" y1="1" x2="13" y2="9" stroke={INK.line} strokeWidth="2.4" />
+                      <path d="M9 1 H17 L13 5 Z" fill={INK.line} />
+                    </>
+                  ),
+                },
+              ]}
+            />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Schedule
+                title="cycle time schedule"
+                columns={[
+                  { key: 'item', label: 'phase' },
+                  { key: 'from', label: 'starts', align: 'right' },
+                  { key: 'secs', label: 'seconds', align: 'right' },
+                ]}
+                rows={cycleRows}
+                foot={[
+                  { label: 'booked', value: `${booked} s` },
+                  { label: 'cycle', value: `${CYCLE} s` },
+                  { label: 'variance', value: `${CYCLE - booked} s`, tone: CYCLE - booked === 0 ? 'ok' : 'over' },
+                ]}
+              />
+              <Schedule
+                title="approach schedule"
+                columns={approachColumns}
+                rows={[
+                  approachRow('a · north-south', round.ns, greenNS, capNS, queueNS, delayNS, okNS),
+                  approachRow('b · east-west', round.ew, greenEW, capEW, queueEW, delayEW, okEW),
+                ]}
+                foot={approachFoot}
+              />
+            </div>
+
+            {tail > 0 && (
+              <NoteBlock n="cycle" tone="amber">
+                The last block of the band is walk time plus the seconds lost at each change. It comes off the minute before the
+                two roads split what is left, so a third stage costs every road green.
+              </NoteBlock>
+            )}
+
+            {/* Verdicts are lettered notes on the sheet. */}
+            <div aria-live="polite" className="min-h-[2.5rem] space-y-2">
+              {phase === 'passed' && (
+                <NoteBlock n={1} tone="check">
+                  Green wave! Neither queue grows: each road clears a full minute of traffic inside its own green. The cars still
+                  at the line arrived after it went red and go first next cycle.
+                  {lv.level.metrics ? ` Total delay ${totalDelay} car-seconds, worst road ${worstDelay}.` : ' Nobody honks today.'}
+                </NoteBlock>
+              )}
+              {phase === 'failed' && (
+                <NoteBlock n={1} tone="red">
+                  {!okNS
+                    ? `The northbound queue never cleared. ${round.ns} cars arrive each minute and ${capNS.toFixed(0)} get through, so it needs more green than it is getting.`
+                    : `The westbound queue never cleared. ${round.ew} cars arrive each minute and ${capEW.toFixed(0)} get through, so it needs more green than it is getting.`}
+                </NoteBlock>
+              )}
+            </div>
+          </div>
+        }
+      >
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          className="w-full touch-none"
+          role="application"
+          aria-label={`Signal timing sheet T-0${lv.level.n}, ${round.label.toLowerCase()}. North-south green ${greenNS} seconds, east-west green ${greenEW} seconds${round.ped > 0 ? `, walk ${round.ped} seconds` : ''}${lost > 0 ? `, ${lost} seconds lost at the changes` : ''}, in a ${CYCLE} second cycle.`}
+          aria-describedby="band-help"
+          {...board.boardProps}
+        >
+          <defs>
+            <pattern id="tr-hatch-ns" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="7" stroke={INK.line} strokeWidth={PEN.hair} />
+            </pattern>
+            <pattern id="tr-hatch-ew" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <line x1="0" y1="0" x2="0" y2="7" stroke={INK.line} strokeWidth={PEN.hair} />
+            </pattern>
+            <pattern id="tr-hatch-walk" width="7" height="7" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="0" x2="0" y2="7" stroke={INK.soft} strokeWidth={PEN.thin} />
+            </pattern>
+            <pattern id="tr-hatch-lost" width="6" height="6" patternUnits="userSpaceOnUse">
+              <path d="M0 0 L6 6 M0 6 L6 0" stroke={INK.soft} strokeWidth={PEN.hair} fill="none" />
+            </pattern>
+          </defs>
+
+          {/* ---------- the junction, in plan ---------- */}
+          {/* kerbs, broken through the junction box */}
+          <path
+            d={`M0 ${JY - LANE} H${JX - LANE} M${JX + LANE} ${JY - LANE} H560 M0 ${JY + LANE} H${JX - LANE} M${JX + LANE} ${JY + LANE} H560`}
+            stroke={INK.line}
+            strokeWidth={PEN.thin}
+            fill="none"
+          />
+          <path
+            d={`M${JX - LANE} 20 V${JY - LANE} M${JX - LANE} ${JY + LANE} V272 M${JX + LANE} 20 V${JY - LANE} M${JX + LANE} ${JY + LANE} V272`}
+            stroke={INK.line}
+            strokeWidth={PEN.thin}
+            fill="none"
+          />
+          {/* centrelines */}
+          <path
+            d={`M10 ${JY} H${JX - LANE - 14} M${JX + LANE + 14} ${JY} H556 M${JX} 24 V${JY - LANE - 14} M${JX} ${JY + LANE + 14} V268`}
+            stroke={INK.soft}
+            strokeWidth={PEN.hair}
+            strokeDasharray="12 8"
+            fill="none"
+          />
+          {/* stop lines */}
+          <line x1={JX - LANE} y1={NS_STOP} x2={JX + LANE} y2={NS_STOP} stroke={INK.line} strokeWidth={PEN.member} />
+          <line x1={EW_STOP} y1={JY - LANE} x2={EW_STOP} y2={JY + LANE} stroke={INK.line} strokeWidth={PEN.member} />
+          {/* break lines where the roads run off the sheet */}
+          <path
+            d={`M560 ${JY - LANE} l-6 11 l12 22 l-6 11 M${JX - LANE} 272 l11 -6 l22 12 l11 -6`}
+            stroke={INK.soft}
+            strokeWidth={PEN.thin}
+            fill="none"
+          />
+          {/* north point */}
+          <g aria-hidden>
+            <line x1={40} y1={72} x2={40} y2={40} stroke={INK.soft} strokeWidth={PEN.thin} />
+            <Arrowhead x={40} y={34} ux={0} uy={-1} size={9} fill={INK.soft} />
+            <text x={40} y={86} textAnchor="middle" className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fill={INK.soft}>
+              n
+            </text>
+          </g>
+
+          {/* the crossing on the east arm */}
           {round.ped > 0 && (
-            <g>
+            <g aria-hidden>
               {[0, 1, 2, 3, 4].map((i) => (
-                <rect key={i} x={412 + i * 9} y="206" width="5" height="52" rx="2" className={walkNow ? 'fill-white' : 'fill-white/35'} />
+                <rect
+                  key={i}
+                  x={ZEB_X + i * 9}
+                  y={JY - LANE + 3}
+                  width="5"
+                  height={LANE * 2 - 6}
+                  fill={walkNow ? INK.line : 'none'}
+                  stroke={INK.line}
+                  strokeWidth={PEN.hair}
+                  opacity={walkNow ? 0.85 : 1}
+                />
               ))}
               {walkNow && (
-                <motion.circle
-                  r="7"
-                  cx="434"
-                  className="fill-amber-300"
-                  initial={{ cy: 196 }}
-                  animate={{ cy: 268 }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
-                />
+                <g>
+                  <circle cx={ZEB_X + 20} cy={JY - LANE - 16} r="4" fill="none" stroke={INK.line} strokeWidth={PEN.thin} />
+                  <path
+                    d={`M${ZEB_X + 20} ${JY - LANE - 12} v9 M${ZEB_X + 16} ${JY - LANE - 8} h8 M${ZEB_X + 20} ${JY - LANE - 3} l-4 6 M${ZEB_X + 20} ${JY - LANE - 3} l4 6`}
+                    stroke={INK.line}
+                    strokeWidth={PEN.thin}
+                    fill="none"
+                  />
+                </g>
               )}
             </g>
           )}
 
-          {/* signal heads: one facing each road, wired to the real cycle position */}
-          <g>
-            <rect x="330" y="150" width="22" height="44" rx="7" className="fill-stone-800 dark:fill-stone-900" />
-            <circle cx="341" cy="163" r="7" className={running && !nsGo ? 'fill-rose-500' : 'fill-rose-900/40'} />
-            <circle cx="341" cy="181" r="7" className={nsGo ? 'fill-emerald-400' : 'fill-emerald-900/40'} />
-            <text x="341" y="142" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">NS</text>
-          </g>
-          <g>
-            <rect x="415" y="150" width="44" height="22" rx="7" className="fill-stone-800 dark:fill-stone-900" />
-            <circle cx="428" cy="161" r="7" className={running && !ewGo ? 'fill-rose-500' : 'fill-rose-900/40'} />
-            <circle cx="446" cy="161" r="7" className={ewGo ? 'fill-emerald-400' : 'fill-emerald-900/40'} />
-            <text x="470" y="166" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">EW</text>
-          </g>
-
-          {/* queued cars: one rect per waiting car, stacked back from the stop line */}
-          {Array.from({ length: Math.min(9, Math.round(shownQNS)) }, (_, i) => (
-            <rect key={`qns-${i}`} x="366" y={168 - i * 32} width="14" height="24" rx="4" className={i % 2 === 0 ? 'fill-rose-400' : 'fill-sky-400'} />
+          {/* queued vehicles, standing back from each stop line */}
+          {Array.from({ length: nsCars }, (_, i) => (
+            <CarNS key={`qns-${i}`} y={NS_STOP - 6 - CAR - i * PITCH} />
           ))}
-          {Array.from({ length: Math.min(9, Math.round(shownQEW)) }, (_, i) => (
-            <rect key={`qew-${i}`} x={330 - i * 38} y="236" width="24" height="14" rx="4" className={i % 2 === 0 ? 'fill-amber-400' : 'fill-violet-400'} />
+          {Array.from({ length: ewCars }, (_, i) => (
+            <CarEW key={`qew-${i}`} x={EW_STOP - 6 - CAR - i * PITCH} />
           ))}
 
-          {/* cars streaming through while their light is green */}
+          {/* the movement running right now */}
           {nsGo && (
-            <motion.rect
-              key="flow-ns"
-              x="384"
-              width="14"
-              height="24"
-              rx="4"
-              className="fill-sky-400"
-              initial={{ y: 150 }}
-              animate={{ y: 310 }}
-              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-            />
-          )}
-          {ewGo && (
-            <motion.rect
-              key="flow-ew"
-              y="210"
-              width="24"
-              height="14"
-              rx="4"
-              className="fill-amber-400"
-              initial={{ x: 330 }}
-              animate={{ x: 820 }}
-              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-            />
-          )}
-
-          {/* cycle clock */}
-          {running && (
-            <g>
-              <rect x="640" y="20" width="140" height="34" rx="10" className="fill-white/80 dark:fill-black/40" />
-              <text x="710" y="42" textAnchor="middle" fontSize="15" fontWeight="700" className="fill-ink font-mono tabular-nums dark:fill-stone-100">
-                {Math.floor(simT)}s / {CYCLE}s
-              </text>
+            <g aria-hidden>
+              <line x1={JX} y1={JY - LANE + 4} x2={JX} y2={258} stroke={INK.line} strokeWidth={PEN.dim} />
+              <Arrowhead x={JX} y={266} ux={0} uy={1} size={10} fill={INK.line} />
             </g>
           )}
-          <text x="415" y="30" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
-            {round.ns}/min from the north
+          {ewGo && (
+            <g aria-hidden>
+              <line x1={JX - LANE + 4} y1={JY} x2={452} y2={JY} stroke={INK.line} strokeWidth={PEN.dim} />
+              <Arrowhead x={460} y={JY} ux={1} uy={0} size={10} fill={INK.line} />
+            </g>
+          )}
+
+          <SignalHead x={250} y={140} vertical mark="a" running={running} go={nsGo} />
+          <SignalHead x={236} y={226} vertical={false} mark="b" running={running} go={ewGo} />
+
+          {/* what arrives, on leaders */}
+          <Leader x={JX} y={40} toX={380} toY={34} />
+          <text x={384} y={38} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="10" fill={INK.soft}>
+            north approach, {round.ns}/min
           </text>
-          <text x="30" y="188" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-300">
-            {round.ew}/min from the west
+          <Leader x={90} y={JY + LANE} toX={60} toY={258} />
+          <text x={64} y={262} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="10" fill={INK.soft}>
+            west approach, {round.ew}/min
           </text>
-        </svg>
-      </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <RoadCard name="North-South road" arriving={round.ns} clearing={capNS} queue={queueNS} showQueue={round.queues && showQueues} revealed={outcomeVisible} />
-        <RoadCard name="East-West road" arriving={round.ew} clearing={capEW} queue={queueEW} showQueue={round.queues && showQueues} revealed={outcomeVisible} />
-      </div>
+          {/* ---------- the stage key ---------- */}
+          {showStages &&
+            stages.map((s, i) => (
+              <StageKey key={s.kind} x={580} y={30 + i * 70} kind={s.kind} name={s.name} detail={s.detail} live={s.live} />
+            ))}
 
-      {/* Feedback */}
-      <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {phase === 'passed' && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Green wave! Neither queue grows: each road clears a full minute of traffic inside its own green. The cars still at the line arrived after it went red and go first next cycle.
-            {lv.level.metrics ? ` Total delay ${totalDelay} car-seconds.` : ' Nobody honks today.'}
-          </motion.p>
-        )}
-        {phase === 'failed' && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            {!okNS
-              ? 'The northbound queue never cleared. It needs more green than it is getting.'
-              : 'The westbound queue never cleared. It needs more green than it is getting.'}
-          </motion.p>
-        )}
-      </div>
+          {/* ---------- the timing band ---------- */}
+          <SnapGrid x0={BAND_X} y0={BAND_Y} x1={BAND_X + BAND_W} y1={BAND_Y + BAND_H} step={STEP} major={5} />
 
-      {/* Controls: drag the split on the cycle bar */}
-      <div className="mt-2 grid items-end gap-x-6 gap-y-4 sm:grid-cols-[1fr,auto]">
-        <div>
-          <p className="mb-2 font-display text-sm font-semibold">
-            One {CYCLE} second cycle. Drag the divider to share it out.
-          </p>
-          <div
-            ref={barRef}
+          {[
+            // The block is lettered with the stage it is; the dimension under it
+            // carries the seconds, the way a drawing splits naming from sizing.
+            { key: 'ns', from: 0, to: greenNS, fill: 'url(#tr-hatch-ns)', label: 'stage 1 north-south' },
+            { key: 'ew', from: greenNS, to: greenNS + greenEW, fill: 'url(#tr-hatch-ew)', label: 'stage 2 east-west' },
+            { key: 'walk', from: greenNS + greenEW, to: greenNS + greenEW + round.ped, fill: 'url(#tr-hatch-walk)', label: 'walk' },
+            { key: 'lost', from: greenNS + greenEW + round.ped, to: CYCLE, fill: 'url(#tr-hatch-lost)', label: 'lost' },
+          ]
+            .filter((b) => b.to > b.from)
+            .map((b) => {
+              const x = tx(b.from)
+              const w = (b.to - b.from) * PX_PER_S
+              return (
+                <g key={b.key} aria-hidden>
+                  <rect x={x} y={BAND_Y} width={w} height={BAND_H} fill={INK.paper} opacity="0.9" />
+                  <rect x={x} y={BAND_Y} width={w} height={BAND_H} fill={b.fill} stroke={INK.line} strokeWidth={PEN.thin} />
+                  {w > b.label.length * 6 + 12 && (
+                    <text
+                      x={x + w / 2}
+                      y={BAND_Y + BAND_H / 2 + 3.5}
+                      textAnchor="middle"
+                      className={LETTER}
+                      style={{ letterSpacing: TRACK.normal }}
+                      fontSize="10"
+                      fontWeight="700"
+                      fill={INK.line}
+                    >
+                      {b.label}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
+
+          <text x={BAND_X} y={286} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fill={INK.soft}>
+            stage timing, one cycle
+          </text>
+
+          {/* the changeover you are booking, and where the keyboard is pointing */}
+          {board.active && Math.abs(board.cursor.x - markX) > 1 && (
+            <line
+              x1={board.cursor.x}
+              y1={BAND_Y - 8}
+              x2={board.cursor.x}
+              y2={BAND_Y + BAND_H + 8}
+              stroke={INK.check}
+              strokeWidth={PEN.dim}
+              strokeDasharray="6 5"
+              className="pointer-events-none"
+            />
+          )}
+          <g aria-hidden className="pointer-events-none">
+            <line x1={markX} y1={BAND_Y - 12} x2={markX} y2={BAND_Y + BAND_H + 12} stroke={INK.line} strokeWidth={PEN.member} />
+            <path d={`M${markX - 6} ${BAND_Y - 12} H${markX + 6} L${markX} ${BAND_Y - 2} Z`} fill={INK.line} />
+          </g>
+
+          {/* where the cycle has got to */}
+          {running && (
+            <g aria-hidden className="pointer-events-none">
+              <line x1={tx(Math.min(CYCLE, simT))} y1={BAND_Y - 6} x2={tx(Math.min(CYCLE, simT))} y2={BAND_Y + BAND_H + 6} stroke={INK.check} strokeWidth={PEN.dim} />
+              <circle cx={tx(Math.min(CYCLE, simT))} cy={BAND_Y - 8} r="3.5" fill={INK.check} />
+            </g>
+          )}
+
+          {/* drag anywhere on the band to move the changeover */}
+          <rect
+            x={BAND_X - 12}
+            y={BAND_Y - 16}
+            width={BAND_W + 24}
+            height={BAND_H + 32}
+            fill="transparent"
             onPointerDown={startSplit}
             onPointerMove={moveSplit}
             onPointerUp={endSplit}
-            className="relative flex h-9 w-full cursor-ew-resize overflow-hidden rounded-full select-none"
-            style={{ touchAction: 'none' }}
-          >
-            <div className="accent-bg on-accent flex h-full items-center justify-center font-display text-xs font-bold" style={{ width: `${(greenNS / CYCLE) * 100}%` }}>
-              {greenNS >= 14 ? `NS ${greenNS}s` : ''}
-            </div>
-            <div className="flex h-full items-center justify-center bg-stone-300 font-display text-xs font-bold text-ink-soft dark:bg-white/15 dark:text-stone-300" style={{ width: `${(greenEW / CYCLE) * 100}%` }}>
-              {greenEW >= 14 ? `EW ${greenEW}s` : ''}
-            </div>
-            {(round.ped > 0 || lost > 0) && (
-              <div className="flex h-full flex-1 items-center justify-center bg-amber-400 font-display text-xs font-bold text-amber-950">
-                {round.ped + lost >= 12 ? `Walk + lost ${round.ped + lost}s` : ''}
-              </div>
-            )}
-            <div
-              role="slider"
-              tabIndex={0}
-              aria-label="Split between north-south and east-west green time"
-              aria-valuenow={greenNS}
-              aria-valuemin={6}
-              aria-valuemax={available - 6}
-              aria-valuetext={`${greenNS} seconds north-south, ${greenEW} east-west`}
-              onKeyDown={nudgeSplit}
-              className="absolute top-0 h-full w-3 -translate-x-1/2 rounded-full bg-white shadow-clay outline-none ring-ink/20 focus-visible:ring-2 dark:bg-stone-900"
-              style={{ left: `${(greenNS / CYCLE) * 100}%` }}
-            />
-          </div>
-          {(round.ped > 0 || lost > 0) && (
-            <p className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
-              The amber block is walk time plus the seconds lost at each change. It comes off the top before the roads split what is left.
-            </p>
+            onPointerCancel={endSplit}
+            className={running ? undefined : 'cursor-ew-resize'}
+          />
+
+          <DimString x1={tx(0)} y1={BAND_Y + BAND_H} x2={tx(greenNS)} y2={BAND_Y + BAND_H} offset={22} label={`ns green ${greenNS} s`} />
+          <DimString x1={tx(greenNS)} y1={BAND_Y + BAND_H} x2={tx(greenNS + greenEW)} y2={BAND_Y + BAND_H} offset={22} label={`ew green ${greenEW} s`} />
+          {tail > 0 && (
+            <DimString x1={tx(greenNS + greenEW)} y1={BAND_Y + BAND_H} x2={tx(CYCLE)} y2={BAND_Y + BAND_H} offset={22} label={`walk + lost ${tail} s`} />
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="accent" size="lg" onClick={run} disabled={phase === 'running'}>
-            <Play className="h-5 w-5" fill="currentColor" />
-            {phase === 'running' ? 'Running...' : 'Run the lights'}
-          </Button>
-          <Button variant="ghost" onClick={reset} disabled={phase === 'running'} aria-label="Reset the light timing">
-            <RotateCcw className="h-4 w-4" />
-            Reset
-          </Button>
-        </div>
+          <DimString x1={tx(0)} y1={BAND_Y + BAND_H} x2={tx(CYCLE)} y2={BAND_Y + BAND_H} offset={58} label={`cycle ${CYCLE} s`} />
+
+          <ScaleBar x={BAND_X} y={420} pxPerUnit={PX_PER_S} units={10} unit="s" />
+
+          {/* ---------- the verdict, drawn on the sheet ---------- */}
+          {phase === 'failed' && !okNS && (
+            <Redline
+              x={JX}
+              y={100}
+              rx={30}
+              ry={72}
+              noteX={170}
+              noteY={70}
+              seed={`${runs}-ns`}
+              rev={runs}
+              note={['approach a backs up', `${round.ns} cars arrive, ${capNS.toFixed(0)} clear`, 'stage 1 needs more green']}
+            />
+          )}
+          {phase === 'failed' && okNS && !okEW && (
+            <Redline
+              x={190}
+              y={JY}
+              rx={76}
+              ry={26}
+              noteX={350}
+              noteY={258}
+              seed={`${runs}-ew`}
+              rev={runs}
+              note={['approach b backs up', `${round.ew} cars arrive, ${capEW.toFixed(0)} clear`, 'stage 2 needs more green']}
+            />
+          )}
+          {phase === 'passed' && (
+            <ApprovalStamp
+              x={445}
+              y={130}
+              lines={[`${round.ns + round.ew} cars a minute cleared`, `rev ${String(runs).padStart(2, '0')}, ${CYCLE} s cycle`]}
+            />
+          )}
+          {phase === 'failed' && (
+            <RevisionStamp x={445} y={130} lines={[`rev ${String(runs).padStart(2, '0')}`, 'see redline']} />
+          )}
+
+          {board.active && !running && <CursorMark x={board.cursor.x} y={CURSOR_Y} />}
+        </svg>
+      </DraftingSheet>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button variant="accent" size="lg" onClick={run} disabled={phase === 'running'}>
+          <Play className="h-5 w-5" fill="currentColor" />
+          {phase === 'running' ? 'Running...' : 'Run the lights'}
+        </Button>
+        <Button variant="ghost" onClick={reset} disabled={phase === 'running'} aria-label="Reset the light timing">
+          <RotateCcw className="h-4 w-4" />
+          Reset
+        </Button>
       </div>
 
       {lv.level.metrics && (

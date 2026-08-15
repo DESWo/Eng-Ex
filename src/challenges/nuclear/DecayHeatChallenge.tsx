@@ -1,15 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookCheck, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
-import { Badge } from '@/components/ui/Badge'
-import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
-import { RoughRect } from '@/components/ui/Sketchy'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
+import {
+  AnnunciatorPanel,
+  ChartRecorder,
+  DigitalWindow,
+  Engraved,
+  Gauge,
+  GuardedControl,
+  IlluminatedButton,
+  INK,
+  MimicBoard,
+  MimicLamp,
+  Note,
+  PanelBay,
+  PanelSurface,
+  Plate,
+  useAnnunciators,
+} from '@/components/instruments/panel'
+import type { AnnunciatorDef } from '@/components/instruments/panel'
 import { useLevels } from '@/hooks/useLevels'
 import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
@@ -38,6 +51,27 @@ type ModeId = keyof typeof MODES
 const START_TEMP = 300
 const FLOOR_TEMP = 280
 const DEG_PER_MW_HOUR = 6
+
+/* --------------- board only, never read by the sim --------------- */
+/** Engraved cap legends. Engraved text takes no punctuation. */
+const CAP: Record<ModeId, string> = { off: 'Off', natural: 'Natural flow', low: 'Pump low', high: 'Pump high' }
+/** Full scale on the board meters. Display range, not a plant limit. */
+const TEMP_SCALE_MIN = 200
+const TEMP_SCALE_MAX = 1000
+/** A day of pumping flat out draws 1080 kWh, so the bank meter has to reach past it. */
+const BATT_SCALE = 1200
+/** Amber band and amber window on the temperature meter. Board threshold only. */
+const WARN_TEMP = 700
+/** Full scale on the recorder's megawatt pens. */
+const MW_SCALE = 60
+/** One recorder sample per hour: which block each hour of the day belongs to. */
+const HOUR_BLOCK = BLOCKS.flatMap((b, i) => Array.from({ length: b.hours }, () => i))
+
+const ALARMS: AnnunciatorDef[] = [
+  { id: 'temp-high', legend: 'Fuel temp high', tone: 'amber' },
+  { id: 'fuel-damage', legend: 'Fuel damage', tone: 'red' },
+  { id: 'bank-empty', legend: 'Battery exhausted', tone: 'red' },
+]
 
 interface DecaySetup {
   /** Cooling modes on offer this level. */
@@ -116,6 +150,8 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
   const [won, setWon] = useState(false)
   const [showCurve, setShowCurve] = useState(true)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  /** What the last committed day did. The annunciators read this, never the plan. */
+  const [played, setPlayed] = useState<{ peak: number; melted: boolean; over: boolean } | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
 
@@ -123,6 +159,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
     setPicks(['off', 'off', 'off'])
     setWon(false)
     setVerdict(null)
+    setPlayed(null)
   }, [lv.level.n])
 
   // Walk the day forwards, block by block.
@@ -155,6 +192,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
     if (won) return
     if (solved) {
       setWon(true)
+      setPlayed({ peak, melted, over: overBattery })
       setVerdict({ ok: true, text: `Safe. Peak ${Math.round(peak)}°C, and the core is down to ${Math.round(temp)}°C after a day.` })
       lv.clearLevel(lv.level.metrics ? { peak, battery, final: temp } : undefined)
       if (!completedRef.current) {
@@ -166,6 +204,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
     const text = melted
       ? `Fuel damage. The core reached ${Math.round(peak)}°C, past the ${setup.limit}°C line. Decay heat is fiercest in the first hours.`
       : `The batteries died mid-shift: that plan needs ${Math.round(battery)} kWh and the bank holds ${setup.battery}.`
+    setPlayed({ peak, melted, over: overBattery })
     if (att.spend()) {
       reset()
       att.refill()
@@ -175,9 +214,52 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
     }
   }
 
-  const maxBar = 60
-  const COL_W = 200
-  const COL_X = 110
+  /* ---------- the board ---------- */
+  // Windows record the day that was run, so clearing the plan does not erase
+  // what happened. Nothing here writes back into the walk above.
+  const alarms = useAnnunciators(ALARMS, {
+    'temp-high': played !== null && played.peak >= WARN_TEMP,
+    'fuel-damage': played?.melted === true,
+    'bank-empty': played?.over === true,
+  })
+
+  // Latched windows belong to one run, so a new level opens on a dark board.
+  const clearAlarms = alarms.reset
+  useEffect(() => {
+    clearAlarms()
+  }, [lv.level.n, clearAlarms])
+
+  /** Clear plan: fresh schedule, dark windows, cold core. */
+  const clearBoard = () => {
+    clearAlarms()
+    setPlayed(null)
+    reset()
+  }
+
+  const pick = (i: number, m: ModeId) => {
+    setVerdict(null)
+    setPicks((p) => p.map((v, j) => (j === i ? m : v)))
+  }
+
+  /* ---------- recorder traces: one sample per hour ---------- */
+  // Same rate and same floor as the block walk, stepped an hour at a time, so
+  // every block boundary lands on exactly the temperature the walk produced.
+  let hourTemp = START_TEMP
+  const tempTrace = HOUR_BLOCK.map((bi) => {
+    hourTemp = Math.max(FLOOR_TEMP, hourTemp + (BLOCKS[bi].heat - MODES[picks[bi]].mw) * DEG_PER_MW_HOUR)
+    return hourTemp
+  })
+  const tempPos = (t: number) => (t - TEMP_SCALE_MIN) / (TEMP_SCALE_MAX - TEMP_SCALE_MIN)
+
+  const anyPump = picks.some((p) => p === 'low' || p === 'high')
+  const anyNatural = picks.includes('natural')
+  const anyCooling = picks.some((p) => p !== 'off')
+  const lastMode = MODES[picks[2]]
+
+  const planLine = timeline.map((b) => `${b.label.toLowerCase()} on ${MODES[b.mode].label.toLowerCase()}`).join(', ')
+  const status = verdict
+    ? verdict.text
+    : 'Set a cooling mode for each stretch of the day, then lift the guard and run the day.'
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -199,167 +281,300 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
         met={won}
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{setup.brief}</p>
-        <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">Damage above {setup.limit}°C</Badge>
+      <div className="mb-4">
+        <p className="max-w-xl text-sm text-ink-soft dark:text-stone-400">{setup.brief}</p>
       </div>
 
-      {/* Scene: heat against cooling for each stretch of the day */}
-      <div className="overflow-hidden rounded-2xl blueprint">
-        <svg viewBox="0 0 800 260" className="w-full" role="img" aria-label="Decay heat over the first day">
-          {timeline.map((b, i) => {
-            const x = COL_X + i * COL_W
-            const heatH = (b.heat / maxBar) * 120
-            const coolH = (MODES[b.mode].mw / maxBar) * 120
-            const short = b.heat > MODES[b.mode].mw
-            return (
-              <g key={b.label}>
-                <text x={x + 30} y="26" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-                  {b.label}
-                </text>
-                {/* decay heat */}
-                <RoughRect
+      <PanelSurface
+        title="Unit 1 · shutdown cooling board"
+        header={
+          <>
+            <Plate label="Damage limit" value={`${setup.limit} °C`} />
+            {setup.battery !== null && <Plate label="Battery bank" value={`${setup.battery} kWh`} />}
+            <Plate label="Shift" value="24 h" />
+          </>
+        }
+      >
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <PanelBay
+            legend="Residual heat removal"
+            right={
+              <div className="flex flex-wrap items-center gap-1.5">
+                <DigitalWindow value={outcomeVisible ? Math.round(temp) : '- - -'} unit="°C at 24 h" />
+                {setup.battery !== null && (
+                  <DigitalWindow value={Math.round(battery)} unit="kWh drawn" tone={overBattery ? 'alarm' : 'normal'} />
+                )}
+              </div>
+            }
+          >
+            <MimicBoard
+              legend="Cooling train"
+              viewBox="0 0 640 172"
+              summary={`Shutdown cooling train. The plan runs ${planLine}. ${
+                anyPump ? 'Pumps draw from the battery bank.' : 'No pump is running.'
+              }`}
+            >
+              {/* the shut down core, still making decay heat */}
+              <rect x="34" y="38" width="126" height="112" rx="10" fill="#1a2025" stroke={INK.line} strokeWidth="2" />
+              <rect
+                x="58"
+                y="82"
+                width="78"
+                height="46"
+                rx="5"
+                fill={played?.melted ? '#e0574a' : '#e0894a'}
+                opacity={played?.melted ? 0.95 : 0.7}
+              />
+              <text x="97" y="166" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                SHUT DOWN CORE
+              </text>
+
+              {/* hot leg out to the heat exchanger, cold leg back through the pump */}
+              <path
+                d="M160 60 H 352"
+                fill="none"
+                stroke={anyCooling ? '#e0894a' : INK.lineDim}
+                strokeWidth="4"
+                className={anyCooling ? 'wire-flow' : undefined}
+              />
+              <path
+                d="M352 138 H 160"
+                fill="none"
+                stroke={anyCooling ? '#4a9fd0' : INK.lineDim}
+                strokeWidth="4"
+                className={anyCooling ? 'wire-flow' : undefined}
+              />
+
+              {/* the bypass line: hot water rises through it with no pump at all */}
+              <path
+                d="M240 138 C 240 104, 172 104, 172 138"
+                fill="none"
+                stroke={anyNatural ? '#48a878' : INK.lineDim}
+                strokeWidth="2.5"
+                className={anyNatural ? 'wire-flow' : undefined}
+              />
+              <MimicLamp x={206} y={100} tone="green" lit={anyNatural} />
+              <text x="206" y="86" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                NATURAL FLOW
+              </text>
+              <circle cx="206" cy="138" r="13" fill="#232a30" stroke={INK.line} strokeWidth="2" />
+              <path d="M201 132 L215 138 L201 144 Z" fill={anyPump ? '#4a9fd0' : INK.lineDim} />
+              <MimicLamp x={240} y={126} tone={anyPump ? 'green' : 'white'} lit={anyPump} />
+              <text x="206" y="166" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                PUMP
+              </text>
+
+              {/* heat exchanger out to the ultimate heat sink */}
+              <rect x="352" y="38" width="66" height="112" rx="8" fill="#1a2025" stroke={INK.line} strokeWidth="2" />
+              <path d="M362 62 H 408 M362 82 H 408 M362 102 H 408 M362 122 H 408" stroke={INK.lineDim} strokeWidth="2" fill="none" />
+              <text x="385" y="166" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                HEAT SINK
+              </text>
+
+              {/* battery bank feeding the pump motors */}
+              <rect x="452" y="44" width="150" height="52" rx="6" fill="#232a30" stroke={INK.line} strokeWidth="2" />
+              {[470, 502, 534, 566].map((x) => (
+                <rect
+                  key={x}
                   x={x}
-                  y={160 - heatH}
-                  width={26}
-                  height={heatH}
-                  className="stroke-rose-600 dark:stroke-rose-300"
-                  fillClassName="stroke-rose-400"
+                  y="56"
+                  width="20"
+                  height="28"
+                  rx="2"
+                  fill={played?.over ? '#e0574a' : anyPump ? '#e6a72e' : '#2a3037'}
+                  opacity={played?.over || anyPump ? 0.85 : 1}
+                  stroke="#0b0e11"
                 />
-                {/* what the chosen cooling can remove */}
-                <RoughRect
-                  x={x + 34}
-                  y={160 - coolH}
-                  width={26}
-                  height={coolH}
-                  className="stroke-sky-600 dark:stroke-sky-300"
-                  fillClassName="stroke-sky-400"
+              ))}
+              <text x="527" y="116" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                BATTERY BANK
+              </text>
+              <path
+                d="M527 122 V 156 H 216 V 147"
+                fill="none"
+                stroke={anyPump ? '#e6a72e' : INK.lineDim}
+                strokeWidth="2"
+                className={anyPump ? 'wire-flow' : undefined}
+              />
+            </MimicBoard>
+          </PanelBay>
+
+          <PanelBay legend="Fuel instruments">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+              <Gauge
+                label="Peak fuel temp"
+                unit="°C"
+                value={outcomeVisible ? peak : TEMP_SCALE_MIN}
+                min={TEMP_SCALE_MIN}
+                max={TEMP_SCALE_MAX}
+                majorTicks={5}
+                bands={[
+                  { from: WARN_TEMP, to: setup.limit, tone: 'amber' },
+                  { from: setup.limit, to: TEMP_SCALE_MAX, tone: 'red' },
+                ]}
+                readout={outcomeVisible ? `${Math.round(peak)}` : '- - -'}
+                valueText={
+                  outcomeVisible
+                    ? `${Math.round(peak)} degrees celsius peak, fuel damage above ${setup.limit}`
+                    : 'Not measured yet. Run the day to read the peak temperature.'
+                }
+                tone={outcomeVisible ? (melted ? 'alarm' : peak >= WARN_TEMP ? 'warn' : 'normal') : 'normal'}
+              />
+              {setup.battery !== null && (
+                <Gauge
+                  label="Battery drawn"
+                  unit="kWh"
+                  value={battery}
+                  min={0}
+                  max={BATT_SCALE}
+                  majorTicks={5}
+                  bands={[
+                    { from: 0, to: setup.battery, tone: 'green' },
+                    { from: setup.battery, to: BATT_SCALE, tone: 'red' },
+                  ]}
+                  valueText={`${Math.round(battery)} kilowatt hours drawn of ${setup.battery} in the bank`}
+                  tone={overBattery ? 'alarm' : 'normal'}
                 />
-                <line x1={x - 6} y1="160" x2={x + 66} y2="160" strokeWidth="1.5" className="stroke-stone-400 dark:stroke-stone-600" />
-                {showCurve && setup.curve && (
-                  <>
-                    <text x={x + 13} y={154 - heatH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-rose-600 font-mono tabular-nums dark:fill-rose-300">
-                      {b.heat}
-                    </text>
-                    <text x={x + 47} y={154 - coolH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-sky-700 font-mono tabular-nums dark:fill-sky-300">
-                      {MODES[b.mode].mw}
-                    </text>
-                  </>
-                )}
-                {outcomeVisible && (
-                  <>
-                    <text
-                      x={x + 30}
-                      y="182"
-                      textAnchor="middle"
-                      fontSize="12"
-                      fontWeight="700"
-                      className={cn('font-display', short ? 'fill-rose-600 dark:fill-rose-300' : 'fill-emerald-700 dark:fill-emerald-300')}
-                    >
-                      {short ? 'heating up' : 'cooling down'}
-                    </text>
-                    <text x={x + 30} y="204" textAnchor="middle" fontSize="13" fontWeight="700" className="fill-ink font-mono tabular-nums dark:fill-stone-200">
-                      {Math.round(b.temp)}°C
-                    </text>
-                  </>
-                )}
-              </g>
-            )
-          })}
+              )}
+            </div>
+          </PanelBay>
+        </div>
 
-          {/* legend */}
-          <rect x="24" y="60" width="14" height="14" rx="3" className="fill-rose-400" />
-          <text x="44" y="72" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">heat</text>
-          <rect x="24" y="82" width="14" height="14" rx="3" className="fill-sky-400" />
-          <text x="44" y="94" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">cooling</text>
+        <PanelBay legend="Trend recorder">
+          <ChartRecorder
+            legend="Chart 1 · decay heat against cooling"
+            span={HOUR_BLOCK.length}
+            pens={[
+              {
+                id: 'heat',
+                label: 'Decay heat',
+                color: '#e0574a',
+                points: HOUR_BLOCK.map((bi) => BLOCKS[bi].heat / MW_SCALE),
+                readout: setup.curve && showCurve ? `${BLOCKS[2].heat} MW` : undefined,
+              },
+              {
+                id: 'cooling',
+                label: 'Heat removed',
+                color: '#4a9fd0',
+                points: HOUR_BLOCK.map((bi) => MODES[picks[bi]].mw / MW_SCALE),
+                readout: setup.curve && showCurve ? `${lastMode.mw} MW` : undefined,
+              },
+              ...(outcomeVisible
+                ? [
+                    {
+                      id: 'fuel',
+                      label: 'Fuel temp',
+                      color: '#ecb85a',
+                      points: tempTrace.map(tempPos),
+                      readout: `${Math.round(temp)} °C`,
+                      dashed: true,
+                    },
+                  ]
+                : []),
+            ]}
+            summary={
+              outcomeVisible
+                ? `Decay heat falls from ${BLOCKS[0].heat} to ${BLOCKS[2].heat} megawatts across the day. Your cooling removes ${MODES[picks[0]].mw}, then ${MODES[picks[1]].mw}, then ${lastMode.mw} megawatts. Fuel peaks at ${Math.round(peak)} degrees and ends at ${Math.round(temp)}.`
+                : `Decay heat falls from ${BLOCKS[0].heat} to ${BLOCKS[2].heat} megawatts across the day. Your cooling removes ${MODES[picks[0]].mw}, then ${MODES[picks[1]].mw}, then ${lastMode.mw} megawatts. Run the day to draw the fuel temperature pen.`
+            }
+          />
+          <Note className="mt-1.5">
+            Paper runs from the scram at the left edge to 24 hours at the right. Wherever the red pen sits above the blue one, the fuel
+            is heating up.
+          </Note>
+        </PanelBay>
 
-          <text x="24" y="240" fontSize="12" fontWeight="700" className={cn('font-display', outcomeVisible && melted ? 'fill-rose-600 dark:fill-rose-300' : 'fill-ink-soft dark:fill-stone-400')}>
-            {outcomeVisible ? (
-              <>
-                Peak fuel temperature <tspan className="font-mono tabular-nums">{Math.round(peak)}°C</tspan>
-              </>
-            ) : (
-              'Run the procedure to read the temperatures'
-            )}
-          </text>
-        </svg>
-      </div>
+        <PanelBay legend="Cooling schedule">
+          <div className="space-y-2.5">
+            {timeline.map((b, i) => {
+              const short = b.heat > MODES[b.mode].mw
+              return (
+                <div key={b.label} className="border-b border-white/8 pb-2.5 last:border-0 last:pb-0">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Engraved>{b.label}</Engraved>
+                      <Plate label="Decay heat" value={`${b.heat} MW`} />
+                    </div>
+                    {outcomeVisible && (
+                      <div className="flex items-center gap-2">
+                        <Engraved className="text-[9px]">{short ? 'Heating up' : 'Cooling down'}</Engraved>
+                        <DigitalWindow
+                          value={Math.round(b.temp)}
+                          unit="°C at end"
+                          tone={b.temp > setup.limit ? 'alarm' : b.temp >= WARN_TEMP ? 'warn' : 'normal'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div role="group" aria-label={`Cooling for ${b.label.toLowerCase()}`} className="flex flex-wrap gap-1.5">
+                    {setup.modes.map((m) => (
+                      <IlluminatedButton
+                        key={m}
+                        legend={CAP[m]}
+                        sub={`${MODES[m].mw} MW · ${MODES[m].kwhPerHour > 0 ? `${MODES[m].kwhPerHour} kWh/h` : 'free'}`}
+                        lit={picks[i] === m}
+                        tone={m === 'off' ? 'red' : m === 'natural' ? 'white' : 'green'}
+                        pressed={picks[i] === m}
+                        onClick={() => pick(i, m)}
+                        ariaLabel={`${MODES[m].label} for ${b.label.toLowerCase()}, removes ${MODES[m].mw} megawatts`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </PanelBay>
 
-      {/* Verdict: the day only plays out once the procedure is handed over */}
-      <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        {verdict ? (
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          <PanelBay legend="Alarms">
+            <AnnunciatorPanel state={alarms} columns={3} legend="Annunciator windows" />
+            <Note className="mt-2">A window stays lit after the day is over. Press ack to clear it.</Note>
+          </PanelBay>
+
+          <PanelBay legend="Procedure">
+            <div className="flex flex-wrap items-start gap-3">
+              {won ? (
+                <IlluminatedButton
+                  legend="Day complete"
+                  lit
+                  tone="green"
+                  disabled
+                  onClick={() => {}}
+                  ariaLabel="The day is complete"
+                  className="px-5 py-3"
+                />
+              ) : (
+                <GuardedControl
+                  legend="Run day"
+                  description="Hands the schedule to the shift and plays all 24 hours. It spends one test."
+                  onFire={runProcedure}
+                />
+              )}
+              <IlluminatedButton
+                legend="Clear plan"
+                lit={false}
+                tone="white"
+                onClick={clearBoard}
+                ariaLabel="Clear the plan and the alarm windows"
+                className="px-4 py-3"
+              />
+            </div>
+          </PanelBay>
+        </div>
+
+        <PanelBay legend="Plant status">
           <p
+            aria-live="polite"
             className={cn(
-              'rounded-xl px-4 py-2.5 text-sm font-semibold',
-              verdict.ok
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
+              'min-h-[2.25rem] font-body text-[13px] leading-snug',
+              verdict ? (verdict.ok ? 'text-[#8fe3c4]' : 'text-[#f08678]') : 'text-slate-300',
             )}
           >
-            {verdict.text}
+            {status}
           </p>
-        ) : (
-          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-400">
-            Assign a cooling mode to each block of the day, then run the procedure to see the whole 24 hours.
-          </p>
-        )}
-      </div>
-
-      {setup.battery !== null && (
-        <div className="mt-3">
-          <Meter
-            label="Backup power"
-            display={`${Math.round(battery)} of ${setup.battery} kWh`}
-            fraction={battery / setup.battery}
-            barClass={overBattery ? 'bg-rose-500' : 'bg-emerald-500'}
-          />
-        </div>
-      )}
-
-      {/* Controls: one cooling choice per stretch of the day */}
-      <div className="mt-4 space-y-3">
-        {BLOCKS.map((b, i) => (
-          <div key={b.label}>
-            <p className="mb-2 font-display text-sm font-semibold">
-              {b.label} <span className="font-normal text-ink-soft dark:text-stone-400">· {b.heat} MW of decay heat</span>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {setup.modes.map((m) => {
-                const active = picks[i] === m
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => { setVerdict(null); setPicks((p) => p.map((v, j) => (j === i ? m : v))) }}
-                    aria-pressed={active}
-                    className={cn(
-                      'rounded-2xl px-4 py-2 text-left font-display text-sm font-semibold transition-colors duration-200',
-                      active ? 'accent-bg on-accent shadow-clay' : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
-                    )}
-                  >
-                    <span className="block">{MODES[m].label}</span>
-                    <span className={cn('block text-xs font-medium', active ? 'on-accent opacity-80' : 'opacity-70')}>
-                      {MODES[m].mw} MW{MODES[m].kwhPerHour > 0 ? ` · ${MODES[m].kwhPerHour} kWh/h` : ' · free'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button variant="accent" size="lg" onClick={runProcedure} disabled={won}>
-          <BookCheck className="h-5 w-5" />
-          Run the procedure
-        </Button>
-        <Button variant="ghost" onClick={reset} aria-label="Reset the plan">
-          <RotateCcw className="h-4 w-4" />
-          Reset
-        </Button>
-        <Badge className="ml-auto">{Math.round(battery)} kWh used</Badge>
-      </div>
+        </PanelBay>
+      </PanelSurface>
 
       {lv.level.metrics && (
         <div className="mt-4">
@@ -375,7 +590,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
               ? `Peak ${Math.round(peak)}°C on ${Math.round(battery)} kWh. Can you spend less?`
               : 'The core is stable. Cooling held all day.'
           }
-          onReplay={reset}
+          onReplay={clearBoard}
         />
       )}
     </Card>

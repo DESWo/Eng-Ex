@@ -650,6 +650,12 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const topY = joints.reduce((min, j) => Math.min(min, j.y), ROAD_Y)
   const depthM = (ROAD_Y - topY) / PX_PER_M
 
+  /** Redline notes land in the clear water band, on the same side as the mark. */
+  const notePlace = (x: number) => ({
+    x: Math.max(190, Math.min(610, x + (x <= VIEW_W / 2 ? 80 : -80))),
+    y: 348,
+  })
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {phase === 'passed' && <Confetti />}
@@ -685,7 +691,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
               label="erase"
               tone="red"
             />
-            <p id="board-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft)]">
+            <p id="board-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">
               {tool === 'build'
                 ? 'Click the board to set a joint, then click on to run a member from the glowing one. Click it again to let go. The deck has to reach both banks at datum level.'
                 : 'Click a member to erase it. Click a joint to erase it and everything on it.'}{' '}
@@ -706,7 +712,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         }
         footer={
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft)]">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft,#6c6252)]">
               <span
                 role="status"
                 aria-live={board.active ? 'polite' : 'off'}
@@ -878,6 +884,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           aria-describedby="board-help"
           {...board.boardProps}
         >
+          <SnapGrid x0={MIN_X} y0={MIN_Y} x1={MAX_X} y1={MAX_Y} step={GRID} major={2} />
+
           {/* the site: two banks, the water between them */}
           <path d={`M0 ${ROAD_Y} h${LEFT_X} v${VIEW_H - ROAD_Y} H0 Z`} fill={INK.grid} opacity="0.18" />
           <path d={`M${VIEW_W} ${ROAD_Y} h-${VIEW_W - RIGHT_X} v${VIEW_H - ROAD_Y} H${VIEW_W} Z`} fill={INK.grid} opacity="0.18" />
@@ -890,8 +898,6 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           <text x={LEFT_X + 12} y={294} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="9" fill={INK.soft}>
             river
           </text>
-
-          <SnapGrid x0={MIN_X} y0={MIN_Y} x1={MAX_X} y1={MAX_Y} step={GRID} major={2} />
 
           {bubbles.map((b) => (
             <GridBubble key={b.label} x={b.x} y={32} label={b.label} leaderTo={MIN_Y - 8} />
@@ -969,17 +975,25 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                   strokeLinecap="butt"
                   className={removable ? 'transition-opacity group-hover:opacity-30' : undefined}
                 />
-                {/* Members worth reading get their number lettered beside them. */}
-                {forceView && util !== undefined && util >= 0.5 && (
-                  <text x={mid.x} y={mid.y - 5} textAnchor="middle" className={LETTER} fontSize="9" fontWeight="700" fill={memberInk(key)}>
-                    {f > 0 ? 't' : 'c'} {Math.abs(Math.round(f))}
-                  </text>
-                )}
-                {!forceView && util !== undefined && util >= 0.75 && (
-                  <text x={mid.x} y={mid.y - 5} textAnchor="middle" className={LETTER} fontSize="9" fontWeight="700" fill={memberInk(key)}>
-                    {Math.round(util * 100)}%
-                  </text>
-                )}
+                {/* Members worth reading carry their number, on a wipeout. */}
+                {(() => {
+                  const tag =
+                    util === undefined
+                      ? null
+                      : forceView
+                        ? util >= 0.5 ? `${f > 0 ? 't' : 'c'} ${Math.abs(Math.round(f))}` : null
+                        : util >= 0.75 ? `${Math.round(util * 100)}%` : null
+                  if (!tag) return null
+                  const w = tag.length * 6.4 + 6
+                  return (
+                    <g>
+                      <rect x={mid.x - w / 2} y={mid.y - 14} width={w} height="12" fill={INK.paper} />
+                      <text x={mid.x} y={mid.y - 5} textAnchor="middle" className={LETTER} fontSize="9" fontWeight="700" fill={memberInk(key)}>
+                        {tag}
+                      </text>
+                    </g>
+                  )
+                })()}
                 {removable && (
                   <line
                     x1={pa.x}
@@ -1085,26 +1099,28 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           )}
 
           {/* the verdict, drawn on the sheet */}
-          {phase === 'failed' && test?.outcome?.worst && (() => {
-            const [a, b] = test.outcome.worst.key.split('|')
+          {(() => {
+            const worst = phase === 'failed' ? test?.outcome?.worst ?? null : null
+            if (!worst) return null
+            const [a, b] = worst.key.split('|')
             const pa = pos(a)
             const pb = pos(b)
             const mid = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 }
-            const noteX = mid.x < VIEW_W / 2 ? 470 : 250
+            const note = notePlace(mid.x)
             return (
               <Redline
                 x={mid.x}
                 y={mid.y}
                 rx={Math.abs(pb.x - pa.x) / 2 + 15}
                 ry={Math.abs(pb.y - pa.y) / 2 + 15}
-                noteX={noteX}
-                noteY={356}
-                seed={`${runId}-${test.outcome.worst.key}`}
+                noteX={note.x}
+                noteY={note.y}
+                seed={`${runId}-${worst.key}`}
                 rev={runId}
                 note={[
-                  `${markOf(test.outcome.worst.key)} over capacity`,
+                  `${markOf(worst.key)} over capacity`,
                   `${failMode === 'tension' ? 'pull' : 'push'} ${worstForce} against ${worstCap} allowed`,
-                  `${Math.round(worstUtil * 100)}% of capacity, ${MATERIALS[materialOf(test.outcome.worst.key)].label.toLowerCase()}`,
+                  `${Math.round(worstUtil * 100)}% of capacity, ${MATERIALS[materialOf(worst.key)].label.toLowerCase()}`,
                 ]}
               />
             )
@@ -1115,8 +1131,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
               y={pos(test.failedAt).y - 20}
               rx={58}
               ry={48}
-              noteX={pos(test.failedAt).x < VIEW_W / 2 ? 470 : 250}
-              noteY={356}
+              noteX={notePlace(pos(test.failedAt).x).x}
+              noteY={notePlace(pos(test.failedAt).x).y}
               seed={`${runId}-fold`}
               rev={runId}
               note={['frame folds here', 'no triangle to hold this bay', 'brace it and run the check again']}
@@ -1128,8 +1144,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
               y={ROAD_Y + sagLinePx(test?.peakSag ?? 0) / 2}
               rx={132}
               ry={30}
-              noteX={250}
-              noteY={356}
+              noteX={notePlace((LEFT_X + RIGHT_X) / 2).x}
+              noteY={notePlace((LEFT_X + RIGHT_X) / 2).y}
               seed={`${runId}-sag`}
               rev={runId}
               note={[`deck sag ${test?.peakSag} cm`, `limit ${round.maxDeflection} cm, nothing broke`]}

@@ -1,18 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { animate, motion, useReducedMotion } from 'framer-motion'
-import { Layers, RotateCcw, Waves } from 'lucide-react'
+import { animate, useReducedMotion } from 'framer-motion'
+import { Eraser, PenLine, RotateCcw, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
-import { Badge } from '@/components/ui/Badge'
-import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
+import {
+  ApprovalStamp,
+  CursorMark,
+  DatumLine,
+  DimString,
+  DraftingSheet,
+  DrawingKey,
+  GridBubble,
+  GroundHatch,
+  INK,
+  LETTER,
+  Leader,
+  LoadArrow,
+  NoteBlock,
+  PEN,
+  Redline,
+  RevisionStamp,
+  ScaleBar,
+  Schedule,
+  SheetTool,
+  StencilPalette,
+  TRACK,
+  TitleBlock,
+  useSheetCursor,
+  type SheetStatus,
+} from '@/components/instruments/drafting'
 import { useLevels } from '@/hooks/useLevels'
 import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
-import { useSvgDrag } from '@/hooks/useSvgDrag'
 import { playSound } from '@/lib/sound'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -30,10 +53,12 @@ import {
 import type { Building, Gates, Outcome } from './shear'
 
 /**
- * Shake Proof. You get a rack of identical X-braces and a frame that is three
- * bays wide, and you decide which storeys get them. A real shear-building time
- * history (src/challenges/civil/shear.ts) shakes what you built against a
- * seeded ground record and tells you which storey tore.
+ * Shake Proof, drawn as a structural frame elevation on a drafting sheet.
+ *
+ * You have a rack of identical X-braces and a frame that is three bays wide, and
+ * you decide which storeys get them. A real shear-building time history
+ * (src/challenges/civil/shear.ts) shakes what you drew against a seeded ground
+ * record and tells you which storey tore.
  *
  * The tuning is built so the answer is the DISTRIBUTION of stiffness up the
  * building, not the amount. What that protects, for anyone editing it:
@@ -53,6 +78,12 @@ import type { Building, Gates, Outcome } from './shear'
  * Every number in the level table below is proven by exhaustive enumeration in
  * scripts/verify-quake.mjs. Run `node scripts/verify-quake.mjs` after touching
  * any constant in this file or in shear.ts.
+ *
+ * Drawing conventions come from src/components/instruments/drafting/index.ts.
+ * The board is a frame elevation, so it is gridded the way an elevation is
+ * gridded: column-line bubbles across the top, level datums across the storeys.
+ * There is no square snap grid, because the glazed lobby is 5 m and the storeys
+ * above it are 3.4 m, and no uniform square is honest about both.
  */
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
@@ -77,23 +108,27 @@ const COLLAPSE_SQUASH = 0.55
 /** Extra sideways px everything above the failure slides as it comes down. */
 const COLLAPSE_LEAN = 24
 
+/* ------------------- sheet layout ------------------- */
+
 const SCENE_W = 800
-const TOP_PAD = 34
-const GROUND_BAND = 76
-const SPECTRUM_H = 130
+const TOP_PAD = 54
+const GROUND_BAND = 104
+const SPECTRUM_H = 152
 const ISO_LIFT = 26 // px the frame rises when it goes onto bearings
 const BEARING_H = 14
-const TOWER_X = 302
-const BAY_PX = 6.0 * PX_PER_M // one 6 m bay
+const TOWER_X = 250
+const BAY_M = 6.0 // one bay, m
+const BAY_PX = BAY_M * PX_PER_M
 const TOWER_W = 3 * BAY_PX
-const YARD_X = 22
-const YARD_COLS = 3
-const YARD_PITCH_X = 34
-const YARD_PITCH_Y = 27
-const PANEL_W = 28
-const PANEL_H = 22
-const PROFILE_X = 600
-const PROFILE_BAR = 118
+/** The storey drift diagram, drawn beside the elevation like a real one. */
+const DRIFT_X = 596
+const DRIFT_W = 128
+/** Braces still on the stencil sheet, cut out along the top edge. */
+const STOCK_X = 20
+const STOCK_Y = 20
+const STOCK_PITCH = 15
+const STOCK_W = 12
+const STOCK_H = 11
 
 const money = (n: number) => `$${n.toLocaleString('en-US')}`
 
@@ -142,7 +177,7 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     phase: 'play',
     concept: 'One storey tears',
     teach:
-      'A building does not tip over like a bottle. One storey tears sideways while everything above it rides along on top. Lean is measured in millimetres of sideways slip for every metre of storey height, and 20 is where the columns give up. Drag X-braces out of the rack into any empty bay. The frame does not care which of the three bays you brace, only how many, so put them where they look right to you.',
+      'A building does not tip over like a bottle. One storey tears sideways while everything above it rides along on top. Lean is measured in millimetres of sideways slip for every metre of storey height, and 20 is where the columns give up. Take the brace pencil and draw an X into any empty bay. The frame does not care which of the three bays you brace, only how many, so put them where they look right to you.',
     setup: {
       building: uniform(4),
       rack: 12,
@@ -252,6 +287,8 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
 ]
 
 type Phase = 'build' | 'shaking' | 'passed' | 'failed'
+/** The instrument in your hand: the brace pencil, or the eraser. */
+type Tool = 'brace' | 'strip'
 
 /** A frozen frame of the shake: where every floor was, and how far it has folded. */
 interface Pose {
@@ -284,7 +321,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const [pose, setPose] = useState<Pose | null>(null)
   const [result, setResult] = useState<Outcome | null>(null)
   const [showSpectrum, setShowSpectrum] = useState(true)
-  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
+  const [tool, setTool] = useState<Tool>('brace')
   const [hover, setHover] = useState<{ s: number; b: number } | null>(null)
   const [runId, setRunId] = useState(0)
 
@@ -301,9 +338,6 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const baseRef = useRef<SVGGElement | null>(null)
   const bearingRef = useRef<SVGGElement | null>(null)
   const groundRef = useRef<SVGGElement | null>(null)
-  /** Pointer-down bookkeeping for the one drag handler on the whole scene. */
-  const pressRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
-  const carryRef = useRef<{ from: 'yard' | 'bay' } | null>(null)
 
   const stopEverything = () => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
@@ -333,6 +367,8 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     setPhase('build')
     setPose(null)
     setResult(null)
+    setTool('brace')
+    setHover(null)
   }, [lv.level.n, N])
 
   /* ------------------- the design and its earthquake ------------------- */
@@ -365,14 +401,14 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   /** The verdict describes the run that happened, not the current bench state. */
   const shown = settled && result ? result : outcome
 
-  /* ------------------- scene geometry ------------------- */
+  /* ------------------- drawing geometry ------------------- */
 
   const isoRoom = round.bearings ? ISO_LIFT : 0
   const towerPx = round.building.heights.reduce((t, h) => t + h * PX_PER_M, 0)
   const groundY = TOP_PAD + towerPx + isoRoom
   const sceneH = groundY + GROUND_BAND + (spec && showSpectrum ? SPECTRUM_H : 0)
 
-  /** Storey boxes as built, bottom-up. Labels and the drift profile use these. */
+  /** Storey boxes as built, bottom-up. Dimensions and the drift diagram use these. */
   const rowsBase = useMemo(() => {
     const out: { yTop: number; yBottom: number; h: number }[] = []
     let y = groundY - (isolated ? ISO_LIFT : 0)
@@ -384,41 +420,30 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     return out
   }, [round.building.heights, groundY, isolated])
 
-  const collapse = pose?.collapse ?? 0
-  const failIdx = settled && shown.fail?.kind === 'drift' ? shown.failIndex : -1
-  /** Storey boxes as drawn: the storey that tore loses height as it folds. */
-  const rows = useMemo(() => {
-    if (collapse === 0 || failIdx < 0) return rowsBase
-    const out: { yTop: number; yBottom: number; h: number }[] = []
-    let y = rowsBase[0].yBottom
-    round.building.heights.forEach((h, i) => {
-      const px = h * PX_PER_M * (i === failIdx ? 1 - COLLAPSE_SQUASH * collapse : 1)
-      out.push({ yBottom: y, yTop: y - px, h: px })
-      y -= px
-    })
-    return out
-  }, [rowsBase, collapse, failIdx, round.building.heights])
-
-  const dofOf = (storey: number) => storey + (shown.isolated ? 1 : 0)
-  const gndPx = (pose?.gnd ?? 0) * SCALE
-  const dispPx = (dof: number) => (pose?.disp[dof] ?? 0) * SCALE + gndPx
-  const lean = (i: number) => (failIdx >= 0 && i >= failIdx ? COLLAPSE_LEAN * collapse : 0)
-  const topPx = (i: number) => dispPx(dofOf(i)) + lean(i)
-  const botPx = (i: number) => (i === 0 ? (shown.isolated ? dispPx(0) : gndPx) : topPx(i - 1))
-
-  /* ------------------- placing braces ------------------- */
-
-  const bayAt = (x: number, y: number) => {
-    if (x < TOWER_X || x > TOWER_X + TOWER_W) return null
-    const b = Math.min(2, Math.max(0, Math.floor((x - TOWER_X) / BAY_PX)))
-    const s = rowsBase.findIndex((r) => y >= r.yTop && y <= r.yBottom)
-    return s === -1 ? null : { s, b }
+  const bayCentreX = (b: number) => TOWER_X + (b + 0.5) * BAY_PX
+  const storeyCentreY = (s: number) => rowsBase[s].yTop + rowsBase[s].h / 2
+  /** Bays are a whole module wide, so a board x maps straight onto one. */
+  const bayIndexAtX = (x: number) => Math.max(0, Math.min(2, Math.round((x - TOWER_X) / BAY_PX - 0.5)))
+  /**
+   * The level swap resets `bays` in an effect, so for one render the drawing can
+   * be a storey taller than the state behind it. Read every cell through here.
+   */
+  const bracedAt = (s: number, b: number) => bays[s]?.[b] ?? false
+  /** Which storey a board y lands in. Nearest centre, so it never returns nothing. */
+  const storeyAtY = (y: number) => {
+    let best = 0
+    let bd = Infinity
+    for (let i = 0; i < rowsBase.length; i++) {
+      const d = Math.abs(rowsBase[i].yTop + rowsBase[i].h / 2 - y)
+      if (d < bd) {
+        bd = d
+        best = i
+      }
+    }
+    return best
   }
-  const inYard = (x: number, y: number) =>
-    x >= YARD_X - 8 &&
-    x <= YARD_X + YARD_COLS * YARD_PITCH_X &&
-    y <= groundY &&
-    y >= groundY - 6 * YARD_PITCH_Y
+
+  /* ------------------- drawing braces ------------------- */
 
   /** Any edit hides the verdict again and cancels a pending bench-clear. */
   const touched = () => {
@@ -443,53 +468,105 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     touched()
   }
 
-  const drag = useSvgDrag((x, y, done) => {
-    if (busy) return
-    if (!pressRef.current && !done) {
-      pressRef.current = { x, y, moved: false }
-      const hit = bayAt(x, y)
-      if (hit && bays[hit.s][hit.b]) {
-        pull(hit.s, hit.b)
-        carryRef.current = { from: 'bay' }
-      } else if ((hit || inYard(x, y)) && inRack > 0 && affordable > 0) {
-        carryRef.current = { from: 'yard' }
-      } else {
-        carryRef.current = null
-      }
-      if (carryRef.current) setGhost({ x, y })
-      return
-    }
-    const press = pressRef.current
-    if (!press) return
-    if (Math.hypot(x - press.x, y - press.y) > 6) press.moved = true
-    if (!done) {
-      if (carryRef.current) {
-        setGhost({ x, y })
-        setHover(bayAt(x, y))
-      }
-      return
-    }
-    const carry = carryRef.current
-    const moved = press.moved
-    pressRef.current = null
-    carryRef.current = null
-    setGhost(null)
-    setHover(null)
-    if (!carry) return
-    // Tapping an installed brace takes it out, and it is already out.
-    if (carry.from === 'bay' && !moved) return
-    const target = bayAt(x, y)
-    if (!target || bays[target.s][target.b]) return
-    if (braces[target.s] >= MAX_PER_STOREY) return
-    if (carry.from === 'yard' && (inRack <= 0 || affordable <= 0)) return
-    install(target.s, target.b)
-  })
+  const canInstall = (s: number, b: number) =>
+    !bracedAt(s, b) && inRack > 0 && affordable > 0 && (braces[s] ?? 0) < MAX_PER_STOREY
 
-  const toggleBay = (s: number, b: number) => {
-    if (busy) return
-    if (bays[s][b]) pull(s, b)
-    else if (inRack > 0 && affordable > 0 && braces[s] < MAX_PER_STOREY) install(s, b)
+  /** The pencil draws, the eraser strips. Same rules the old bench enforced. */
+  const drawAt = (s: number, b: number) => {
+    if (busy || bracedAt(s, b)) return
+    if (canInstall(s, b)) install(s, b)
   }
+  const stripAt = (s: number, b: number) => {
+    if (busy || !bracedAt(s, b)) return
+    pull(s, b)
+  }
+  const clickCell = (s: number, b: number) => {
+    if (tool === 'strip') stripAt(s, b)
+    else drawAt(s, b)
+  }
+
+  const board = useSheetCursor({
+    step: BAY_PX,
+    bounds: {
+      minX: bayCentreX(0),
+      maxX: bayCentreX(2),
+      minY: storeyCentreY(N - 1),
+      maxY: storeyCentreY(0),
+    },
+    start: { x: bayCentreX(1), y: storeyCentreY(0) },
+    onCommit: (p) => clickCell(storeyAtY(p.y), bayIndexAtX(p.x)),
+    // Nothing is held on this board, so escape puts the eraser down.
+    onCancel: () => setTool('brace'),
+    onDelete: (p) => stripAt(storeyAtY(p.y), bayIndexAtX(p.x)),
+    disabled: busy,
+  })
+  const setCursor = board.setCursor
+
+  const cs = storeyAtY(board.cursor.y)
+  const cb = bayIndexAtX(board.cursor.x)
+
+  // Arrows step one module. Sideways that is one bay, which the hook already
+  // does; upward it is one storey, and storeys are not all the same height.
+  const boardKeys = (e: React.KeyboardEvent) => {
+    if (busy) return
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      board.setActive(true)
+      const next = Math.max(0, Math.min(N - 1, cs + (e.key === 'ArrowUp' ? 1 : -1)))
+      setCursor((c) => ({ x: c.x, y: storeyCentreY(next) }))
+      return
+    }
+    board.boardProps.onKeyDown(e)
+  }
+
+  // The frame lifts by ISO_LIFT when it goes onto bearings, and the cursor has
+  // to ride with it or it silently lands a storey out.
+  const isoRef = useRef(isolated)
+  useEffect(() => {
+    if (isoRef.current === isolated) return
+    const shift = isolated ? -ISO_LIFT : ISO_LIFT
+    isoRef.current = isolated
+    setCursor((c) => ({ x: c.x, y: c.y + shift }))
+  }, [isolated, setCursor])
+
+  const rowsRef = useRef(rowsBase)
+  rowsRef.current = rowsBase
+  useEffect(() => {
+    const r = rowsRef.current[0]
+    isoRef.current = false
+    setCursor({ x: bayCentreX(1), y: r.yTop + r.h / 2 })
+  }, [lv.level.n, setCursor])
+
+  const setFoundation = (id: string) => {
+    if (busy) return
+    setIsolated(id === 'bearings')
+    playSound('click')
+    touched()
+  }
+
+  /* ------------------- the drawn frame ------------------- */
+
+  const collapse = pose?.collapse ?? 0
+  const failIdx = settled && shown.fail?.kind === 'drift' ? shown.failIndex : -1
+  /** Storey boxes as drawn: the storey that tore loses height as it folds. */
+  const rows = useMemo(() => {
+    if (collapse === 0 || failIdx < 0) return rowsBase
+    const out: { yTop: number; yBottom: number; h: number }[] = []
+    let y = rowsBase[0].yBottom
+    round.building.heights.forEach((h, i) => {
+      const px = h * PX_PER_M * (i === failIdx ? 1 - COLLAPSE_SQUASH * collapse : 1)
+      out.push({ yBottom: y, yTop: y - px, h: px })
+      y -= px
+    })
+    return out
+  }, [rowsBase, collapse, failIdx, round.building.heights])
+
+  const dofOf = (storey: number) => storey + (shown.isolated ? 1 : 0)
+  const gndPx = (pose?.gnd ?? 0) * SCALE
+  const dispPx = (dof: number) => (pose?.disp[dof] ?? 0) * SCALE + gndPx
+  const lean = (i: number) => (failIdx >= 0 && i >= failIdx ? COLLAPSE_LEAN * collapse : 0)
+  const topPx = (i: number) => dispPx(dofOf(i)) + lean(i)
+  const botPx = (i: number) => (i === 0 ? (shown.isolated ? dispPx(0) : gndPx) : topPx(i - 1))
 
   /* ------------------- the shake ------------------- */
 
@@ -646,7 +723,93 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     return `The bearings ran out of trench. The base slid ${f.value.toFixed(0)} cm and the moat is ${f.limit}.`
   }
 
-  const sceneLabel = `${N} storey frame, three bays wide, ${used} braces installed${isolated ? ', on isolation bearings' : ''}`
+  /* ------------------- the sheet ------------------- */
+
+  const status: SheetStatus = phase === 'passed' ? 'approved' : phase === 'failed' ? 'revise' : 'draft'
+  const driftLimit = DRIFT_CAP * 1000
+  const limitX = DRIFT_X + (DRIFT_W * driftLimit) / DRIFT_DISPLAY_CAP
+  const columnX = [0, 1, 2, 3].map((j) => TOWER_X + j * BAY_PX)
+  /** Moat width in drawing px, at the same exaggeration the sway is drawn at. */
+  const moatPx = round.gates.moat !== undefined ? round.gates.moat * SCALE : null
+  /** Floor elevations bottom-up, metres above the ground datum. */
+  const elevations = round.building.heights.reduce<number[]>((acc, h) => {
+    acc.push((acc[acc.length - 1] ?? 0) + h)
+    return acc
+  }, [])
+
+  const checking =
+    `${round.site.pga.toFixed(2)}g at ${round.site.Tg} s, drift ${driftLimit} mm/m` +
+    (round.gates.joltCap !== undefined ? `, jolt ${round.gates.joltCap} %g` : '') +
+    (round.gates.moat !== undefined ? `, moat ${round.gates.moat * 100} cm` : '') +
+    (round.budget !== null ? `, ${money(round.budget)} cap` : '')
+
+  /** Storey rows read top down, the way a drawing is read. */
+  const storeyRows = rowsBase
+    .map((_, i) => i)
+    .reverse()
+    .map((i) => {
+      const over = outcomeVisible && shown.lean[i] > driftLimit
+      return {
+        key: `s${i}`,
+        over,
+        cells: {
+          mark: `s${i + 1}`,
+          storey: `${round.building.heights[i].toFixed(1)} m${round.building.open[i] < 1 ? ' glazed' : ''}`,
+          braces: `${braces[i] ?? 0} of ${MAX_PER_STOREY}`,
+          drift: outcomeVisible ? leanText(shown.lean[i]) : '?',
+          allow: String(driftLimit),
+        },
+      }
+    })
+
+  const checkRows: { key: string; over: boolean; cells: Record<string, string> }[] = [
+    {
+      key: 'drift',
+      over: outcomeVisible && shown.worstLean > driftLimit,
+      cells: {
+        check: 'worst storey drift',
+        value: outcomeVisible ? `${leanText(shown.worstLean)} mm/m at s${shown.worstStorey}` : 'shake it to find out',
+        allow: `${driftLimit} mm/m`,
+        result: outcomeVisible ? (shown.worstLean > driftLimit ? 'over' : 'ok') : '-',
+      },
+    },
+  ]
+  if (round.gates.joltCap !== undefined || lv.level.metrics) {
+    const cap = round.gates.joltCap
+    checkRows.push({
+      key: 'jolt',
+      over: outcomeVisible && cap !== undefined && shown.worstJolt > cap,
+      cells: {
+        check: 'peak floor jolt',
+        value: outcomeVisible ? `${shown.worstJolt.toFixed(0)} %g` : 'shake it to find out',
+        allow: cap !== undefined ? `${cap} %g` : 'not gated',
+        result: outcomeVisible ? (cap === undefined ? 'noted' : shown.worstJolt > cap ? 'over' : 'ok') : '-',
+      },
+    })
+  }
+  if (round.gates.moat !== undefined) {
+    const moatCm = round.gates.moat * 100
+    checkRows.push({
+      key: 'moat',
+      over: outcomeVisible && isolated && shown.bearingTravel > moatCm,
+      cells: {
+        check: 'bearing slide',
+        value: !isolated
+          ? 'no bearings drawn'
+          : outcomeVisible
+            ? `${shown.bearingTravel.toFixed(0)} cm`
+            : 'shake it to find out',
+        allow: `${moatCm} cm`,
+        result: !isolated ? 'n/a' : outcomeVisible ? (shown.bearingTravel > moatCm ? 'over' : 'ok') : '-',
+      },
+    })
+  }
+
+  /** Redline notes land in the ground band, clear of the frame and the dims. */
+  const NOTE_X = 206
+  const noteY = groundY + 62
+
+  const stampY = TOP_PAD + Math.min(90, towerPx / 2)
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -663,159 +826,350 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={goal}
-        status={`${used} of ${round.rack} braces placed${isolated ? ' on bearings' : ''} · your tower sways once in ${shown.T1.toFixed(2)} s`}
+        status={`${used} of ${round.rack} braces drawn${isolated ? ' over bearings' : ''} · your tower sways once in ${shown.T1.toFixed(2)} s`}
         attemptsLeft={att.left}
         met={phase === 'passed'}
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
-        <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
-          <Waves className="mr-1 h-4 w-4" />
-          {round.badge}
-        </Badge>
-      </div>
+      <p className="mb-3 max-w-2xl text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
 
-      {/* Scene: the frame, the brace yard, the drift profile */}
-      <div className="overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
+      <DraftingSheet
+        tools={
+          <>
+            <SheetTool
+              active={tool === 'brace'}
+              onClick={() => setTool('brace')}
+              disabled={busy}
+              icon={<PenLine className="h-3.5 w-3.5" />}
+              label={`brace, ${inRack} left`}
+            />
+            <SheetTool
+              active={tool === 'strip'}
+              onClick={() => setTool('strip')}
+              disabled={busy}
+              icon={<Eraser className="h-3.5 w-3.5" />}
+              label="strip"
+              tone="red"
+            />
+            <p id="quake-board-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">
+              {tool === 'brace'
+                ? `Click an empty bay to draw an X-brace into it. Up to ${MAX_PER_STOREY} per storey, and the stock along the top edge is all you get.`
+                : 'Click a braced bay to rub the brace out and put it back in stock.'}{' '}
+              Keyboard: left and right walk the bays, up and down walk the storeys, enter draws or strips at the cursor, delete strips whatever the tool, escape puts the eraser down.
+            </p>
+          </>
+        }
+        titleBlock={
+          <TitleBlock
+            project="Civic hospital tower"
+            drawing={`${lv.level.n}. ${lv.level.title}`}
+            sheetNo={`Q-0${lv.level.n}`}
+            scale={`metres, sway drawn x${EXAGGERATION}`}
+            checking={checking}
+            rev={runId}
+            status={status}
+          />
+        }
+        footer={
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft,#6c6252)]">
+              <span
+                role="status"
+                aria-live={board.active ? 'polite' : 'off'}
+                className={cn(LETTER, 'tabular-nums')}
+                style={{ letterSpacing: TRACK.normal }}
+              >
+                cursor storey {cs + 1}, bay {cb + 1} · {bracedAt(cs, cb) ? 'braced' : 'empty'}
+              </span>
+              <span className={cn(LETTER, 'tabular-nums')} style={{ letterSpacing: TRACK.normal }}>
+                {N} storeys · {shown.totalMass.toLocaleString('en-US')} t · sways once in{' '}
+                {shown.T1.toFixed(2)} s{isolated ? ' · on bearings' : ' · fixed base'}
+              </span>
+            </div>
+
+            <DrawingKey
+              title="key"
+              items={[
+                {
+                  label: 'brace you drew',
+                  sample: (
+                    <>
+                      <line x1="2" y1="9" x2="24" y2="1" stroke={INK.line} strokeWidth={PEN.member} />
+                      <line x1="2" y1="1" x2="24" y2="9" stroke={INK.line} strokeWidth={PEN.member} />
+                    </>
+                  ),
+                },
+                {
+                  label: 'bare frame',
+                  sample: (
+                    <>
+                      <line x1="4" y1="1" x2="4" y2="9" stroke={INK.line} strokeWidth={PEN.thin} />
+                      <line x1="22" y1="1" x2="22" y2="9" stroke={INK.line} strokeWidth={PEN.thin} />
+                      <line x1="2" y1="1" x2="24" y2="1" stroke={INK.line} strokeWidth={PEN.dim} />
+                    </>
+                  ),
+                },
+                {
+                  label: 'drift limit',
+                  sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.red} strokeWidth={PEN.dim} strokeDasharray="5 3" />,
+                },
+              ]}
+            />
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="space-y-3">
+                {round.bearings && (
+                  <StencilPalette
+                    label="foundation detail"
+                    value={isolated ? 'bearings' : 'fixed'}
+                    onChange={setFoundation}
+                    disabled={busy}
+                    options={[
+                      {
+                        id: 'fixed',
+                        mark: 'F',
+                        label: 'Fixed base',
+                        note: 'columns cast straight into rock, no cost',
+                        swatch: (
+                          <>
+                            <line x1="1" y1="6" x2="25" y2="6" stroke={INK.line} strokeWidth={PEN.dim} />
+                            {[3, 9, 15, 21].map((x) => (
+                              <line key={x} x1={x} y1="12" x2={x + 4} y2="6" stroke={INK.soft} strokeWidth={PEN.hair} />
+                            ))}
+                          </>
+                        ),
+                      },
+                      {
+                        id: 'bearings',
+                        mark: 'B',
+                        label: 'Isolation bearings',
+                        note: `${money(BEARING_COST)} for the whole layer`,
+                        swatch: (
+                          <>
+                            <line x1="1" y1="3" x2="25" y2="3" stroke={INK.line} strokeWidth={PEN.dim} />
+                            {[5, 13, 21].map((x) => (
+                              <rect key={x} x={x - 3} y="4" width="6" height="5" fill="none" stroke={INK.line} strokeWidth={PEN.hair} />
+                            ))}
+                            <line x1="1" y1="11" x2="25" y2="11" stroke={INK.soft} strokeWidth={PEN.hair} />
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                )}
+                <Schedule
+                  title="storey schedule"
+                  columns={[
+                    { key: 'mark', label: 'mark' },
+                    { key: 'storey', label: 'storey' },
+                    { key: 'braces', label: 'braces', align: 'right' },
+                    { key: 'drift', label: 'drift mm/m', align: 'right' },
+                    { key: 'allow', label: 'allow', align: 'right' },
+                  ]}
+                  rows={storeyRows}
+                  foot={
+                    round.budget === null
+                      ? [
+                          { label: 'braces drawn', value: `${used} of ${round.rack}` },
+                          { label: 'build cost, no cap this sheet', value: money(spend) },
+                        ]
+                      : [
+                          { label: 'braces drawn', value: `${used} of ${round.rack}` },
+                          { label: 'build cost', value: money(spend) },
+                          { label: 'budget', value: money(round.budget) },
+                          {
+                            label: overBudget ? 'over by' : 'left',
+                            value: money(Math.abs(round.budget - spend)),
+                            tone: overBudget ? 'over' : 'ok',
+                          },
+                        ]
+                  }
+                />
+              </div>
+
+              <Schedule
+                title="acceptance checks"
+                columns={[
+                  { key: 'check', label: 'check' },
+                  { key: 'value', label: 'measured', align: 'right' },
+                  { key: 'allow', label: 'allowed', align: 'right' },
+                  { key: 'result', label: 'result', align: 'right' },
+                ]}
+                rows={checkRows}
+                foot={[
+                  {
+                    label: outcomeVisible ? 'every storey has to clear it, not the average' : 'hidden until you shake it',
+                    value: outcomeVisible ? (shown.stands ? 'all clear' : 'see redline') : '?',
+                    tone: outcomeVisible ? (shown.stands ? 'ok' : 'over') : 'normal',
+                  },
+                ]}
+              />
+            </div>
+
+            {/* Verdicts are lettered notes on the sheet. */}
+            <div aria-live="polite" className="min-h-[2.5rem] space-y-2">
+              {phase === 'passed' && (
+                <NoteBlock n={1} tone="check">
+                  It stands. The worst storey leaned {leanText(shown.worstLean)} mm/m at storey {shown.worstStorey}, and the
+                  floors took {shown.worstJolt.toFixed(0)} %g. Stamped and signed off.
+                </NoteBlock>
+              )}
+              {phase === 'failed' && (
+                <NoteBlock n={1} tone="red">
+                  {failLine()}
+                </NoteBlock>
+              )}
+              {phase === 'build' && overBudget && (
+                <NoteBlock n={1} tone="red">
+                  The schedule is over budget by {money(spend - (round.budget ?? 0))}. Strip something out before you run the
+                  shake.
+                </NoteBlock>
+              )}
+              {phase === 'build' && !overBudget && affordable < inRack && (
+                <NoteBlock n={1} tone="amber">
+                  The rack is full but the cheque is not. You can afford {affordable} more of the {inRack} braces still in
+                  stock, and the rest are drawn dashed.
+                </NoteBlock>
+              )}
+            </div>
+          </div>
+        }
+      >
         <svg
           viewBox={`0 0 ${SCENE_W} ${Math.round(sceneH)}`}
           className="w-full touch-none select-none"
-          role="img"
-          aria-label={sceneLabel}
-          {...drag.bind}
+          role="application"
+          aria-label={`Frame elevation, sheet Q-0${lv.level.n}. ${N} storeys, three bays wide, ${used} braces drawn${isolated ? ', on isolation bearings' : ', fixed base'}. Cursor at storey ${cs + 1}, bay ${cb + 1}, ${bracedAt(cs, cb) ? 'braced' : 'empty'}.`}
+          aria-describedby="quake-board-help"
+          {...board.boardProps}
+          onKeyDown={boardKeys}
         >
-          {/* ground, and the moat trench the bearings sit in */}
-          <g ref={groundRef}>
-            <rect
-              x={-60}
-              y={groundY}
-              width={SCENE_W + 120}
-              height={sceneH - groundY}
-              className="fill-stone-300 dark:fill-stone-800"
-            />
-            {Array.from({ length: 40 }, (_, i) => (
-              <line
-                key={i}
-                x1={-60 + i * 24}
-                y1={groundY}
-                x2={-72 + i * 24}
-                y2={groundY + 14}
-                strokeWidth="1.5"
-                className="stroke-stone-400 dark:stroke-stone-600"
-              />
-            ))}
-            <line
-              x1={-60}
-              y1={groundY}
-              x2={SCENE_W + 60}
-              y2={groundY}
-              strokeWidth="2.5"
-              className="stroke-stone-500 dark:stroke-stone-500"
-            />
-            {isolated && round.gates.moat !== undefined && (
-              <g className="fill-sky-100/70 stroke-stone-500 dark:fill-sky-950/60 dark:stroke-stone-500">
-                <rect
-                  x={TOWER_X - 12 - round.gates.moat * SCALE}
-                  y={groundY}
-                  width={round.gates.moat * SCALE}
-                  height={ISO_LIFT + 6}
-                  strokeWidth="2"
-                />
-                <rect
-                  x={TOWER_X + TOWER_W + 12}
-                  y={groundY}
-                  width={round.gates.moat * SCALE}
-                  height={ISO_LIFT + 6}
-                  strokeWidth="2"
-                />
-              </g>
-            )}
-
-            {/*
-              The brace yard: one drawn panel per brace left in the rack, so the
-              budget is a pile of objects you watch drain rather than a number
-              in a box. It sits inside the ground group because it is stacked on
-              the ground, and slides with it when the shaking starts.
-            */}
-            <text
-              x={YARD_X}
-              y={groundY + 22}
-              fontSize="12"
-              fontWeight="700"
-              className="fill-ink-soft font-display dark:fill-stone-400"
-            >
-              rack: {inRack} left
+          {/* what is left on the stencil sheet, cut out along the top edge */}
+          <g aria-hidden>
+            <text x={STOCK_X} y={13} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="9" fill={INK.soft}>
+              brace stock, {inRack} of {round.rack}
             </text>
             {Array.from({ length: Math.max(0, inRack) }, (_, k) => {
-              const col = k % YARD_COLS
-              const row = Math.floor(k / YARD_COLS)
-              const x = YARD_X + col * YARD_PITCH_X
-              const y = groundY - 6 - (row + 1) * YARD_PITCH_Y
+              const x = STOCK_X + k * STOCK_PITCH
               const broke = k >= affordable
               return (
-                <g key={k} opacity={broke ? 0.35 : 1} aria-hidden={broke || undefined}>
+                <g key={k} opacity={broke ? 0.45 : 1}>
                   <rect
                     x={x}
-                    y={y}
-                    width={PANEL_W}
-                    height={PANEL_H}
-                    rx="2"
-                    className="fill-white/70 stroke-slate-500 dark:fill-white/10 dark:stroke-slate-300"
-                    strokeWidth="1.5"
+                    y={STOCK_Y}
+                    width={STOCK_W}
+                    height={STOCK_H}
+                    fill="none"
+                    stroke={INK.soft}
+                    strokeWidth={PEN.hair}
+                    strokeDasharray={broke ? '2 2' : undefined}
                   />
-                  <g strokeWidth="2.5" strokeLinecap="round" className="stroke-amber-600 dark:stroke-amber-400">
-                    <line x1={x + 3} y1={y + 3} x2={x + PANEL_W - 3} y2={y + PANEL_H - 3} />
-                    <line x1={x + PANEL_W - 3} y1={y + 3} x2={x + 3} y2={y + PANEL_H - 3} />
-                  </g>
+                  <path
+                    d={`M${x + 2} ${STOCK_Y + 2} L${x + STOCK_W - 2} ${STOCK_Y + STOCK_H - 2} M${x + STOCK_W - 2} ${STOCK_Y + 2} L${x + 2} ${STOCK_Y + STOCK_H - 2}`}
+                    stroke={broke ? INK.soft : INK.line}
+                    strokeWidth={PEN.thin}
+                    strokeDasharray={broke ? '2 2' : undefined}
+                  />
                 </g>
               )
             })}
-            {affordable < inRack && (
-              <text
-                x={YARD_X}
-                y={groundY + 38}
-                fontSize="11"
-                fontWeight="600"
-                className="fill-rose-600 font-display dark:fill-rose-300"
-              >
-                the rack is full, the cheque is not
-              </text>
-            )}
           </g>
 
-          {/* storey labels down the left edge */}
-          {rowsBase.map((r, i) => (
-            <text
-              key={i}
-              x={TOWER_X - 12}
-              y={r.yTop + r.h / 2 + 4}
-              textAnchor="end"
-              fontSize="12"
-              fontWeight="700"
-              className="fill-ink-soft font-display dark:fill-stone-400"
-            >
-              {round.building.open[i] < 1
-                ? `storey ${i + 1}, lobby, ${round.building.heights[i].toFixed(1)} m`
-                : `storey ${i + 1}, ${round.building.heights[i].toFixed(1)} m`}
-            </text>
+          {/* column lines, the way an elevation is gridded */}
+          {columnX.map((x, j) => (
+            <GridBubble key={j} x={x} y={32} label={String.fromCharCode(65 + j)} leaderTo={TOP_PAD - 6} />
           ))}
+
+          {/* level datums, ground first so the frame draws over them */}
+          <DatumLine x1={TOWER_X - 8} x2={TOWER_X + TOWER_W + 86} y={groundY} label="ground +0.00" />
+          {rowsBase.map((r, i) => (
+            <DatumLine
+              key={i}
+              x1={TOWER_X - 8}
+              x2={TOWER_X + TOWER_W + 86}
+              y={r.yTop}
+              label={`${i === N - 1 ? 'roof' : `l${i + 1}`} +${elevations[i].toFixed(2)}`}
+            />
+          ))}
+
+          {/* the site, and the brace yard sliding with it once the record plays */}
+          <g ref={groundRef}>
+            <GroundHatch x={-60} y={groundY} width={SCENE_W + 120} depth={10} spacing={9} />
+            <text
+              x={16}
+              y={groundY + 42}
+              className={LETTER}
+              style={{ letterSpacing: TRACK.normal }}
+              fontSize="9"
+              fill={INK.soft}
+            >
+              site record: {round.badge}
+            </text>
+            <LoadArrow
+              x={TOWER_X - 26}
+              y={groundY + 22}
+              length={70}
+              ux={1}
+              uy={0}
+              label={`${round.site.pga.toFixed(2)} g`}
+              tone={INK.soft}
+            />
+            {isolated && moatPx !== null && (
+              <g>
+                {[TOWER_X - 12 - moatPx, TOWER_X + TOWER_W + 12].map((x) => (
+                  <rect
+                    key={x}
+                    x={x}
+                    y={groundY}
+                    width={moatPx}
+                    height={ISO_LIFT + 6}
+                    fill="none"
+                    stroke={INK.soft}
+                    strokeWidth={PEN.thin}
+                    strokeDasharray="4 3"
+                  />
+                ))}
+                <text
+                  x={TOWER_X + TOWER_W + 18 + moatPx}
+                  y={groundY + ISO_LIFT + 2}
+                  className={LETTER}
+                  style={{ letterSpacing: TRACK.normal }}
+                  fontSize="9"
+                  fill={INK.soft}
+                >
+                  moat {(round.gates.moat ?? 0) * 100} cm each side
+                </text>
+              </g>
+            )}
+          </g>
 
           {/* the bearings and the base slab */}
           {isolated && (
             <>
               <g ref={bearingRef}>
                 {[0.12, 0.38, 0.62, 0.88].map((f) => (
-                  <rect
-                    key={f}
-                    x={TOWER_X + f * TOWER_W - 9}
-                    y={groundY - BEARING_H}
-                    width="18"
-                    height={BEARING_H}
-                    rx="3"
-                    className="fill-slate-500 stroke-slate-700 dark:fill-slate-400 dark:stroke-slate-200"
-                    strokeWidth="1.5"
-                  />
+                  <g key={f}>
+                    <rect
+                      x={TOWER_X + f * TOWER_W - 9}
+                      y={groundY - BEARING_H}
+                      width="18"
+                      height={BEARING_H}
+                      fill="none"
+                      stroke={INK.line}
+                      strokeWidth={PEN.thin}
+                    />
+                    {[4, 7.5, 11].map((dy) => (
+                      <line
+                        key={dy}
+                        x1={TOWER_X + f * TOWER_W - 9}
+                        y1={groundY - BEARING_H + dy}
+                        x2={TOWER_X + f * TOWER_W + 9}
+                        y2={groundY - BEARING_H + dy}
+                        stroke={INK.soft}
+                        strokeWidth={PEN.hair}
+                      />
+                    ))}
+                  </g>
                 ))}
               </g>
               <g ref={baseRef}>
@@ -824,9 +1178,10 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                   y={groundY - ISO_LIFT}
                   width={TOWER_W + 24}
                   height={ISO_LIFT - BEARING_H}
-                  rx="2"
-                  className="fill-stone-400 stroke-stone-600 dark:fill-stone-600 dark:stroke-stone-300"
-                  strokeWidth="1.5"
+                  fill={INK.grid}
+                  fillOpacity="0.3"
+                  stroke={INK.line}
+                  strokeWidth={PEN.dim}
                 />
               </g>
             </>
@@ -836,6 +1191,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           {rows.map((r, i) => {
             const glass = round.building.open[i] < 1
             const torn = i === failIdx
+            const ink = torn ? INK.red : INK.line
             return (
               <g
                 key={i}
@@ -849,56 +1205,47 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                   y={r.yTop}
                   width={TOWER_W}
                   height={r.h}
-                  className={
-                    torn
-                      ? 'fill-rose-300/50 dark:fill-rose-500/25'
-                      : glass
-                        ? 'fill-sky-200/70 dark:fill-sky-400/15'
-                        : 'fill-stone-100/80 dark:fill-white/5'
-                  }
+                  fill={torn ? INK.red : INK.grid}
+                  fillOpacity={torn ? 0.2 : 0.12}
                 />
-                {[0, 1, 2, 3].map((j) => (
-                  <line
-                    key={j}
-                    x1={TOWER_X + j * BAY_PX}
-                    y1={r.yBottom}
-                    x2={TOWER_X + j * BAY_PX}
-                    y2={r.yTop}
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    className={
-                      torn ? 'stroke-rose-600' : 'stroke-slate-600 dark:stroke-slate-300'
-                    }
-                  />
+                {/* a glazed storey is drawn as mullions, not as infill */}
+                {glass &&
+                  Array.from({ length: 11 }, (_, m) => TOWER_X + ((m + 1) * TOWER_W) / 12).map((x) => (
+                    <line
+                      key={x}
+                      x1={x}
+                      y1={r.yBottom - 2}
+                      x2={x}
+                      y2={r.yTop + 2}
+                      stroke={INK.soft}
+                      strokeWidth={PEN.hair}
+                    />
+                  ))}
+                {columnX.map((x, j) => (
+                  <line key={j} x1={x} y1={r.yBottom} x2={x} y2={r.yTop} stroke={ink} strokeWidth={PEN.member} />
                 ))}
                 <line
                   x1={TOWER_X - 6}
                   y1={r.yTop}
                   x2={TOWER_X + TOWER_W + 6}
                   y2={r.yTop}
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  className={torn ? 'stroke-rose-600' : 'stroke-slate-700 dark:stroke-slate-200'}
+                  stroke={ink}
+                  strokeWidth={PEN.heavy}
                 />
                 {bays[i].map((on, j) =>
                   on ? (
-                    <g
-                      key={j}
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      className="stroke-amber-600 dark:stroke-amber-400"
-                    >
+                    <g key={j} stroke={ink} strokeWidth={PEN.heavy} strokeLinecap="butt">
                       <line
-                        x1={TOWER_X + j * BAY_PX + 4}
-                        y1={r.yBottom - 3}
-                        x2={TOWER_X + (j + 1) * BAY_PX - 4}
-                        y2={r.yTop + 3}
+                        x1={TOWER_X + j * BAY_PX + 3}
+                        y1={r.yBottom - 2}
+                        x2={TOWER_X + (j + 1) * BAY_PX - 3}
+                        y2={r.yTop + 2}
                       />
                       <line
-                        x1={TOWER_X + (j + 1) * BAY_PX - 4}
-                        y1={r.yBottom - 3}
-                        x2={TOWER_X + j * BAY_PX + 4}
-                        y2={r.yTop + 3}
+                        x1={TOWER_X + (j + 1) * BAY_PX - 3}
+                        y1={r.yBottom - 2}
+                        x2={TOWER_X + j * BAY_PX + 3}
+                        y2={r.yTop + 2}
                       />
                     </g>
                   ) : null,
@@ -907,140 +1254,159 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             )
           })}
 
-          {/* bay hit targets: tap, and the keyboard path */}
-          {!busy &&
-            rowsBase.map((r, i) =>
-              [0, 1, 2].map((j) => (
-                <g
-                  key={`${i}-${j}`}
-                  role="checkbox"
-                  tabIndex={0}
-                  aria-checked={bays[i][j]}
-                  aria-label={`storey ${i + 1}, bay ${j + 1}, ${bays[i][j] ? 'braced' : 'empty'}`}
-                  onKeyDown={(e) => {
-                    if (e.key !== ' ' && e.key !== 'Enter') return
-                    e.preventDefault()
-                    toggleBay(i, j)
-                  }}
-                  className="outline-none"
-                >
-                  <rect
-                    x={TOWER_X + j * BAY_PX + 2}
-                    y={r.yTop + 2}
-                    width={BAY_PX - 4}
-                    height={r.h - 4}
-                    rx="3"
-                    fill="transparent"
-                    className={cn(
-                      'transition-colors duration-150',
-                      hover && hover.s === i && hover.b === j && !bays[i][j] && braces[i] < MAX_PER_STOREY
-                        ? 'fill-amber-400/35 stroke-amber-500'
-                        : 'stroke-transparent',
-                    )}
-                    strokeWidth="2"
+          {/* what the instrument in your hand would do to the bay under it */}
+          {!busy && hover && (
+            <g className="pointer-events-none">
+              {tool === 'brace' && canInstall(hover.s, hover.b) && (
+                <g stroke={INK.check} strokeWidth={PEN.dim} strokeDasharray="6 4">
+                  <line
+                    x1={TOWER_X + hover.b * BAY_PX + 3}
+                    y1={rowsBase[hover.s].yBottom - 2}
+                    x2={TOWER_X + (hover.b + 1) * BAY_PX - 3}
+                    y2={rowsBase[hover.s].yTop + 2}
+                  />
+                  <line
+                    x1={TOWER_X + (hover.b + 1) * BAY_PX - 3}
+                    y1={rowsBase[hover.s].yBottom - 2}
+                    x2={TOWER_X + hover.b * BAY_PX + 3}
+                    y2={rowsBase[hover.s].yTop + 2}
                   />
                 </g>
-              )),
-            )}
-
-          {/* the brace under the pointer */}
-          {ghost && (
-            <g
-              className="pointer-events-none stroke-amber-500"
-              strokeWidth="4"
-              strokeLinecap="round"
-              opacity="0.85"
-            >
-              <line x1={ghost.x - 24} y1={ghost.y - 16} x2={ghost.x + 24} y2={ghost.y + 16} />
-              <line x1={ghost.x + 24} y1={ghost.y - 16} x2={ghost.x - 24} y2={ghost.y + 16} />
+              )}
+              {tool === 'strip' && bays[hover.s][hover.b] && (
+                <rect
+                  x={TOWER_X + hover.b * BAY_PX + 3}
+                  y={rowsBase[hover.s].yTop + 3}
+                  width={BAY_PX - 6}
+                  height={rowsBase[hover.s].h - 6}
+                  fill="none"
+                  stroke={INK.red}
+                  strokeWidth={PEN.thin}
+                  strokeDasharray="5 3"
+                />
+              )}
             </g>
           )}
 
-          {/* drift profile, always beside the tower */}
-          <g>
+          {/* bay hit targets. The keyboard path is the sheet cursor above. */}
+          {!busy &&
+            rowsBase.map((r, i) =>
+              [0, 1, 2].map((j) => (
+                <rect
+                  key={`${i}-${j}`}
+                  x={TOWER_X + j * BAY_PX + 2}
+                  y={r.yTop + 2}
+                  width={BAY_PX - 4}
+                  height={r.h - 4}
+                  fill="transparent"
+                  className={tool === 'brace' ? 'cursor-crosshair' : bays[i][j] ? 'cursor-pointer' : undefined}
+                  onClick={() => clickCell(i, j)}
+                  onPointerEnter={() => setHover({ s: i, b: j })}
+                  onPointerLeave={() => setHover(null)}
+                />
+              )),
+            )}
+
+          {/* dimensions: every storey, then the whole building */}
+          {rowsBase.map((r, i) => (
+            <DimString
+              key={i}
+              x1={TOWER_X}
+              y1={r.yBottom}
+              x2={TOWER_X}
+              y2={r.yTop}
+              offset={-52}
+              label={`${round.building.heights[i].toFixed(2)} m`}
+            />
+          ))}
+          <DimString
+            x1={TOWER_X}
+            y1={rowsBase[0].yBottom}
+            x2={TOWER_X}
+            y2={rowsBase[N - 1].yTop}
+            offset={-108}
+            label={`${elevations[N - 1].toFixed(2)} m`}
+          />
+          <DimString
+            x1={TOWER_X}
+            y1={groundY}
+            x2={TOWER_X + TOWER_W}
+            y2={groundY}
+            offset={28}
+            label={`${(3 * BAY_M).toFixed(2)} m, three bays`}
+          />
+          <ScaleBar x={TOWER_X + TOWER_W + 96} y={groundY + 78} pxPerUnit={PX_PER_M} units={4} />
+
+          {/* storey drift diagram, read against the limit line */}
+          <g className="pointer-events-none" aria-hidden>
             <text
-              x={PROFILE_X}
-              y={TOP_PAD - 12}
-              fontSize="12"
-              fontWeight="700"
-              className="fill-ink-soft font-display dark:fill-stone-400"
+              x={DRIFT_X}
+              y={TOP_PAD - 24}
+              className={LETTER}
+              style={{ letterSpacing: TRACK.wide }}
+              fontSize="9"
+              fill={INK.soft}
             >
-              lean, mm per metre
+              storey drift, mm per metre
+            </text>
+            <line
+              x1={DRIFT_X}
+              y1={rowsBase[N - 1].yTop}
+              x2={DRIFT_X}
+              y2={rowsBase[0].yBottom}
+              stroke={INK.soft}
+              strokeWidth={PEN.thin}
+            />
+            <line
+              x1={limitX}
+              y1={rowsBase[N - 1].yTop - 8}
+              x2={limitX}
+              y2={rowsBase[0].yBottom + 4}
+              stroke={INK.red}
+              strokeWidth={PEN.dim}
+              strokeDasharray="6 4"
+            />
+            <text
+              x={limitX}
+              y={rowsBase[0].yBottom + 16}
+              textAnchor="middle"
+              className={LETTER}
+              style={{ letterSpacing: TRACK.normal }}
+              fontSize="9"
+              fill={INK.red}
+            >
+              limit {driftLimit}
             </text>
             {rowsBase.map((r, i) => {
               const v = outcomeVisible ? shown.lean[i] : 0
-              const w = Math.min(1, v / DRIFT_DISPLAY_CAP) * PROFILE_BAR
-              const y = r.yTop + r.h / 2 - 6
+              const w = Math.min(1, v / DRIFT_DISPLAY_CAP) * DRIFT_W
+              const y = r.yTop + r.h / 2
+              const over = outcomeVisible && shown.lean[i] > driftLimit
               return (
                 <g key={i}>
-                  <rect
-                    x={PROFILE_X}
-                    y={y}
-                    width={PROFILE_BAR}
-                    height="12"
-                    rx="6"
-                    className="fill-stone-200 dark:fill-white/10"
-                  />
                   {outcomeVisible && (
-                    <rect
-                      x={PROFILE_X}
-                      y={y}
-                      width={Math.max(3, w)}
-                      height="12"
-                      rx="6"
-                      className={
-                        v > DRIFT_CAP * 1000
-                          ? 'fill-rose-500'
-                          : v > DRIFT_CAP * 700
-                            ? 'fill-amber-400'
-                            : 'fill-emerald-500'
-                      }
+                    <line
+                      x1={DRIFT_X}
+                      y1={y}
+                      x2={DRIFT_X + Math.max(2, w)}
+                      y2={y}
+                      stroke={over ? INK.red : INK.line}
+                      strokeWidth={PEN.member}
                     />
                   )}
                   <text
-                    x={PROFILE_X + PROFILE_BAR + 8}
-                    y={y + 11}
-                    fontSize="12"
-                    fontWeight="700"
-                    className="fill-ink-soft font-mono dark:fill-stone-400"
+                    x={DRIFT_X + DRIFT_W + 8}
+                    y={y + 3.5}
+                    className="font-mono tabular-nums"
+                    fontSize="9.5"
+                    fill={over ? INK.red : INK.soft}
                   >
                     {outcomeVisible ? leanText(v) : '?'}
                   </text>
                 </g>
               )
             })}
-            {/* the limit */}
-            <line
-              x1={PROFILE_X + (PROFILE_BAR * DRIFT_CAP * 1000) / DRIFT_DISPLAY_CAP}
-              y1={rowsBase[N - 1].yTop + rowsBase[N - 1].h / 2 - 12}
-              x2={PROFILE_X + (PROFILE_BAR * DRIFT_CAP * 1000) / DRIFT_DISPLAY_CAP}
-              y2={rowsBase[0].yBottom - 6}
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              className="stroke-ink dark:stroke-white"
-            />
-            <text
-              x={PROFILE_X + (PROFILE_BAR * DRIFT_CAP * 1000) / DRIFT_DISPLAY_CAP}
-              y={rowsBase[0].yBottom + 8}
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="700"
-              className="fill-ink font-display dark:fill-stone-200"
-            >
-              limit {DRIFT_CAP * 1000}
-            </text>
           </g>
-
-          <text
-            x={SCENE_W - 8}
-            y={groundY + 22}
-            textAnchor="end"
-            fontSize="11"
-            fontWeight="600"
-            className="fill-ink-soft font-display dark:fill-stone-400"
-          >
-            sway drawn {EXAGGERATION} times life size
-          </text>
 
           {/*
             Level 4: the ground's own spectrum, with your tower pinned on it.
@@ -1048,16 +1414,16 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             record the building was shaken by, so the panel cannot disagree with
             the verdict. The curve is pseudo-acceleration in %g, because %g is
             what the scanner gate is written in; the displacement at the pin is
-            printed beside it, because that is what the moat is for. Those two
+            lettered beside it, because that is what the moat is for. Those two
             move in opposite directions with period, which IS the level.
           */}
           {spec && showSpectrum && (
-            <g>
+            <g className="pointer-events-none" aria-hidden>
               {(() => {
-                const x0 = 96
-                const x1 = SCENE_W - 96
-                const top = groundY + GROUND_BAND - 2
-                const h = SPECTRUM_H - 46
+                const x0 = 150
+                const x1 = 700
+                const top = groundY + GROUND_BAND - 4
+                const h = SPECTRUM_H - 62
                 const maxSa = Math.max(...spec.Sa) * 1.12
                 const px = (T: number) =>
                   x0 + ((Math.log(T) - Math.log(0.1)) / (Math.log(3) - Math.log(0.1))) * (x1 - x0)
@@ -1071,39 +1437,36 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                 const saAt = spec.Sa[k - 1] + f * (spec.Sa[k] - spec.Sa[k - 1])
                 const sdAt = spec.Sd[k - 1] + f * (spec.Sd[k] - spec.Sd[k - 1])
                 const cap = round.gates.joltCap
+                const right = pin < (x0 + x1) / 2
+                const nx = right ? pin + 96 : pin - 96
+                const ny = top + 18
                 return (
                   <>
                     <rect
-                      x={x0 - 88}
-                      y={top - 20}
-                      width={x1 - x0 + 176}
-                      height={h + 50}
-                      rx="10"
-                      className="fill-white/80 dark:fill-white/5"
+                      x={60}
+                      y={top - 26}
+                      width={SCENE_W - 120}
+                      height={h + 56}
+                      fill={INK.paper}
+                      stroke={INK.soft}
+                      strokeWidth={PEN.thin}
                     />
                     <text
-                      x={x0 - 80}
-                      y={top - 6}
-                      fontSize="12"
-                      fontWeight="700"
-                      className="fill-ink-soft font-display dark:fill-stone-400"
+                      x={72}
+                      y={top - 12}
+                      className={LETTER}
+                      style={{ letterSpacing: TRACK.wide }}
+                      fontSize="9"
+                      fill={INK.soft}
                     >
-                      how hard this ground shoves a building of each rhythm, %g. A tall frame
-                      amplifies it, but the shape is the same.
+                      detail 1: how hard this ground shoves a building of each rhythm, %g
                     </text>
-                    <line
-                      x1={x0}
-                      y1={top + h}
-                      x2={x1}
-                      y2={top + h}
-                      strokeWidth="2"
-                      className="stroke-stone-400 dark:stroke-stone-500"
-                    />
+                    <line x1={x0} y1={top + h} x2={x1} y2={top + h} stroke={INK.soft} strokeWidth={PEN.thin} />
                     <polyline
                       points={spec.T.map((T, i) => `${px(T)},${py(spec.Sa[i])}`).join(' ')}
                       fill="none"
-                      strokeWidth="3"
-                      style={{ stroke: 'var(--accent)' }}
+                      stroke={INK.line}
+                      strokeWidth={PEN.member}
                     />
                     {cap !== undefined && (
                       <>
@@ -1112,19 +1475,20 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                           y1={py(cap)}
                           x2={x1}
                           y2={py(cap)}
-                          strokeWidth="2"
-                          strokeDasharray="5 4"
-                          className="stroke-rose-500"
+                          stroke={INK.red}
+                          strokeWidth={PEN.dim}
+                          strokeDasharray="6 4"
                         />
                         <text
                           x={x0 - 6}
-                          y={py(cap) + 4}
+                          y={py(cap) + 3.5}
                           textAnchor="end"
-                          fontSize="11"
-                          fontWeight="700"
-                          className="fill-rose-600 font-mono dark:fill-rose-300"
+                          className={LETTER}
+                          style={{ letterSpacing: TRACK.normal }}
+                          fontSize="9"
+                          fill={INK.red}
                         >
-                          {cap} %g
+                          {cap} %g allowed
                         </text>
                       </>
                     )}
@@ -1132,11 +1496,12 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                       <text
                         key={T}
                         x={px(T)}
-                        y={top + h + 16}
+                        y={top + h + 14}
                         textAnchor="middle"
-                        fontSize="11"
-                        fontWeight="600"
-                        className="fill-ink-soft font-mono dark:fill-stone-400"
+                        className={LETTER}
+                        style={{ letterSpacing: TRACK.normal }}
+                        fontSize="9"
+                        fill={INK.soft}
                       >
                         {T} s
                       </text>
@@ -1146,194 +1511,127 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                       y1={top}
                       x2={px(round.site.Tg)}
                       y2={top + h}
-                      strokeWidth="2"
-                      strokeDasharray="5 4"
-                      className="stroke-stone-500 dark:stroke-stone-400"
+                      stroke={INK.soft}
+                      strokeWidth={PEN.thin}
+                      strokeDasharray="6 4"
                     />
                     <text
                       x={px(round.site.Tg)}
-                      y={top - 6}
+                      y={top - 2}
                       textAnchor="middle"
-                      fontSize="11"
-                      fontWeight="700"
-                      className="fill-ink-soft font-display dark:fill-stone-400"
+                      className={LETTER}
+                      style={{ letterSpacing: TRACK.normal }}
+                      fontSize="9"
+                      fill={INK.soft}
                     >
                       the ground beats here
                     </text>
-                    <line x1={pin} y1={top} x2={pin} y2={top + h} strokeWidth="3" className="stroke-rose-500" />
-                    <circle cx={pin} cy={py(saAt)} r="5" className="fill-rose-500" />
+                    <line x1={pin} y1={top} x2={pin} y2={top + h} stroke={INK.check} strokeWidth={PEN.dim} />
+                    <Leader x={pin} y={py(saAt)} toX={nx} toY={ny} tone={INK.check} />
                     <text
-                      x={pin}
-                      y={top + h + 32}
-                      textAnchor="middle"
-                      fontSize="12"
+                      x={nx + (right ? 4 : -4)}
+                      y={ny + 3.5}
+                      textAnchor={right ? 'start' : 'end'}
+                      className={LETTER}
+                      style={{ letterSpacing: TRACK.normal }}
+                      fontSize="9.5"
                       fontWeight="700"
-                      className="fill-rose-600 font-display dark:fill-rose-300"
+                      fill={INK.check}
                     >
-                      your tower, {shown.T1.toFixed(2)} s: shoved at {saAt.toFixed(0)} %g, pushed{' '}
-                      {sdAt.toFixed(0)} cm
+                      your tower, {shown.T1.toFixed(2)} s
+                    </text>
+                    <text
+                      x={nx + (right ? 4 : -4)}
+                      y={ny + 15}
+                      textAnchor={right ? 'start' : 'end'}
+                      className={LETTER}
+                      style={{ letterSpacing: TRACK.normal }}
+                      fontSize="9"
+                      fill={INK.check}
+                    >
+                      shoved at {saAt.toFixed(0)} %g, pushed {sdAt.toFixed(0)} cm
                     </text>
                   </>
                 )
               })()}
             </g>
           )}
+
+          {/* the verdict, marked up on the sheet */}
+          {phase === 'failed' && shown.fail?.kind === 'drift' && failIdx >= 0 && (
+            <Redline
+              x={TOWER_X + TOWER_W / 2}
+              y={rows[failIdx].yTop + rows[failIdx].h / 2}
+              rx={TOWER_W / 2 + 16}
+              ry={Math.max(20, rows[failIdx].h / 2 + 12)}
+              noteX={NOTE_X}
+              noteY={noteY}
+              seed={`${runId}-drift-${failIdx}`}
+              rev={runId}
+              note={[
+                `storey ${shown.fail.storey} tore`,
+                `drift ${leanText(shown.fail.value)} mm/m against ${shown.fail.limit} allowed`,
+                'everything above it came down',
+              ]}
+            />
+          )}
+          {phase === 'failed' && shown.fail?.kind === 'jolt' && (
+            <Redline
+              x={TOWER_X + TOWER_W / 2}
+              y={rowsBase[N - 1].yTop + 6}
+              rx={TOWER_W / 2 + 16}
+              ry={26}
+              noteX={NOTE_X}
+              noteY={noteY}
+              seed={`${runId}-jolt`}
+              rev={runId}
+              note={[
+                'floors thrown too hard',
+                `${shown.fail.value.toFixed(0)} %g against ${shown.fail.limit} allowed`,
+                'the scanners do not survive this',
+              ]}
+            />
+          )}
+          {phase === 'failed' && shown.fail?.kind === 'moat' && (
+            <Redline
+              x={TOWER_X + TOWER_W / 2}
+              y={groundY - ISO_LIFT / 2}
+              rx={TOWER_W / 2 + 26}
+              ry={22}
+              noteX={NOTE_X}
+              noteY={noteY}
+              seed={`${runId}-moat`}
+              rev={runId}
+              note={[
+                'bearings out of trench',
+                `base slid ${shown.fail.value.toFixed(0)} cm against a ${shown.fail.limit} cm moat`,
+                'widen the moat or stiffen the frame',
+              ]}
+            />
+          )}
+          {phase === 'passed' && (
+            <ApprovalStamp
+              x={SCENE_W / 2 + 60}
+              y={stampY}
+              lines={[
+                `worst drift ${leanText(shown.worstLean)} mm/m`,
+                `rev ${String(runId).padStart(2, '0')}, floors ${shown.worstJolt.toFixed(0)} %g`,
+              ]}
+            />
+          )}
+          {phase === 'failed' && (
+            <RevisionStamp x={SCENE_W / 2 + 60} y={stampY} lines={[`rev ${String(runId).padStart(2, '0')}`, 'see redline']} />
+          )}
+
+          {board.active && !busy && (
+            <CursorMark
+              x={bayCentreX(cb)}
+              y={storeyCentreY(cs)}
+              tone={tool === 'strip' ? INK.red : INK.check}
+            />
+          )}
         </svg>
-      </div>
-
-      {/* Verdict */}
-      <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        {phase === 'passed' && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
-          >
-            It stands. Worst storey leaned {leanText(shown.worstLean)} mm/m at storey{' '}
-            {shown.worstStorey}, and the floors took {shown.worstJolt.toFixed(0)} %g.
-          </motion.div>
-        )}
-        {phase === 'failed' && (
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
-          >
-            {failLine()}
-          </motion.p>
-        )}
-        {phase === 'build' && overBudget && (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget by {money(spend - (round.budget ?? 0))}. Take something back out.
-          </p>
-        )}
-      </div>
-
-      {/* Readouts */}
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1.1fr,1fr]">
-        <div className="space-y-3">
-          <p aria-live="polite" className="font-display text-sm font-semibold">
-            {inRack} {inRack === 1 ? 'brace' : 'braces'} left in the rack
-            <span className="ml-2 font-normal text-ink-soft dark:text-stone-400">
-              {used} installed, up to {MAX_PER_STOREY} per storey
-            </span>
-          </p>
-          <p className="text-sm text-ink-soft dark:text-stone-400">
-            Drag a brace out of the rack into any bay, or tap a bay. Tab to a bay and press space to
-            do the same. Your tower weighs {shown.totalMass.toLocaleString('en-US')} tonnes and takes{' '}
-            <span className="font-mono font-semibold tabular-nums">{shown.T1.toFixed(2)} s</span> to
-            sway once.
-          </p>
-          {round.bearings && (
-            <button
-              type="button"
-              onClick={() => {
-                if (busy) return
-                setIsolated((v) => !v)
-                playSound('click')
-                touched()
-              }}
-              disabled={busy}
-              aria-pressed={isolated}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full border-2 px-5 py-2 font-display text-sm font-bold transition-colors duration-200',
-                isolated
-                  ? 'accent-border accent-soft accent-text'
-                  : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400 dark:hover:border-white/25',
-              )}
-            >
-              <Layers className="h-4 w-4" />
-              {isolated ? 'On isolation bearings' : 'Put it on isolation bearings'}
-              <span className="font-mono font-normal">{money(BEARING_COST)}</span>
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          {round.budget !== null ? (
-            <Meter
-              label="Budget"
-              display={`${money(spend)} of ${money(round.budget)}`}
-              fraction={spend / round.budget}
-              barClass={
-                overBudget ? 'bg-rose-500' : spend / round.budget > 0.85 ? 'bg-amber-400' : 'bg-emerald-500'
-              }
-            />
-          ) : (
-            <p className="font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
-              {round.rack} braces at {money(BRACE_COST)} each
-              {round.bearings ? `, bearings ${money(BEARING_COST)}` : ''}. Build cost so far:{' '}
-              {money(spend)}
-            </p>
-          )}
-          <Meter
-            label="Worst storey lean"
-            display={
-              outcomeVisible
-                ? `${leanText(shown.worstLean)} mm/m at storey ${shown.worstStorey}, limit ${DRIFT_CAP * 1000}`
-                : 'shake it to find out'
-            }
-            fraction={outcomeVisible ? Math.min(1, shown.worstLean / DRIFT_DISPLAY_CAP) : 0}
-            markerFraction={(DRIFT_CAP * 1000) / DRIFT_DISPLAY_CAP}
-            barClass={
-              !outcomeVisible
-                ? 'accent-bg'
-                : shown.worstLean > DRIFT_CAP * 1000
-                  ? 'bg-rose-500'
-                  : 'bg-emerald-500'
-            }
-          />
-          {(round.gates.joltCap !== undefined || lv.level.metrics) && (
-            <Meter
-              label="Peak floor jolt"
-              display={
-                outcomeVisible
-                  ? `${shown.worstJolt.toFixed(0)} %g${round.gates.joltCap !== undefined ? ` of ${round.gates.joltCap} allowed` : ''}`
-                  : 'shake it to find out'
-              }
-              fraction={outcomeVisible ? Math.min(1, shown.worstJolt / 160) : 0}
-              markerFraction={round.gates.joltCap !== undefined ? round.gates.joltCap / 160 : undefined}
-              barClass={
-                !outcomeVisible
-                  ? 'accent-bg'
-                  : round.gates.joltCap !== undefined && shown.worstJolt > round.gates.joltCap
-                    ? 'bg-rose-500'
-                    : 'bg-emerald-500'
-              }
-            />
-          )}
-          {round.gates.moat !== undefined && (
-            <Meter
-              label="Bearing slide"
-              display={
-                !isolated
-                  ? 'no bearings fitted, so nothing slides'
-                  : outcomeVisible
-                    ? `${shown.bearingTravel.toFixed(0)} cm of a ${round.gates.moat * 100} cm moat`
-                    : 'shake it to find out'
-              }
-              fraction={
-                isolated && outcomeVisible
-                  ? Math.min(1, shown.bearingTravel / (round.gates.moat * 200))
-                  : 0
-              }
-              markerFraction={0.5}
-              barClass={
-                !outcomeVisible || !isolated
-                  ? 'accent-bg'
-                  : shown.bearingTravel > round.gates.moat * 100
-                    ? 'bg-rose-500'
-                    : 'bg-emerald-500'
-              }
-            />
-          )}
-          <p className="text-xs text-ink-soft dark:text-stone-400">
-            {outcomeVisible
-              ? 'The dashed line on the tower marks the lean limit. Every storey has to clear it, not just the average.'
-              : 'You can see everything you built. How the ground answers is hidden until you commit.'}
-          </p>
-        </div>
-      </div>
+      </DraftingSheet>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button variant="accent" size="lg" onClick={shake} disabled={busy || overBudget}>

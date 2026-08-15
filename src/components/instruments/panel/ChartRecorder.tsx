@@ -1,4 +1,4 @@
-import { Engraved } from './PanelSurface'
+import { Engraved, Note } from './PanelSurface'
 import { INK, board, clamp01, digitClass, recessShadow } from './tokens'
 import { cn } from '@/lib/utils'
 
@@ -123,7 +123,7 @@ export function ChartRecorder({
           <rect x="0" y="0" width={W} height={H} fill="none" stroke="#00000033" strokeWidth="1" />
         </svg>
       </div>
-      {band?.label && <Engraved className="mt-1 block text-[9px] text-slate-400">{band.label}</Engraved>}
+      {band?.label && <Note className="mt-1 text-[10px]">{band.label}</Note>}
     </div>
   )
 }

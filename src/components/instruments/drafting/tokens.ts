@@ -42,14 +42,14 @@ export const TRACK = { wide: '0.18em', normal: '0.07em' } as const
 
 /** Ink roles, as var() strings ready for stroke/fill. */
 export const INK = {
-  line: 'var(--dr-ink)',
-  soft: 'var(--dr-ink-soft)',
-  grid: 'var(--dr-grid)',
-  gridMajor: 'var(--dr-grid-major)',
-  red: 'var(--dr-red)',
-  amber: 'var(--dr-amber)',
-  check: 'var(--dr-check)',
-  paper: 'var(--dr-paper)',
+  line: 'var(--dr-ink,#2e2a23)',
+  soft: 'var(--dr-ink-soft,#6c6252)',
+  grid: 'var(--dr-grid,#cbbfa8)',
+  gridMajor: 'var(--dr-grid-major,#a99a7c)',
+  red: 'var(--dr-red,#c0362c)',
+  amber: 'var(--dr-amber,#a97a12)',
+  check: 'var(--dr-check,#1d5f9e)',
+  paper: 'var(--dr-paper,#f5efe1)',
 } as const
 
 /** A measured value, lettered the way a drawing letters it. */

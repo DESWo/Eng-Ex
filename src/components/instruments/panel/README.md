@@ -32,7 +32,9 @@ Anything destructive or irreversible is a `GuardedControl`: guard up first, then
 the button.
 
 **Copy is operator copy.** Legends are two or three words, sentence case in the
-source (the CSS uppercases them), no punctuation. Status sentences are plain
+source (the CSS uppercases them), no punctuation. Anything longer than three
+words is a `Note`, never an `Engraved`: engraved text is uppercase and
+letterspaced and a sentence in it is unreadable. Status sentences are plain
 second person. No em dashes. Exclamation marks only for in-game events, e.g.
 "Meltdown!".
 
@@ -51,7 +53,7 @@ second person. No em dashes. Exclamation marks only for in-game events, e.g.
 | --- | --- | --- |
 | `PanelSurface` | The board: brushed slate, bezel, screws, engraved nameplate. `header` takes plates. | n/a |
 | `PanelBay` | A recessed group with an engraved legend, `right` for digital repeats. | n/a |
-| `Plate` / `DigitalWindow` / `Engraved` | Stamped plate, cut window with mono digits, engraved label. | n/a |
+| `Plate` / `DigitalWindow` / `Engraved` / `Note` | Stamped plate, cut window with mono digits, engraved legend, readable sentence. | n/a |
 | `Gauge` | Needle on a 220° arc, numbered scale, coloured bands, digital repeat. Needle lags and settles; snaps under reduced motion. | `role="meter"` with `aria-valuetext`, not focusable |
 | `useAnnunciators` + `AnnunciatorPanel` | Latching alarm windows plus the ack button. | Ack is a button; each tile carries its state in `sr-only` text; new alarms go through one polite live region |
 | `ChartRecorder` | Pens on ruled paper, newest sample at the right edge. | `role="img"` with a sentence summary |

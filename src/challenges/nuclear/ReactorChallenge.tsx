@@ -17,6 +17,7 @@ import {
   INK,
   MimicBoard,
   MimicLamp,
+  Note,
   PanelBay,
   PanelSurface,
   Plate,
@@ -545,9 +546,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
         <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
           <PanelBay legend="Alarms">
             <AnnunciatorPanel state={alarms} columns={3} legend="Annunciator windows" />
-            <Engraved className="mt-2 block text-[9px] leading-snug text-slate-400">
-              A window stays lit after the trouble passes. Press ack to clear it.
-            </Engraved>
+            <Note className="mt-2">A window stays lit after the trouble passes. Press ack to clear it.</Note>
           </PanelBay>
 
           <PanelBay legend="Controls">
@@ -580,11 +579,11 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
                     />
                   ))}
                 </div>
-                <Engraved className="mt-2 block text-[9px] leading-snug text-slate-400">
+                <Note className="mt-2">
                   {round.pumpsDraw
                     ? `Running ${pumpCount} pump${pumpCount === 1 ? '' : 's'} costs ${pumpDrawMw} MW of output.`
                     : 'Each pump pulls heat out of the core.'}
-                </Engraved>
+                </Note>
               </div>
             </div>
             <div className="mt-3">

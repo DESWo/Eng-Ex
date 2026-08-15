@@ -3,7 +3,7 @@
  * these, so the three of them read as one piece of equipment.
  * Conventions are in README.md next to this file.
  */
-export { PanelSurface, PanelBay, Plate, DigitalWindow, Engraved } from './PanelSurface'
+export { PanelSurface, PanelBay, Plate, DigitalWindow, Engraved, Note } from './PanelSurface'
 export { Gauge } from './Gauge'
 export type { GaugeBand } from './Gauge'
 export { AnnunciatorPanel } from './Annunciator'

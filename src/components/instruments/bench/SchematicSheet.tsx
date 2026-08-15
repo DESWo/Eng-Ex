@@ -163,7 +163,7 @@ export function SchematicSheet({
         )}
 
         {stamp && (
-          <g transform={`translate(${width - 104}, 40) rotate(-8)`} opacity="0.9">
+          <g transform={`translate(${width - 128}, 44) rotate(-8)`} opacity="0.9">
             <rect
               x="-86"
               y="-20"

@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { LETTER, TRACK } from './tokens'
 
-const CAPS = cn(LETTER, 'text-[9px] leading-none text-[var(--dr-ink-soft)]')
+const CAPS = cn(LETTER, 'text-[9px] leading-none text-[var(--dr-ink-soft,#6c6252)]')
 
 export interface ScheduleColumn {
   key: string
@@ -35,9 +35,9 @@ interface ScheduleProps {
 }
 
 const FOOT_TONE = {
-  normal: 'text-[var(--dr-ink)]',
-  over: 'text-[var(--dr-red)]',
-  ok: 'text-[var(--dr-check)]',
+  normal: 'text-[var(--dr-ink,#2e2a23)]',
+  over: 'text-[var(--dr-red,#c0362c)]',
+  ok: 'text-[var(--dr-check,#1d5f9e)]',
 } as const
 
 /**
@@ -47,13 +47,14 @@ const FOOT_TONE = {
  */
 export function Schedule({ title, columns, rows, foot, empty, className }: ScheduleProps) {
   return (
-    <div className={cn('border border-[var(--dr-ink)]/45 bg-[var(--dr-paper-2)]', className)}>
-      <p className={cn(CAPS, 'border-b border-[var(--dr-ink)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }}>
+    <div className={cn('border border-[var(--dr-ink,#2e2a23)]/45 bg-[var(--dr-paper-2,#ece3d2)]', className)}>
+      <p className={cn(CAPS, 'border-b border-[var(--dr-ink,#2e2a23)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }}>
         {title}
       </p>
-      <table className="w-full border-collapse font-mono text-[11px] text-[var(--dr-ink)]">
+      <div className="overflow-x-auto">
+      <table className="w-full border-collapse font-mono text-[11px] text-[var(--dr-ink,#2e2a23)]">
         <thead>
-          <tr className="border-b border-[var(--dr-ink)]/30">
+          <tr className="border-b border-[var(--dr-ink,#2e2a23)]/30">
             {columns.map((c) => (
               <th
                 key={c.key}
@@ -69,13 +70,13 @@ export function Schedule({ title, columns, rows, foot, empty, className }: Sched
         <tbody>
           {rows.length === 0 && empty && (
             <tr>
-              <td colSpan={columns.length} className="px-2.5 py-2 text-[var(--dr-ink-soft)]">
+              <td colSpan={columns.length} className="px-2.5 py-2 text-[var(--dr-ink-soft,#6c6252)]">
                 {empty}
               </td>
             </tr>
           )}
           {rows.map((r) => (
-            <tr key={r.key} className={cn('border-b border-[var(--dr-ink)]/12', r.over && 'text-[var(--dr-red)]')}>
+            <tr key={r.key} className={cn('border-b border-[var(--dr-ink,#2e2a23)]/12', r.over && 'text-[var(--dr-red,#c0362c)]')}>
               {columns.map((c) => (
                 <td key={c.key} className={cn('px-2.5 py-1 tabular-nums', c.align === 'right' ? 'text-right' : 'text-left')}>
                   {r.cells[c.key]}
@@ -87,7 +88,7 @@ export function Schedule({ title, columns, rows, foot, empty, className }: Sched
         {foot && foot.length > 0 && (
           <tfoot>
             {foot.map((f) => (
-              <tr key={f.label} className="border-t border-[var(--dr-ink)]/45">
+              <tr key={f.label} className="border-t border-[var(--dr-ink,#2e2a23)]/45">
                 <td colSpan={Math.max(1, columns.length - 1)} className={cn(CAPS, 'px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }}>
                   {f.label}
                 </td>
@@ -99,6 +100,7 @@ export function Schedule({ title, columns, rows, foot, empty, className }: Sched
           </tfoot>
         )}
       </table>
+      </div>
     </div>
   )
 }
@@ -138,8 +140,8 @@ export function StencilPalette({ label, options, value, onChange, disabled, clas
   }
 
   return (
-    <div className={cn('border border-[var(--dr-ink)]/45 bg-[var(--dr-paper-2)]', className)}>
-      <p className={cn(CAPS, 'border-b border-[var(--dr-ink)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }} id={groupId}>
+    <div className={cn('border border-[var(--dr-ink,#2e2a23)]/45 bg-[var(--dr-paper-2,#ece3d2)]', className)}>
+      <p className={cn(CAPS, 'border-b border-[var(--dr-ink,#2e2a23)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }} id={groupId}>
         {label}
       </p>
       <div role="radiogroup" aria-labelledby={groupId} className="flex flex-wrap gap-2 p-2">
@@ -169,8 +171,8 @@ export function StencilPalette({ label, options, value, onChange, disabled, clas
               className={cn(
                 'flex min-w-[8.5rem] flex-1 items-center gap-2.5 border px-2.5 py-2 text-left transition-colors duration-150',
                 on
-                  ? 'border-[var(--dr-ink)] bg-[var(--dr-paper)]'
-                  : 'border-dashed border-[var(--dr-ink)]/35 hover:border-[var(--dr-ink)]/70',
+                  ? 'border-[var(--dr-ink,#2e2a23)] bg-[var(--dr-paper,#f5efe1)]'
+                  : 'border-dashed border-[var(--dr-ink,#2e2a23)]/35 hover:border-[var(--dr-ink,#2e2a23)]/70',
                 disabled && 'cursor-not-allowed opacity-50',
               )}
             >
@@ -178,10 +180,10 @@ export function StencilPalette({ label, options, value, onChange, disabled, clas
                 {o.swatch}
               </svg>
               <span className="min-w-0">
-                <span className={cn(LETTER, 'block text-[10px] font-semibold text-[var(--dr-ink)]')} style={{ letterSpacing: TRACK.normal }}>
+                <span className={cn(LETTER, 'block text-[10px] font-semibold text-[var(--dr-ink,#2e2a23)]')} style={{ letterSpacing: TRACK.normal }}>
                   {o.mark} · {o.label}
                 </span>
-                {o.note && <span className="block font-mono text-[10px] leading-tight text-[var(--dr-ink-soft)]">{o.note}</span>}
+                {o.note && <span className="block font-mono text-[10px] leading-tight text-[var(--dr-ink-soft,#6c6252)]">{o.note}</span>}
               </span>
             </button>
           )
@@ -199,7 +201,7 @@ export function DrawingKey({ title, items, className }: { title: string; items: 
         {title}
       </span>
       {items.map((it) => (
-        <span key={it.label} className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--dr-ink-soft)]">
+        <span key={it.label} className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--dr-ink-soft,#6c6252)]">
           <svg viewBox="0 0 26 10" className="h-2.5 w-[26px] shrink-0" aria-hidden>
             {it.sample}
           </svg>
@@ -211,10 +213,10 @@ export function DrawingKey({ title, items, className }: { title: string; items: 
 }
 
 const NOTE_TONE = {
-  normal: 'border-[var(--dr-ink)]/45 text-[var(--dr-ink)]',
-  red: 'border-[var(--dr-red)] text-[var(--dr-red)]',
-  amber: 'border-[var(--dr-amber)] text-[var(--dr-amber)]',
-  check: 'border-[var(--dr-check)] text-[var(--dr-check)]',
+  normal: 'border-[var(--dr-ink,#2e2a23)]/45 text-[var(--dr-ink,#2e2a23)]',
+  red: 'border-[var(--dr-red,#c0362c)] text-[var(--dr-red,#c0362c)]',
+  amber: 'border-[var(--dr-amber,#a97a12)] text-[var(--dr-amber,#a97a12)]',
+  check: 'border-[var(--dr-check,#1d5f9e)] text-[var(--dr-check,#1d5f9e)]',
 } as const
 
 /**
@@ -223,7 +225,7 @@ const NOTE_TONE = {
  */
 export function NoteBlock({ n, tone = 'normal', children, className }: { n: number | string; tone?: keyof typeof NOTE_TONE; children: ReactNode; className?: string }) {
   return (
-    <div className={cn('border-l-2 bg-[var(--dr-paper-2)] px-3 py-2', NOTE_TONE[tone], className)}>
+    <div className={cn('border-l-2 bg-[var(--dr-paper-2,#ece3d2)] px-3 py-2', NOTE_TONE[tone], className)}>
       <p className={cn(LETTER, 'text-[9px] leading-none opacity-80')} style={{ letterSpacing: TRACK.wide }}>
         note {n}
       </p>
@@ -260,9 +262,9 @@ export function SheetTool({
         'text-[10px] font-semibold',
         active
           ? tone === 'red'
-            ? 'border-[var(--dr-red)] bg-[var(--dr-red)]/10 text-[var(--dr-red)]'
-            : 'border-[var(--dr-ink)] bg-[var(--dr-ink)]/10 text-[var(--dr-ink)]'
-          : 'border-dashed border-[var(--dr-ink)]/40 text-[var(--dr-ink-soft)] hover:border-[var(--dr-ink)]/70',
+            ? 'border-[var(--dr-red,#c0362c)] bg-[var(--dr-red,#c0362c)]/10 text-[var(--dr-red,#c0362c)]'
+            : 'border-[var(--dr-ink,#2e2a23)] bg-[var(--dr-ink,#2e2a23)]/10 text-[var(--dr-ink,#2e2a23)]'
+          : 'border-dashed border-[var(--dr-ink,#2e2a23)]/40 text-[var(--dr-ink-soft,#6c6252)] hover:border-[var(--dr-ink,#2e2a23)]/70',
         disabled && 'cursor-not-allowed opacity-50',
       )}
       style={{ letterSpacing: TRACK.wide }}

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Engraved } from './PanelSurface'
+import { Engraved, Note } from './PanelSurface'
 import { INK, LAMP, board, engravedStyle, recessShadow } from './tokens'
 import type { LampTone } from './tokens'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
@@ -147,9 +147,7 @@ export function BankLever({
           {Math.round(value)}
         </text>
       </svg>
-      {hint && (
-        <Engraved className="mt-1 max-w-[170px] text-center text-[9px] leading-snug text-slate-400">{hint}</Engraved>
-      )}
+      {hint && <Note className="mt-1 max-w-[170px] text-center text-[10px]">{hint}</Note>}
     </div>
   )
 }

@@ -34,43 +34,99 @@ const STEP: Record<Lead, Pt> = {
   down: { x: 0, y: 1 },
 }
 
+/** Keep-out box, usually a symbol body. */
+export interface Box {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+export interface RouteOptions {
+  /** How far a conductor runs along the lead before it may turn. */
+  stub?: number
+  /** Symbol bodies the crossing run should step around. */
+  avoid?: Box[]
+  /**
+   * Which lane the crossing run takes, -1, 0 or 1. Give each conductor a stable
+   * lane (hash its id, do not use its index) so two returns heading the same way
+   * do not draw on top of each other.
+   */
+  lane?: number
+}
+
+/** Gap between neighbouring lanes of a crossing run. */
+const LANE = 12
+
 const snap = (v: number, grid = 10) => Math.round(v / grid) * grid
 const horizontal = (lead: Lead) => lead === 'left' || lead === 'right'
+const span = (a: number, b: number) => [Math.min(a, b), Math.max(a, b)] as const
+
+/**
+ * Where the crossing line sits: off every symbol body it would cut through,
+ * then shifted into its lane if that lane is also clear.
+ */
+function clear(at: number, lane: number, p: number, q: number, boxes: Box[], axis: 'y' | 'x'): number {
+  const [lo, hi] = span(p, q)
+  const blocked = (v: number) =>
+    boxes.some((b) =>
+      axis === 'y' ? v > b.y0 && v < b.y1 && hi > b.x0 && lo < b.x1 : v > b.x0 && v < b.x1 && hi > b.y0 && lo < b.y1,
+    )
+  let free = at
+  if (blocked(free)) {
+    for (let step = 10; step <= 80; step += 10) {
+      if (!blocked(at - step)) {
+        free = at - step
+        break
+      }
+      if (!blocked(at + step)) {
+        free = at + step
+        break
+      }
+    }
+  }
+  const laned = free + lane * LANE
+  return blocked(laned) ? free : laned
+}
 
 /**
  * A right-angle route out of one pin and into another. Both ends get a short
  * stub along their lead first, so a conductor never leaves a pin sideways.
  */
-export function orthRoute(from: Pt, fromLead: Lead, to: Pt, toLead: Lead, stub = 16): Pt[] {
+export function orthRoute(from: Pt, fromLead: Lead, to: Pt, toLead: Lead, opts: RouteOptions = {}): Pt[] {
+  const { stub = 16, avoid = [], lane = 0 } = opts
   const a = { x: from.x + STEP[fromLead].x * stub, y: from.y + STEP[fromLead].y * stub }
   const b = { x: to.x + STEP[toLead].x * stub, y: to.y + STEP[toLead].y * stub }
   const mid: Pt[] = []
 
   if (horizontal(fromLead) && horizontal(toLead)) {
     if (Math.abs(a.y - b.y) > 0.5) {
-      // Both stubs facing the same way route around the far side, so the
-      // conductor never doubles back across the parts it just left.
+      // When either stub would have to double back on itself, cross over in the
+      // gap BETWEEN the two rows instead of running along them. That is what
+      // keeps a conductor off the symbol bodies it would otherwise cut through.
       const sa = STEP[fromLead].x
       const sb = STEP[toLead].x
-      const mx =
-        sa > 0 && sb > 0
-          ? snap(Math.max(a.x, b.x))
-          : sa < 0 && sb < 0
-            ? snap(Math.min(a.x, b.x))
-            : snap((a.x + b.x) / 2)
-      mid.push({ x: mx, y: a.y }, { x: mx, y: b.y })
+      const dx = b.x - a.x
+      if (sa * dx < 0 || sb * dx > 0) {
+        const my = clear(snap((a.y + b.y) / 2), lane, a.x, b.x, avoid, 'y')
+        mid.push({ x: a.x, y: my }, { x: b.x, y: my })
+      } else {
+        const mx = clear(snap((a.x + b.x) / 2), lane, a.y, b.y, avoid, 'x')
+        mid.push({ x: mx, y: a.y }, { x: mx, y: b.y })
+      }
     }
   } else if (!horizontal(fromLead) && !horizontal(toLead)) {
     if (Math.abs(a.x - b.x) > 0.5) {
       const sa = STEP[fromLead].y
       const sb = STEP[toLead].y
-      const my =
-        sa > 0 && sb > 0
-          ? snap(Math.max(a.y, b.y))
-          : sa < 0 && sb < 0
-            ? snap(Math.min(a.y, b.y))
-            : snap((a.y + b.y) / 2)
-      mid.push({ x: a.x, y: my }, { x: b.x, y: my })
+      const dy = b.y - a.y
+      if (sa * dy < 0 || sb * dy > 0) {
+        const mx = clear(snap((a.x + b.x) / 2), lane, a.y, b.y, avoid, 'x')
+        mid.push({ x: mx, y: a.y }, { x: mx, y: b.y })
+      } else {
+        const my = clear(snap((a.y + b.y) / 2), lane, a.x, b.x, avoid, 'y')
+        mid.push({ x: a.x, y: my }, { x: b.x, y: my })
+      }
     }
   } else if (horizontal(fromLead)) {
     mid.push({ x: b.x, y: a.y })

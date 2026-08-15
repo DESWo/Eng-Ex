@@ -74,6 +74,8 @@ export function LoadArrow({ x, y, length, label, ux = 0, uy = 1, tone = INK.line
     <g className="pointer-events-none" aria-hidden>
       <line x1={tailX} y1={tailY} x2={x} y2={y} stroke={tone} strokeWidth={PEN.dim} />
       <Arrowhead x={x} y={y} ux={ux} uy={uy} size={10} fill={tone} />
+      {/* wipeout, so the value stays legible where it crosses structure */}
+      <rect x={tailX - (label.length * 7 + 8) / 2} y={tailY - 16} width={label.length * 7 + 8} height={14} fill={INK.paper} />
       <text
         x={tailX}
         y={tailY - 5}

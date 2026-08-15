@@ -70,10 +70,21 @@ export {
   JunctionDot,
   LampSymbol,
   ResistorSymbol,
+  Silk,
   SourceSymbol,
   SwitchSymbol,
   TestPoint,
   TransformerSymbol,
 } from './symbols'
-export { findHops, orthRoute, pathFromPts, routeLength, type Hop, type Lead, type Pt } from './routing'
+export {
+  findHops,
+  orthRoute,
+  pathFromPts,
+  routeLength,
+  type Box,
+  type Hop,
+  type Lead,
+  type Pt,
+  type RouteOptions,
+} from './routing'
 export { benchDigits, benchLabel, benchSurface, conductor, ink, inkDim } from './theme'

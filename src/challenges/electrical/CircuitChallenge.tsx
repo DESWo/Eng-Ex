@@ -34,6 +34,7 @@ import {
   orthRoute,
   stepNode,
   type BenchNode,
+  type Box,
   type BreakerState,
   type MeterReading,
   type Pt,
@@ -461,12 +462,22 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   /** Routed conductors, plus the hop list for every crossing. */
   const routed = useMemo(() => {
     const lead = (id: string) => (id.endsWith('.a') ? ('left' as const) : ('right' as const))
+    // symbol bodies and their lettering, so a crossing run steps around them
+    const avoid: Box[] = [
+      { x0: BAT.x - 46, y0: BAT.y - 40, x1: BAT.x + 34, y1: BAT.y + 66 },
+      ...round.parts.map((p) => ({ x0: p.x - 30, y0: p.y - 34, x1: p.x + 30, y1: p.y + 32 })),
+    ]
+    // Stable lane per conductor, hashed off its own key rather than its index,
+    // so two returns heading the same way never draw on top of each other and
+    // cutting one wire does not shuffle the rest of the drawing.
+    const laneOf = (key: string) => ([...key].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 3) - 1
     const runs = wires
       .map(([a, b]) => {
         const pa = terminalPos(a)
         const pb = terminalPos(b)
         if (!pa || !pb) return null
-        return { id: wireKey(a, b), a, b, pts: orthRoute(pa as Pt, lead(a), pb as Pt, lead(b)) }
+        const id = wireKey(a, b)
+        return { id, a, b, pts: orthRoute(pa as Pt, lead(a), pb as Pt, lead(b), { avoid, lane: laneOf(id) }) }
       })
       .filter((r): r is { id: string; a: string; b: string; pts: Pt[] } => r !== null)
     return { runs, hops: findHops(runs) }
@@ -506,7 +517,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => setTrace(new Array(SAMPLES).fill(0)), [lv.level.n])
 
   /* Meter: one node at a time, COM on the minus rail. */
-  const reading: MeterReading = useMemo(() => {
+  const reading = useMemo((): MeterReading => {
     if (!probeAt) {
       return { value: '- - -', unit: 'V', note: 'probe in its holster', state: 'none' }
     }

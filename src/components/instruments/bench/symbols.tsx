@@ -24,27 +24,57 @@ interface TwoPin {
   tone?: string
 }
 
+/**
+ * Silkscreen lettering with a knocked-out background, the way an EDA sheet
+ * keeps a label readable where a conductor runs behind it. Width is estimated
+ * from the mono advance, which is close enough for a knockout.
+ */
+export function Silk({
+  x,
+  y,
+  text,
+  size = 12,
+  track = 0,
+  tone = ink,
+}: {
+  x: number
+  y: number
+  text: string
+  size?: number
+  track?: number
+  tone?: string
+}) {
+  const w = text.length * (size * 0.6 + track) + 8
+  return (
+    <>
+      <rect
+        x={x - w / 2}
+        y={y - size + 1}
+        width={w}
+        height={size + 5}
+        fill="var(--bench-recess, #131218)"
+        opacity="0.94"
+      />
+      <text
+        x={x}
+        y={y}
+        textAnchor="middle"
+        fontSize={size}
+        letterSpacing={track || undefined}
+        className="font-mono"
+        fill={tone}
+      >
+        {text}
+      </text>
+    </>
+  )
+}
+
 function Labels({ x, y, designator, caption, tone = ink }: TwoPin) {
   return (
     <>
-      {designator && (
-        <text
-          x={x}
-          y={y - 30}
-          textAnchor="middle"
-          fontSize="12"
-          letterSpacing="1.2"
-          className="font-mono"
-          fill={tone}
-        >
-          {designator}
-        </text>
-      )}
-      {caption && (
-        <text x={x} y={y + 42} textAnchor="middle" fontSize="12" className="font-mono" fill={inkDim}>
-          {caption}
-        </text>
-      )}
+      {designator && <Silk x={x} y={y - 30} text={designator} track={1.2} tone={tone} />}
+      {caption && <Silk x={x} y={y + 42} text={caption} tone={inkDim} />}
     </>
   )
 }
@@ -101,18 +131,10 @@ export function SourceSymbol({
         strokeWidth={STROKE}
       />
       {/* polarity beside the plates, clear of both leads */}
-      <text x={x + 26} y={y - 14} textAnchor="middle" fontSize="16" className="font-mono" fill={ink}>
-        +
-      </text>
-      <text x={x + 26} y={y + 26} textAnchor="middle" fontSize="18" className="font-mono" fill={ink}>
-        −
-      </text>
-      <text x={x - 42} y={y + 4} textAnchor="middle" fontSize="12" letterSpacing="1.2" className="font-mono" fill={ink}>
-        {designator}
-      </text>
-      <text x={x} y={y + 62} textAnchor="middle" fontSize="12" className="font-mono" fill={inkDim}>
-        {volts} V dc
-      </text>
+      <Silk x={x + 26} y={y - 14} text="+" size={16} />
+      <Silk x={x + 26} y={y + 26} text="−" size={18} />
+      <Silk x={x - 42} y={y + 4} text={designator} track={1.2} />
+      <Silk x={x} y={y + 62} text={`${volts} V dc`} tone={inkDim} />
     </g>
   )
 }
@@ -266,17 +288,13 @@ export function BusSymbol({
         strokeLinecap="round"
       />
       {label && (
-        <text
-          x={vertical ? x + 12 : x}
+        <Silk
+          x={vertical ? x + 12 + label.length * 4 : x}
           y={vertical ? y - 8 : y - 12}
-          textAnchor={vertical ? 'start' : 'middle'}
-          fontSize="12"
-          letterSpacing="1.2"
-          className="font-mono"
-          fill={inkDim}
-        >
-          {label}
-        </text>
+          text={label}
+          track={1.2}
+          tone={inkDim}
+        />
       )}
     </g>
   )
@@ -302,16 +320,8 @@ export function TransformerSymbol({
       <path d={coil(x + 8, 1)} fill="none" stroke={ink} strokeWidth={STROKE} />
       <line x1={x - 2} y1={y - 24} x2={x - 2} y2={y + 24} stroke={ink} strokeWidth="1.6" />
       <line x1={x + 2} y1={y - 24} x2={x + 2} y2={y + 24} stroke={ink} strokeWidth="1.6" />
-      {designator && (
-        <text x={x} y={y - 32} textAnchor="middle" fontSize="12" className="font-mono" fill={ink}>
-          {designator}
-        </text>
-      )}
-      {caption && (
-        <text x={x} y={y + 42} textAnchor="middle" fontSize="12" className="font-mono" fill={inkDim}>
-          {caption}
-        </text>
-      )}
+      {designator && <Silk x={x} y={y - 32} text={designator} track={1.2} />}
+      {caption && <Silk x={x} y={y + 42} text={caption} tone={inkDim} />}
     </g>
   )
 }

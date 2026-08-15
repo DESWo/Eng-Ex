@@ -66,9 +66,8 @@ export function ToolSelector<T extends string>({
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest',
               'transition-colors duration-150',
-              active
-                ? 'bg-[var(--accent,#7163dd)] text-white'
-                : 'text-[var(--bench-dim,#a29b93)] hover:bg-white/5',
+              // accent-bg + on-accent so the label keeps 4.5:1 on any discipline accent
+              active ? 'accent-bg on-accent' : 'text-[var(--bench-dim,#a29b93)] hover:bg-white/5',
             )}
           >
             {opt.icon}

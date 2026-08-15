@@ -11,6 +11,14 @@ export function Engraved({ children, className }: { children: ReactNode; classNa
   )
 }
 
+/**
+ * A sentence on the board. Engraved legends are uppercase and letterspaced, so
+ * anything longer than three words goes here instead.
+ */
+export function Note({ children, className }: { children: ReactNode; className?: string }) {
+  return <p className={cn('font-body text-[11px] leading-snug text-slate-400', className)}>{children}</p>
+}
+
 /** A stamped brass plate: setpoints, unit numbers, anything fixed for the run. */
 export function Plate({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
   return (
