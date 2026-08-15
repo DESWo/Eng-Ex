@@ -13,7 +13,7 @@ export function ScorchedRun({ pts, hops = [] }: { pts: Pt[]; hops?: Hop[] }) {
   const d = pathFromPts(pts, hops)
 
   return (
-    <g aria-hidden>
+    <g aria-hidden style={{ pointerEvents: 'none' }}>
       <path d={d} fill="none" stroke="var(--bench-char, #40140c)" strokeWidth="15" strokeLinecap="round" opacity="0.85" />
       <path d={d} fill="none" stroke="var(--bench-fault, #ff6b5c)" strokeWidth="9" strokeLinecap="round" opacity="0.22" />
       <motion.path

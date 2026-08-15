@@ -129,6 +129,7 @@ interface StencilPaletteProps {
  */
 export function StencilPalette({ label, options, value, onChange, disabled, className }: StencilPaletteProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const groupId = `stencil-${label.replace(/\s+/g, '-')}`
 
   const step = (from: number, delta: number) => {
     const next = options[(from + delta + options.length) % options.length]
@@ -138,10 +139,10 @@ export function StencilPalette({ label, options, value, onChange, disabled, clas
 
   return (
     <div className={cn('border border-[var(--dr-ink)]/45 bg-[var(--dr-paper-2)]', className)}>
-      <p className={cn(CAPS, 'border-b border-[var(--dr-ink)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }} id={`stencil-${label}`}>
+      <p className={cn(CAPS, 'border-b border-[var(--dr-ink)]/45 px-2.5 py-1.5')} style={{ letterSpacing: TRACK.wide }} id={groupId}>
         {label}
       </p>
-      <div role="radiogroup" aria-labelledby={`stencil-${label}`} className="flex flex-wrap gap-2 p-2">
+      <div role="radiogroup" aria-labelledby={groupId} className="flex flex-wrap gap-2 p-2">
         {options.map((o, i) => {
           const on = o.id === value
           return (
