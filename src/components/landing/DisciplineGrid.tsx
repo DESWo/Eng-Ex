@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Reveal } from '@/components/ui/Reveal'
 import { disciplines } from '@/data/disciplines'
 import { useProgress } from '@/hooks/useProgress'
+import { usePreview } from '@/lib/preview'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import type { Discipline } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -152,11 +153,13 @@ function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }
 
 export function DisciplineGrid() {
   const { percentFor } = useProgress()
+  const preview = usePreview()
 
   const core = disciplines.filter((d) => d.tier !== 'more')
   const more = disciplines.filter((d) => d.tier === 'more')
   const doneCount = core.filter((d) => percentFor(d.slug) === 100).length
-  const unlocked = doneCount === core.length
+  // Teacher preview shows the branch fields without touching real progress.
+  const unlocked = doneCount === core.length || preview
 
   return (
     <section id="disciplines" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-16">

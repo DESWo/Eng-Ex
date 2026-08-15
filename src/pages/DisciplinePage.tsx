@@ -14,6 +14,7 @@ import { LearnWhyStep } from '@/components/flow/LearnWhyStep'
 import { DiyStep } from '@/components/flow/DiyStep'
 import { disciplines, getDiscipline } from '@/data/disciplines'
 import { useProgress } from '@/hooks/useProgress'
+import { usePreview } from '@/lib/preview'
 import type { Discipline, StepId } from '@/lib/types'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -45,6 +46,7 @@ export function DisciplinePage() {
   const navigate = useNavigate()
   const discipline = getDiscipline(slug)
   const { markDone, isDone, percentFor, nextStepFor } = useProgress()
+  const preview = usePreview()
 
   // Resume where the visitor left off. A fully completed discipline starts over.
   const [step, setStep] = useState<StepId>(() => {
@@ -65,7 +67,8 @@ export function DisciplinePage() {
   if (!discipline) return <NotFoundPage />
 
   // Deeper fields stay locked until every core field is 100% complete.
-  if (discipline.tier === 'more') {
+  // Teacher preview opens them all so a teacher can vet content in advance.
+  if (discipline.tier === 'more' && !preview) {
     const coreDone = disciplines
       .filter((d) => d.tier !== 'more')
       .every((d) => percentFor(d.slug) === 100)
