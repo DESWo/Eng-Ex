@@ -12,9 +12,6 @@ import type { LucideIcon } from 'lucide-react'
  * The creator section is a first-person intro; personalize it however you like.
  */
 
-// PLACEHOLDER FOR DESMOND: there is no "why I built this" here any more, because
-// the old one was not written by you. Add a paragraph in your own words and put
-// the heading back to 'Why I built this'. A few plain sentences is enough.
 export const aboutWhy = {
   heading: 'What this is',
   paragraphs: [
@@ -34,9 +31,6 @@ export const aboutGoal = {
   ] as { label: string; text: string }[],
 }
 
-// PLACEHOLDER FOR DESMOND: the two paragraphs that used to be here were written
-// for you, not by you. Replace the line below with however you want to introduce
-// yourself. Write it yourself.
 export const aboutCreator = {
   heading: 'About the creator',
   name: 'Desmond Wong',

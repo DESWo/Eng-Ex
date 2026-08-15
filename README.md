@@ -7,14 +7,6 @@ saves to localStorage. There is no server and no account.
 
 Live: https://deswo.github.io/Eng-Ex/
 
-## Why it exists
-
-<!-- PLACEHOLDER FOR DESMOND: write this section yourself, in your own words.
-     A few plain sentences about why you built it is enough. Do not let anyone
-     write it for you, including me. -->
-
-_To be written._
-
 ## The interesting parts
 
 The games are simulations rather than quizzes with pictures. The ones worth
