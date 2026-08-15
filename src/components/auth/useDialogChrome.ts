@@ -1,16 +1,9 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 /**
- * The parts of a modal dialog the browser does not hand you for free.
- *
- * A div with role="dialog" still lets Tab walk out into the page behind it,
- * still lets a screen reader read that page, still scrolls it, and still drops
- * focus at the top of the document when it closes. This puts all four back:
- * focus stays inside the panel, the app behind it goes inert, the body stops
- * scrolling, and focus returns to whatever opened the dialog.
- *
- * Written by hand rather than pulled in as a dependency: it is one effect, and
- * the dialogs are the only modals in the app.
+ * Modal behaviour role="dialog" does not give you: trap Tab inside the panel,
+ * mark the app behind it inert, stop the body scrolling, and return focus to
+ * whatever opened the dialog.
  */
 
 /** Things a person can actually Tab to, in DOM order. */

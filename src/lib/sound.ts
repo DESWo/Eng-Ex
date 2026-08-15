@@ -1,14 +1,9 @@
 /**
- * The app's sound effects, synthesized in the browser.
+ * Sound effects, synthesized from oscillators and filtered noise. No audio
+ * files, so tuning an effect means editing numbers here.
  *
- * Every sound here is built from oscillators and filtered noise rather than
- * loaded from an audio file. That keeps the whole kit at zero bytes of assets,
- * works offline, and lets each effect be tuned by editing numbers instead of
- * hunting for a new sample.
- *
- * Nothing makes a sound until the player has interacted with the page: browsers
- * refuse to start an AudioContext before a gesture, so the context is created
- * lazily on the first play() call.
+ * Browsers refuse to start an AudioContext before a user gesture, so the
+ * context is created lazily on the first play() call.
  */
 
 const MUTE_KEY = 'ee:muted'

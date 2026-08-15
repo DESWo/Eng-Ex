@@ -13,11 +13,7 @@ function subscribe(onChange: () => void) {
   return () => window.removeEventListener(SAVE_EVENT, handler)
 }
 
-/**
- * Live lookup of how many levels a challenge has cleared (0..5).
- * Re-reads whenever any game saves, so a picker chip ticks up the moment the
- * level is beaten inside the game below it.
- */
+/** Live count of levels cleared per challenge (0..5). Re-reads whenever any game saves. */
 export function useLevelCounts(): (challengeId: string) => number {
   const raw = useSyncExternalStore(subscribe, () => rawSnapshot('levels'))
 

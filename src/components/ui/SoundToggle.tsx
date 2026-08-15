@@ -9,7 +9,7 @@ export function SoundToggle() {
   const toggle = () => {
     const next = !muted
     setMuted(next)
-    // Unmuting confirms itself, so you know it worked without hunting for a game.
+    // unmuting plays a blip so you can tell it took
     if (!next) playSound('success')
   }
 

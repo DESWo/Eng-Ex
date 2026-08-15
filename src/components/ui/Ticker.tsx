@@ -9,13 +9,7 @@ interface TickerProps {
   duration?: number
 }
 
-/**
- * A number that counts to its new value instead of snapping.
- *
- * Used on the scorecard, where watching cost slide down as you strip weight out
- * of a design is most of the feedback. Anyone who has asked for reduced motion
- * gets the final number immediately.
- */
+/** A number that counts to its new value instead of snapping. Reduced motion snaps. */
 export function Ticker({ value, format, duration = 0.5 }: TickerProps) {
   const reduced = useReducedMotion()
   const [shown, setShown] = useState(value)

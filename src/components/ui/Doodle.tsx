@@ -6,14 +6,12 @@ import trophy from '@/assets/doodles/trophy.svg?raw'
 import { cn } from '@/lib/utils'
 
 /**
- * Hand-drawn decals by real illustrators (see src/assets/doodles/CREDITS.md):
- * figures by Pablo Stanley (Open Doodles, CC0), icons by Khushmeen Sidhu
- * (Doodle Icons, CC0). Vendored, security-vetted, and recolored so ink follows
- * `currentColor` and highlights follow the discipline `--accent`.
+ * Credits in src/assets/doodles/CREDITS.md: figures by Pablo Stanley (Open
+ * Doodles, CC0), icons by Khushmeen Sidhu (Doodle Icons, CC0).
  *
- * Inlined (not <img>) precisely so that recoloring works; the files are static
- * assets committed to this repo, reviewed line-by-line before vendoring, so
- * the raw injection here is safe by construction.
+ * Inlined as raw SVG rather than <img> so ink can follow `currentColor` and
+ * highlights the discipline `--accent`. Safe because these are vendored static
+ * files reviewed before commit, not remote or user input.
  */
 const DOODLES = {
   bulb,

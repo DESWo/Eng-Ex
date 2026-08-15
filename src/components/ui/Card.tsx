@@ -5,14 +5,11 @@ import { cn } from '@/lib/utils'
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** Adds hover lift + pointer cursor for clickable cards. */
   interactive?: boolean
-  /**
-   * Draws a hand-drawn border instead of the plain hairline, for the surfaces
-   * that should look pinned into an engineer's notebook.
-   */
+  /** Hand-drawn border instead of the plain hairline. */
   sketch?: boolean
 }
 
-/** The rounded, softly shadowed surface used across the whole app. */
+/** The base surface used across the app. */
 export function Card({ interactive = false, sketch = false, className, children, ...props }: CardProps) {
   return (
     <div

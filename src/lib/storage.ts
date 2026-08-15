@@ -90,11 +90,7 @@ export function removeGlobal(key: string) {
   }
 }
 
-/**
- * Does a scope already hold saved work? Pass '' for the guest slot.
- * Sign-in uses this twice: to decide whether guest work moves into an account,
- * and to tell the student, before they commit, which of the two it will be.
- */
+/** Does a scope already hold saved work? Pass '' for the guest slot. */
 export function scopeHasData(targetScope: string, keys: string[]): boolean {
   try {
     return keys.some((k) => localStorage.getItem(PREFIX + targetScope + k) !== null)
@@ -104,13 +100,12 @@ export function scopeHasData(targetScope: string, keys: string[]): boolean {
 }
 
 /**
- * Move work done while signed out into a brand new account, so signing in for
- * the first time never looks like it wiped everything.
+ * Move guest work into a brand new account, so a first sign-in does not look
+ * like it wiped everything.
  *
- * It MOVES rather than copies on purpose. If the guest slot were left behind,
- * the next student to sign in on a shared computer would inherit the previous
- * one's progress. Accounts that already hold data are returning users, so they
- * keep what is theirs and the guest slot is left untouched for its real owner.
+ * MOVES, does not copy: a leftover guest slot would be inherited by the next
+ * student to sign in on a shared computer. Accounts that already hold data are
+ * returning users, so they keep theirs and the guest slot is left alone.
  */
 export function moveGuestDataInto(targetScope: string, keys: string[]): boolean {
   try {

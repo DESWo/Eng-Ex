@@ -70,7 +70,7 @@ function hitsShelf(x1: number, y1: number, x2: number, y2: number, shelf: Shelf 
 /**
  * Inverse kinematics: given a point, work out the joint angles that put the
  * gripper there. There are almost always TWO answers, elbow up and elbow down,
- * which is the whole lesson of level 3.
+ * which is what level 3 turns on.
  */
 function solve(targetX: number, targetY: number, elbowUp: boolean, limits: boolean, shelf?: Shelf): Pose {
   const dx = targetX - BASE_X
@@ -113,11 +113,9 @@ interface ArmSetup {
   /** Level 4 on: the workspace readout is available. */
   envelope: boolean
   /**
-   * Proximity pulse on the active prize. It is a training wheel: on for
-   * level 1 (learning the drag) and level 4 (the instruments level, where
-   * readouts are the point). Off on the judged levels, because "judge the
-   * drop by eye, arcade rules" has to mean it: a pulse that fires inside
-   * 3x tolerance is a distance meter wearing a costume.
+   * Proximity pulse on the active prize. On for level 1 and level 4 only. It
+   * fires inside 3x tolerance, so leaving it on elsewhere would amount to a
+   * distance readout on levels meant to be judged by eye.
    */
   cue: boolean
   brief: string

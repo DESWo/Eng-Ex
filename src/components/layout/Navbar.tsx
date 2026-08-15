@@ -30,9 +30,9 @@ export function Navbar() {
   const { profile, signOut } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
-  // A name tag in localStorage outlives whoever typed it, so a stored profile
-  // this browser session has not vouched for is worth one question. A guest has
-  // no name tag to question, and typing an email is itself the answer.
+  // A stored profile outlives the session that created it, so on a shared
+  // machine ask once whether it is still the same person. Guests have nothing
+  // to confirm.
   const [unconfirmed, setUnconfirmed] = useState(() => !isSessionConfirmed())
   const askWhoIsHere = profile !== null && unconfirmed
 

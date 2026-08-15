@@ -13,7 +13,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProfileProvider, useProfile } from '@/hooks/useProfile'
 import { setPreview, usePreview } from '@/lib/preview'
 
-// Teacher-facing pages load as their own chunks; students never pay for them.
+// teacher-facing pages get their own chunks
 const TeacherPage = lazy(() =>
   import('@/pages/TeacherPage').then((m) => ({ default: m.TeacherPage })),
 )
@@ -30,7 +30,7 @@ function ScrollToTop() {
   return null
 }
 
-/** ?preview=1 on any URL turns teacher preview on, so a shared link opens the whole app. */
+/** ?preview=1 on any URL turns teacher preview on. */
 function PreviewFromQuery() {
   const { search } = useLocation()
   useEffect(() => {
@@ -77,7 +77,7 @@ function Shell() {
   const { profile } = useProfile()
   return (
     <div className="flex min-h-screen flex-col">
-      {/* First tab stop on every page: jump keyboard users past the navbar. */}
+      {/* first tab stop: skips keyboard users past the navbar */}
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-5 focus:py-2.5 focus:font-display focus:text-sm focus:font-semibold focus:text-cream dark:focus:bg-stone-100 dark:focus:text-ink"
@@ -88,8 +88,7 @@ function Shell() {
       <PreviewBanner />
       <Navbar />
       <main id="main" className="flex-1">
-        {/* Keyed on who is signed in: signing in or out remounts the pages so
-            every hook re-reads that person's saved work instead of the last one's. */}
+        {/* keyed on the account so signing in or out remounts and every hook re-reads */}
         <Suspense fallback={null}>
           <Routes key={profile?.email ?? 'guest'}>
             <Route path="/" element={<LandingPage />} />
@@ -108,7 +107,7 @@ function Shell() {
 
 function App() {
   return (
-    // reducedMotion="user" softens animations for people who prefer less motion.
+    // reducedMotion="user" honours prefers-reduced-motion app-wide
     <MotionConfig reducedMotion="user">
       <ScrollToTop />
       <PreviewFromQuery />

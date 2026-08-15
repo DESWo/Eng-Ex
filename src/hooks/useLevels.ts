@@ -41,10 +41,8 @@ export interface LevelState<S> {
 
 /**
  * Level state for one challenge: which level is on screen, which are cleared,
- * and the player's best score on each optimization metric.
- *
- * Levels are unlocked in order. Cleared levels stay replayable so a student can
- * go back and try a better design once they know what the later levels taught.
+ * and the best score on each optimization metric. Levels unlock in order;
+ * cleared ones stay replayable.
  */
 export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): LevelState<S> {
   const [store, setStore] = useState<LevelStore>(() => loadJson<LevelStore>(KEY, {}))
@@ -54,7 +52,7 @@ export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): 
     [store, challengeId],
   )
 
-  // Open on the first level they have not beaten, so returning players resume.
+  // resume on the first level not yet beaten
   const [index, setIndex] = useState(() => {
     const done = new Set(loadJson<LevelStore>(KEY, {})[challengeId]?.cleared ?? [])
     const firstOpen = levels.findIndex((l) => !done.has(l.n))
@@ -64,9 +62,8 @@ export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): 
   const level = levels[Math.min(index, levels.length - 1)]
   const isCleared = useCallback((n: number) => cleared.has(n), [cleared])
 
-  // Stars are earned, not stored mid-run: peeking at the hint or coming back to
-  // a level after leaving it both cost one. Kept per session so a fresh visit
-  // to an old level is a genuine second chance at three.
+  // Hint use and revisits each cost a star. Held per session, not persisted, so
+  // a later visit to an old level can still earn three.
   const [hinted, setHinted] = useState<Set<number>>(() => new Set())
   const [revisited, setRevisited] = useState<Set<number>>(() => new Set())
   const seenRef = useRef<Set<number>>(new Set())
@@ -129,20 +126,19 @@ export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): 
   )
 
   /**
-   * Mark the current level beaten. Pass metric values on level 5 and only
-   * genuine improvements are kept, so the scorecard rewards iterating.
+   * Mark the current level beaten. Pass metric values on level 5; only
+   * improvements over the stored best are written.
    */
   const clearLevel = useCallback(
     (scores?: Record<string, number>) => {
-      // Every game routes its win through here, so this is the one place the
-      // victory sound has to live.
+      // every game routes its win through here, so the sound lives here
       playSound('levelClear')
       write((entry) => {
         const nextCleared = entry.cleared?.includes(level.n)
           ? entry.cleared
           : [...(entry.cleared ?? []), level.n]
 
-        // Keep the best rating ever earned, so replaying can only help.
+        // keep the best rating ever earned; replaying can only help
         const won = earnedStars(level.n)
         const stars = { ...(entry.stars ?? {}) }
         if (won > (stars[level.n] ?? 0)) stars[level.n] = won

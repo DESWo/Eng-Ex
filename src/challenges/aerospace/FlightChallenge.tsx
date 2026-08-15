@@ -338,7 +338,7 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
         </div>
       )}
 
-      {/* A throttle quadrant and a nose you tilt, the way a cockpit works. */}
+      {/* controls: throttle and pitch */}
       <div className="mt-4 grid items-start gap-x-6 gap-y-4 sm:grid-cols-2">
         <div>
           <p className="mb-2 font-display text-sm font-semibold">

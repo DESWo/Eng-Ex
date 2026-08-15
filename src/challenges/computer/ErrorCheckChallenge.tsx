@@ -336,9 +336,8 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
           </p>
         )}
 
-        {/* The stream is a record of traffic that has run. Before the link is
-            commissioned there is none, and printing it would hand over the
-            answer the meters are deliberately withholding. */}
+        {/* no traffic exists before the link is commissioned, and showing it
+            early would give away what the meters withhold */}
         {setup.stream && showStream && !outcomeVisible && (
           <div className="mt-4">
             <p className="mb-2 font-display text-sm font-semibold">Packet stream</p>

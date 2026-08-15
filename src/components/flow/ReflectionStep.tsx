@@ -16,9 +16,9 @@ const enjoyOptions: { value: Enjoyment; icon: LucideIcon; label: string }[] = [
 ]
 
 const tryAnotherOptions: { value: TryAnother; label: string }[] = [
-  { value: 'yes', label: 'Yes!' },
+  { value: 'yes', label: 'Yes' },
   { value: 'maybe', label: 'Maybe' },
-  { value: 'no', label: 'No thanks' },
+  { value: 'no', label: 'No' },
 ]
 
 const optionBase =
@@ -58,7 +58,7 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
       <motion.div  className="text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">How was that?</h2>
         <p className="mt-2 text-ink-soft dark:text-stone-400">
-          No wrong answers here. This just helps you figure out what fits you.
+          Saved on this device, next to your answers for the other fields.
         </p>
       </motion.div>
 
@@ -106,8 +106,8 @@ export function ReflectionStep({ discipline, onNext }: ReflectionStepProps) {
             ))}
           </div>
           <div className="mt-2 flex justify-between text-xs text-ink-soft sm:max-w-[19rem] dark:text-stone-400">
-            <span>Easy breezy</span>
-            <span>Brain melting</span>
+            <span>Easy</span>
+            <span>Very hard</span>
           </div>
         </Card>
       </motion.div>

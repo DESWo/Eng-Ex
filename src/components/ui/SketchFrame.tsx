@@ -11,14 +11,9 @@ interface SketchFrameProps {
 }
 
 /**
- * A hand-drawn border that sizes itself to whatever it is placed inside.
- *
- * The parent needs `position: relative`. The frame measures its own box rather
- * than stretching a fixed viewBox, because a squashed sketch loses the even
- * pen pressure that makes it read as drawn by hand.
- *
- * Sizes are rounded to a few pixels before they reach Rough, so a window
- * resize redraws the sketch in steps instead of reshuffling it continuously.
+ * Hand-drawn border that sizes itself to its parent. The parent needs
+ * `position: relative`. It measures its own box instead of stretching a fixed
+ * viewBox, which would scale the strokes unevenly.
  */
 export function SketchFrame({ className = 'stroke-ink/25 dark:stroke-white/25', inset = 2, roughness = 1.4 }: SketchFrameProps) {
   const ref = useRef<HTMLDivElement>(null)

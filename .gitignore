@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local tooling and working notes
+.claude/
+CLAUDE.md
+docs/playtest-log.md
+docs/ui-comparison.md

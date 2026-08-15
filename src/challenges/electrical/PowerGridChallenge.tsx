@@ -262,8 +262,8 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
-    // Replay the storm against every built line and name the cut that hurts
-    // most, so the fix points somewhere instead of just saying "somewhere".
+    // Replay the storm against every built line, so the message can name the
+    // single cut that darkens the most houses.
     let worstCut: { a: string; b: string; dark: number } | null = null
     if (round.n1 && !survivesAnyCut) {
       for (const cut of built) {
@@ -346,7 +346,7 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
         </div>
       </div>
 
-      {/* Night scene. Deliberately dark in both themes so the lights pop. */}
+      {/* night scene: dark in both themes */}
       <div className="overflow-hidden rounded-2xl bg-[#232047]">
         <svg viewBox="0 0 800 500" className="w-full" role="img" aria-label="Town power grid">
           {/* stars */}
@@ -480,7 +480,7 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
           {houses.map((h) => (
             <g key={h.id} opacity={lit.has(h.id) && !served(h.id) ? 0.75 : 1}>
               <House node={h} lit={served(h.id)} />
-              {/* Place name above the roof: the storm verdict points here. */}
+              {/* place name above the roof */}
               <text
                 x={h.x}
                 y={h.y - 38}

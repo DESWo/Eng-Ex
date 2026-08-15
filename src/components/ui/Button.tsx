@@ -7,12 +7,12 @@ type Variant = 'primary' | 'accent' | 'soft' | 'ghost'
 type Size = 'sm' | 'md' | 'lg'
 
 const variants: Record<Variant, string> = {
-  // Ink pill in light mode, white pill in dark mode (Apple style).
+  // ink pill in light mode, white pill in dark
   primary:
     'bg-ink text-cream shadow-clay hover:bg-stone-700 dark:bg-stone-100 dark:text-ink dark:hover:bg-white',
-  // Filled with the current discipline accent.
+  // current discipline accent
   accent: 'accent-bg on-accent shadow-clay hover:brightness-110',
-  // Soft tinted background with accent text.
+  // tinted background, accent text
   soft: 'accent-soft accent-text hover:brightness-97 dark:hover:brightness-110',
   ghost:
     'text-ink-soft hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-200',

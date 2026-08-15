@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
- * Turns pointer events anywhere on an <svg> into viewBox coordinates, so a
- * challenge can let people grab and move the actual thing on screen instead of
- * pushing a slider that stands in for it.
- *
- * Attach `bind` to the <svg>. While a drag is live the pointer is captured, so
- * it keeps tracking even when it leaves the element.
+ * Turns pointer events anywhere on an <svg> into viewBox coordinates.
+ * Attach `bind` to the <svg>. The pointer is captured while a drag is live, so
+ * it keeps tracking outside the element.
  */
 export function useSvgDrag(onMove: (x: number, y: number, done: boolean) => void) {
   const svgRef = useRef<SVGSVGElement | null>(null)

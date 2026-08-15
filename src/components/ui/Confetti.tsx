@@ -13,10 +13,7 @@ interface Piece {
   drift: number
 }
 
-/**
- * Lightweight celebration burst, no extra libraries.
- * Render it inside a relatively positioned container when something is won.
- */
+/** Celebration burst. Render inside a relatively positioned container. */
 export function Confetti({ count = 36 }: { count?: number }) {
   const pieces = useMemo<Piece[]>(
     () =>

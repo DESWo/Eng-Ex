@@ -3,10 +3,9 @@ import type { ChallengeLevel } from '@/lib/types'
 import { playSound } from '@/lib/sound'
 
 /**
- * Limited test runs per level, so brute-forcing a small search space stops
- * being a strategy. Running dry is not a lockout: the game resets its bench,
- * the pool refills, and the player starts the level over having spent nothing
- * but pride.
+ * Limited test runs per level, so a small search space cannot be brute-forced.
+ * Running dry is not a lockout: the game resets, the pool refills, the level
+ * starts over.
  */
 export interface AttemptState {
   /** Tests remaining, or null when this level is unlimited. */
@@ -21,10 +20,9 @@ export interface AttemptState {
 }
 
 /**
- * The house rule: level 1 is unlimited (learn the controls in peace),
- * the level 5 optimization gets a longer leash to explore trade-offs, and the
- * understand/analyze levels get 3, so a wrong guess costs something and you
- * have to reason before you commit rather than fish for the answer.
+ * Level 1 unlimited, since it is where the controls are learned. Optimize
+ * levels get 5 because exploring trade-offs takes runs. Everything else gets 3,
+ * which is few enough that guessing is worse than reasoning.
  */
 export function attemptsFor(level: Pick<ChallengeLevel, 'n' | 'phase'>): number | null {
   if (level.n === 1) return null
@@ -41,13 +39,13 @@ export function useAttempts(allowance: number | null, levelN: number): AttemptSt
 
   const spend = useCallback(() => {
     if (allowance === null || left === null) {
-      // Unlimited levels still failed a check, so they still get the buzz.
+      // unlimited levels still failed the check, so still buzz
       playSound('fail')
       return false
     }
     const next = Math.max(0, left - 1)
     setLeft(next)
-    // Running dry sounds different from an ordinary miss: the bench is cleared.
+    // running dry sounds different from an ordinary miss
     playSound(next === 0 ? 'reset' : 'fail')
     return next === 0
   }, [allowance, left])

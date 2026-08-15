@@ -16,16 +16,12 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
   const panelRef = useRef<HTMLDivElement>(null)
 
   const valid = isValidEmail(email)
-  // Explain the problem as soon as there is enough typed to judge. Waiting for
-  // a blur leaves the Continue button greyed out with no reason given.
+  // Show the error while typing, not on blur, so Continue is never greyed out
+  // without a reason next to it.
   const showError = !valid && (touched ? email.trim().length > 0 : email.trim().length > 3)
-  // Guest work only ever moves into an EMPTY account, so what to promise
-  // depends on the address being typed. Saying "it will be moved" to somebody
-  // signing back into an account that already has progress is a lie that looks
-  // like data loss from the other side.
+  // Guest work only moves into an EMPTY account, so the banner cannot promise
+  // anything until there is a valid address to check against.
   const guestWork = open && !loadProfile() && guestHasWork()
-  // Which of the two it will be is only knowable once there is an address to
-  // check, so the banner waits for a valid one rather than guessing.
   const carryDecided = guestWork && valid
   const accountKeepsItsOwn = carryDecided && accountHasWork(email)
 

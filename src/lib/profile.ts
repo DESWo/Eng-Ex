@@ -10,11 +10,9 @@ import {
 /**
  * Who is using the app right now.
  *
- * This is deliberately NOT a secure account. There is no server behind the app,
- * so there is nothing to check a password against and nothing to protect the
- * data with. It is a name tag: it tells the app whose progress to load, which
- * is what matters when a class shares one computer. Anything genuinely private
- * should wait until there is a real backend to hold it.
+ * NOT authentication. There is no server, so there is no password to check and
+ * no protection on the data. It only picks which progress to load on a shared
+ * computer. Do not store anything private behind it.
  */
 export interface Profile {
   email: string
@@ -52,7 +50,7 @@ export function applyStoredScope() {
 export const accountHasWork = (rawEmail: string) =>
   scopeHasData(scopeFor(rawEmail), CARRIED_KEYS)
 
-/** Is there work saved on the guest slot, waiting to be claimed? */
+/** Is there work saved on the guest slot? */
 export const guestHasWork = () => scopeHasData('', CARRIED_KEYS)
 
 export function signIn(rawEmail: string): Profile {
@@ -63,8 +61,7 @@ export function signIn(rawEmail: string): Profile {
   const profile: Profile = { email, since: new Date().toISOString().slice(0, 10) }
   saveGlobalJson(KEY, profile)
   setStorageScope(scope)
-  // Signing in by hand is itself proof of who is here, so the stale sign-in
-  // check below should not then ask.
+  // typing the email is itself the confirmation, so don't ask again below
   confirmSession()
   return profile
 }
@@ -75,10 +72,10 @@ export function signOut() {
 }
 
 /* ---- Stale sign-in ----
-   A name tag written into localStorage outlives the person who typed it: the
-   next student sits down at a shared computer and quietly plays into someone
-   else's progress. sessionStorage dies with the browser tab, so a stored
-   profile that this session has not confirmed is worth one question. ---- */
+   A profile in localStorage outlives the person who typed it, so on a shared
+   computer the next student can play into someone else's progress.
+   sessionStorage dies with the tab, so a stored profile this session has not
+   confirmed gets one question. ---- */
 
 const SESSION_KEY = 'ee:session-confirmed'
 

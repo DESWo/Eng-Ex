@@ -10,9 +10,8 @@ interface ProfileValue {
 const ProfileContext = createContext<ProfileValue | null>(null)
 
 /**
- * Holds who is signed in. Changing profile also re-points storage, and the app
- * remounts its routes on the value below so every hook re-reads the right
- * person's saved work.
+ * Holds who is signed in. Changing profile re-points storage, and App remounts
+ * its routes on this value so every hook re-reads the right person's work.
  */
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(() => loadProfile())

@@ -57,10 +57,6 @@ export function AboutPage() {
         <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-70px' }} className="mt-4 text-lg leading-relaxed text-ink-soft dark:text-stone-300">
           {aboutGoal.body}
         </motion.p>
-        {/*
-         * The pillars, set like the metadata block of a lab handout: hairline
-         * rules and a small-caps left column instead of three icon cards.
-         */}
         <motion.dl
           variants={fadeUp}
           initial="hidden"

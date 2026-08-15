@@ -148,8 +148,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const [simT, setSimT] = useState(0)
   /**
    * Cars still at each stop line when the cycle ended. A passing plan does not
-   * empty the junction: cars that arrive after their green wait for the next
-   * one, and the scene has to keep showing them or the banner is lying.
+   * empty the junction, so the scene has to keep showing the leftovers.
    */
   const [settled, setSettled] = useState<{ ns: number; ew: number } | null>(null)
   const simQ = useRef({ ns: 0, ew: 0 })
@@ -288,18 +287,15 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const walkNow = running && simT >= greenNS + greenEW && round.ped > 0
   const qNS = running ? simQ.current.ns : 0
   const qEW = running ? simQ.current.ew : 0
-  // What each approach looks like on screen: a preview stack before the first
-  // run, the live queue while the lights cycle, and the cars left at the stop
-  // line once it ends. Snapping back to the preview after a run made the scene
-  // contradict the banner.
+  // Preview stack before the first run, live queue while running, leftovers
+  // after. Do not snap back to the preview: it contradicts the banner.
   const shownQNS = running ? qNS : settled ? settled.ns : round.ns / 3
   const shownQEW = running ? qEW : settled ? settled.ew : round.ew / 3
 
   const won = phase === 'passed'
 
-  // Levels 2, 3 and 5 hold the capacity verdict back until the lights have
-  // actually run. Level 1 shows it to teach the split, level 4's whole point
-  // is reading the queue bars.
+  // Capacity verdict is held back until the lights have run, except on level 1
+  // (teaching the split) and level 4 (reading the queue bars).
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
 
   return (
@@ -330,7 +326,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         </div>
       </div>
 
-      {/* Scene: the junction actually runs the cycle you set */}
+      {/* Scene */}
       <div className="overflow-hidden rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/40">
         <svg viewBox="0 0 800 300" className="w-full" role="img" aria-label="Intersection running the light cycle">
           {/* roads */}
@@ -449,7 +445,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         )}
       </div>
 
-      {/* Controls: the cycle bar IS the control. Drag the split between the roads. */}
+      {/* Controls: drag the split on the cycle bar */}
       <div className="mt-2 grid items-end gap-x-6 gap-y-4 sm:grid-cols-[1fr,auto]">
         <div>
           <p className="mb-2 font-display text-sm font-semibold">

@@ -28,7 +28,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
           Try it at home
         </h2>
         <p className="mt-2 text-ink-soft dark:text-stone-400">
-          No screen needed for this part. Real materials, real engineering.
+          The same idea off the screen, built from things you probably already have.
         </p>
       </motion.div>
 
@@ -47,7 +47,7 @@ export function DiyStep({ discipline, onExploreMore, onReplay }: DiyStepProps) {
         <motion.div >
           <Card className="p-4 sm:p-6">
             <p className="mb-3 font-display text-xs font-bold uppercase tracking-widest text-ink-soft dark:text-stone-400">
-              The build, at a glance
+              The build
             </p>
             <div className="overflow-hidden rounded-2xl bg-stone-100/80 dark:bg-white/5">
               <Diagram />

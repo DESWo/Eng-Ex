@@ -155,11 +155,7 @@
     border-color: color-mix(in oklab, var(--accent) 40%, transparent);
   }
 
-  /*
-   * Journal furniture. `.label-caps` is the small letterspaced heading a paper
-   * uses above a section; `.rule` is the hairline that separates them. Both are
-   * quiet on purpose: they organise a page without competing with it.
-   */
+  /* Small letterspaced section heading, and the hairline that goes with it. */
   .label-caps {
     font-family: var(--font-body);
     font-size: 0.6875rem;
@@ -175,7 +171,6 @@
     border-top-color: rgb(255 255 255 / 0.12);
   }
 
-  /* A figure caption, set the way a textbook sets one. */
   .figure-caption {
     font-family: var(--font-body);
     font-size: 0.8125rem;
@@ -195,10 +190,9 @@
   }
 
   /*
-   * Engineering paper. `.paper-grid` is the fine graph paper a game scene sits
-   * on; `.paper-grid-lg` is the wider ruling used behind page headers so the
-   * two do not fight when they stack. Both are pure gradients: no image
-   * requests, and they retint themselves from the surrounding text color.
+   * Grid paper: `.paper-grid` 22px behind game scenes, `.paper-grid-lg` 64px
+   * behind page headers, so the two do not clash when they stack. Gradients,
+   * not images, and they tint from the surrounding --accent.
    */
   .paper-grid,
   .paper-grid-lg {
@@ -223,11 +217,7 @@
     background-size: 64px 64px;
   }
 
-  /*
-   * Dark mode needs a much lighter touch: an accent line on a near-black panel
-   * reads far brighter than the same line on cream, and at header scale it
-   * competes with the title instead of sitting behind it.
-   */
+  /* 9% not 14%: the same line reads much brighter on a near-black panel. */
   .dark .paper-grid,
   .dark .paper-grid-lg {
     background-image: linear-gradient(
@@ -242,10 +232,7 @@
       );
   }
 
-  /*
-   * A drafting-table blueprint: the grid above, plus a soft accent wash and a
-   * vignette so the middle of a scene stays readable.
-   */
+  /* The grid above plus an accent wash and a vignette to keep the middle readable. */
   .blueprint {
     background-color: color-mix(in oklab, var(--accent, #7b6cf0) 7%, white);
     background-image: radial-gradient(

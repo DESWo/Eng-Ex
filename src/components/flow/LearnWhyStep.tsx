@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Check, Factory, Heart, Lightbulb, Lock, RotateCcw, Scale } from 'lucide-react'
+import { ArrowRight, Check, Factory, Lightbulb, Lock, RotateCcw, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useLevelCounts } from '@/hooks/useLevelCounts'
 import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 import { loadJson } from '@/lib/storage'
 import { staggerContainer } from '@/lib/animations'
-import type { Discipline, Reflection } from '@/lib/types'
+import type { Discipline } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface LearnWhyStepProps {
@@ -18,7 +18,6 @@ interface LearnWhyStepProps {
 
 export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps) {
   const { learn, challenges } = discipline
-  const reflection = loadJson<Record<string, Reflection>>('reflections', {})[discipline.slug]
   const solved = loadJson<Record<string, Record<string, boolean>>>('challenges', {})[discipline.slug] ?? {}
   const levelsFor = useLevelCounts()
   const multi = challenges.length > 1
@@ -33,13 +32,11 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
           {learn.heading}
         </h2>
         <p className="mt-2 text-ink-soft dark:text-stone-400">
-          {multi
-            ? 'Here is the engineering hiding inside each game.'
-            : 'Here is the engineering hiding inside your win.'}
+          {multi ? 'The engineering behind each game.' : 'The engineering behind the game.'}
         </p>
       </motion.div>
 
-      {/* One block per game, so every challenge gets explained. */}
+      {/* one block per game */}
       {challenges.map((challenge) => (
         <motion.div key={challenge.id}  className="space-y-4">
           {multi && (
@@ -72,7 +69,7 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
               ) : null}
             </div>
           )}
-          {/* The idea is the reward for playing: don't hand it over first. */}
+          {/* the explanation stays locked until the game is beaten */}
           {multi && !solved[challenge.id] ? (
             <Card className="flex items-center gap-3 border-2 border-dashed border-stone-300 bg-stone-50/60 p-6 dark:border-white/15 dark:bg-white/[0.02]">
               <Lock className="h-4 w-4 shrink-0 text-ink-soft dark:text-stone-400" />
@@ -112,7 +109,6 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
         </Card>
       </motion.div>
 
-      {/* The tradeoff at the heart of the field */}
       <motion.div >
         <Card className="flex items-start gap-4 p-6">
           <span className="accent-soft flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
@@ -127,7 +123,6 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
         </Card>
       </motion.div>
 
-      {/* Real-world application: you used the same concept engineers use */}
       <motion.div >
         <Card className="border-2 accent-border p-6">
           <p className="accent-text flex items-center gap-2 font-display text-xs font-bold uppercase tracking-widest">
@@ -143,23 +138,8 @@ export function LearnWhyStep({ discipline, onNext, onReplay }: LearnWhyStepProps
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-sm font-semibold text-ink-soft dark:text-stone-400">
-            You just used the same idea engineers use in industry.
-          </p>
         </Card>
       </motion.div>
-
-      {reflection?.enjoyed === 'loved' && (
-        <motion.div >
-          <Card className="flex items-center gap-3 p-5">
-            <Heart className="h-5 w-5 shrink-0 text-rose-500" fill="currentColor" />
-            <p className="text-[15px]">
-              You said you loved this one.{' '}
-              <span className="font-display font-bold">{discipline.name}</span> might be your thing!
-            </p>
-          </Card>
-        </motion.div>
-      )}
 
       <motion.div  className="flex flex-wrap justify-center gap-3 pb-4">
         <Button variant="accent" size="lg" onClick={onNext}>

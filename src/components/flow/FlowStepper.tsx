@@ -16,12 +16,7 @@ interface FlowStepperProps {
   onSelect: (step: StepId) => void
 }
 
-/**
- * Folder tabs across the top of the discipline flow, like the divider tabs in
- * a real binder. The open tab sits proud of the rule with the accent along its
- * top edge; finished tabs earn a check; locked ones lie flat until you get
- * there. (This replaced a generic disc-and-dots stepper on purpose.)
- */
+/** Step tabs across the top of the discipline flow. Finished steps get a check. */
 export function FlowStepper({ current, isDone, onSelect }: FlowStepperProps) {
   return (
     <nav aria-label="Progress" className="border-b border-ink/10 dark:border-white/10">

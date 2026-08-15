@@ -93,8 +93,7 @@ export function LevelRail({
         )}
       </div>
 
-      {/* Title only. The concept named the twist outright, which gave the
-          level away before the player had a chance to spot it themselves. */}
+      {/* title only, not the concept: that would give the level away */}
       <p className="mt-2 flex items-center gap-2 text-sm text-ink-soft dark:text-stone-400">
         <span className="font-display font-semibold text-ink dark:text-stone-200">
           Level {active.n}: {active.title}

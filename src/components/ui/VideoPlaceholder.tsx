@@ -6,10 +6,7 @@ interface VideoPlaceholderProps {
   title: string
 }
 
-/**
- * A friendly stand-in for an intro video.
- * Drop a YouTube id into the discipline data and it becomes a real player.
- */
+/** Stand-in for an intro video. A YouTube id in the discipline data makes it a real player. */
 export function VideoPlaceholder({ videoId, title }: VideoPlaceholderProps) {
   if (videoId) {
     return (

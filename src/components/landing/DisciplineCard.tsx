@@ -72,8 +72,6 @@ export function DisciplineCard({ discipline }: DisciplineCardProps) {
                 {mastery.cleared} / {mastery.total} levels
               </span>
             </div>
-            {/* The bar tracks levels cleared, so it can no longer read full
-                while the field is untouched. */}
             <ProgressBar
               value={Math.round((mastery.cleared / mastery.total) * 100)}
               label={`${discipline.name} progress`}

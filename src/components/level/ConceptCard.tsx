@@ -4,15 +4,7 @@ import { Doodle } from '@/components/ui/Doodle'
 import type { ChallengeLevel } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/**
- * The hint for the level, hidden until the player asks for it.
- *
- * It used to sit open at the top of every level and spell out both the twist
- * and the strategy, so there was nothing left to work out. Now it starts
- * collapsed: you get the goal and the controls and have to try first. If you
- * get stuck, one tap opens the same explanation. Collapses again on each new
- * level, so the help is always earned, never forced.
- */
+/** The level hint, collapsed until the player opens it. Opening costs a star. */
 export function ConceptCard({
   level,
   onReveal,

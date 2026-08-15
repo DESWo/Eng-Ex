@@ -282,13 +282,12 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     ...round.circuits.map((c) => (steadyOf(c.id) / c.rating) * 100),
   )
   const minSurgeMargin = Math.min(...round.circuits.map((c) => c.rating - peakOf(c.id)))
-  // Breakers cost money: leaving one empty is the third thing worth chasing.
+  // breakers cost money, so an empty one is the third scored metric
   const circuitsUsed = round.circuits.filter((c) => onCircuit(c.id).length > 0).length
 
-  // Levels 2, 3 and 5 keep the meters a neutral colour until the power has
-  // gone on: the wattages and sums are all on screen, so whether a circuit
-  // holds is arithmetic the player does, not a colour the meter leaks. Level 1
-  // is for learning, level 4's ghost markers are its whole concept.
+  // Meters stay neutral until the power goes on, so the colour does not give
+  // away arithmetic the player can already do from the wattages on screen.
+  // Level 1 is the tutorial and level 4's ghost markers are its concept.
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
 
   const clickAppliance = (applianceId: string) => {
@@ -491,7 +490,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
         })}
       </div>
 
-      {/* Feedback (observational: what happened, not what to do) */}
+      {/* Feedback */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
         {phase === 'idle' && notice && (
           <motion.p

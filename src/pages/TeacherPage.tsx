@@ -86,10 +86,7 @@ export function TeacherPage() {
 
   return (
     <div className="teacher-report mx-auto max-w-4xl px-6 py-10">
-      {/*
-       * Print rules for this page only: strip the app chrome and the on-screen
-       * controls, and force black on white so the report photocopies cleanly.
-       */}
+      {/* print rules for this page only: drop the chrome, force black on white */}
       <style>{`
         @media print {
           header, footer, .no-print { display: none !important; }

@@ -56,10 +56,9 @@ interface Orbit {
 /**
  * Burn once at the parking orbit, then once at the top of the resulting ellipse.
  *
- * The first burn can point any way, which is the whole point of level 1: firing
- * outwards feels like the way to climb, but it barely lifts the far side and it
- * drags the near side down into the planet. Only a forward burn adds the
- * energy that actually raises an orbit.
+ * The first burn can point any way. An outward burn barely lifts the far side
+ * and drags the near side down into the planet; only a prograde burn adds the
+ * orbital energy that raises an orbit.
  */
 function computeOrbit(burn1: number, dir: BurnDir, burn2: number): Orbit {
   const blank = { rApo: R_START, apo: R_START, peri: R_START, e: 0, omega: 0 }
@@ -483,7 +482,7 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
         </div>
       )}
 
-      {/* Fire the engine in pulses, the way a real spacecraft spends its fuel. */}
+      {/* burns are added in discrete pulses, not a slider */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {[
           { n: 1, value: burn1, set: setBurn1, label: 'Burn 1, at the low point', show: true },

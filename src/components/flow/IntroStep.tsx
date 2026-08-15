@@ -46,7 +46,7 @@ export function IntroStep({ discipline, onNext }: IntroStepProps) {
         </div>
       </motion.div>
 
-      {/* No video yet for most disciplines: show nothing rather than a promise. */}
+      {/* most disciplines have no video yet */}
       {intro.videoId && (
         <motion.div >
           <VideoPlaceholder videoId={intro.videoId} title={`${discipline.name} intro video`} />
@@ -63,8 +63,8 @@ export function IntroStep({ discipline, onNext }: IntroStepProps) {
           </p>
           <p className="mt-3 text-sm text-ink-soft dark:text-stone-400">
             {discipline.challenges.length === 1
-              ? 'One challenge is waiting. Beat it to keep exploring.'
-              : `${discipline.challenges.length} challenges. Beat one to keep going, or clear all of them.`}
+              ? 'One challenge. Beat it to move on.'
+              : `${discipline.challenges.length} challenges. Beat one to move on, or clear all of them.`}
           </p>
         </Card>
       </motion.div>

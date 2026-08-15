@@ -123,7 +123,6 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
         </Badge>
       </div>
 
-      {/* The career behind the game, so it never feels like just a puzzle. */}
       <p className="flex items-start gap-2 text-sm text-ink-soft dark:text-stone-400">
         <BriefcaseBusiness className="accent-text mt-0.5 h-4 w-4 shrink-0" />
         <span>
@@ -149,7 +148,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
             </Card>
           )}
         >
-          {/* Games are lazy chunks; the fallback shows while one downloads. */}
+          {/* games are lazy chunks */}
           <Suspense
             fallback={
               <Card className="flex h-64 animate-pulse items-center justify-center text-ink-soft dark:text-stone-400">
@@ -157,13 +156,13 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
               </Card>
             }
           >
-            {/* Keyed so switching challenges gives each one a fresh start. */}
+            {/* keyed so switching challenges remounts */}
             <ChallengeComponent key={active.id} onComplete={handleComplete} />
           </Suspense>
         </ErrorBoundary>
       ) : (
         <Card className="p-8 text-center text-ink-soft dark:text-stone-400">
-          This challenge is still being built. Check back soon!
+          This challenge is not built yet.
         </Card>
       )}
 
@@ -179,7 +178,7 @@ export function ChallengeStep({ discipline, onSolved, onNext }: ChallengeStepPro
             <Card className="accent-soft flex flex-col items-center justify-between gap-4 p-5 sm:flex-row">
               <p className="flex items-center gap-3 font-display font-semibold">
                 <PartyPopper className="accent-text h-6 w-6 shrink-0" />
-                Nice work, engineer! Keep tinkering, or move on.
+                Solved. Keep playing this one, or move on.
               </p>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {nextChallenge && (

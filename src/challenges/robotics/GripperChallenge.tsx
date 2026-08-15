@@ -216,9 +216,8 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   }
 
   /**
-   * The Operation part: the lift plays out live, the slip floor climbs and
-   * wobbles with the acceleration, and you drag the squeeze to stay between
-   * the lines the whole way up.
+   * The lift plays out live: the slip floor climbs and wobbles with the
+   * acceleration while the player drags the squeeze to stay between the lines.
    */
   const lift = () => {
     if (won || lifting) return

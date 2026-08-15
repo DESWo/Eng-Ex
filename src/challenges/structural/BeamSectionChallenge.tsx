@@ -98,8 +98,7 @@ const LEVELS: ChallengeLevel<SectionSetup>[] = [
     phase: 'understand',
     concept: 'Weight budget',
     teach: 'A solid bar gets heavy fast, and this one has to be lifted into place. Use the shallowest beam that still passes, because every extra millimetre is dead weight.',
-    // 100 kg/m leaves three workable depths. At 80 there is exactly one, which
-    // reads as guess-the-number rather than a budget to design against.
+    // 100 kg/m leaves three workable depths; 80 leaves exactly one.
     setup: { load: 20000, maxSag: 20, shapes: ['solid'], maxKg: 100, stress: false, brief: 'Same walkway, but the beam has to be craned onto the roof.' },
   },
   {

@@ -1,12 +1,6 @@
 import { motion, useScroll, useSpring } from 'framer-motion'
 
-/**
- * A reading-progress rule across the top of the page.
- *
- * Borrowed straight from long-form academic reading: it tells you how much of
- * the document is left without taking any space to say it. Spring-smoothed so
- * a flicked scroll wheel does not make it twitch.
- */
+/** Reading-progress bar across the top of the page. Spring-smoothed against scroll jitter. */
 export function ScrollProgress() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 180, damping: 30, restDelta: 0.001 })

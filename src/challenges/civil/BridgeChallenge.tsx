@@ -63,9 +63,8 @@ interface BridgeSetup {
   brief: string
   /**
    * A part-built span to open on, as [x,y] pairs and the beams between them.
-   * Level 1 only: a free-build sandbox on a real solver is a brutal first
-   * screen next to the catapult's two sliders, so the first bridge arrives
-   * almost finished with one member missing.
+   * Level 1 only: it arrives one member short of complete, so the first screen
+   * is not an empty canvas over a real solver.
    */
   starter?: { nodes: [number, number][]; links: [number, number][] }
 }

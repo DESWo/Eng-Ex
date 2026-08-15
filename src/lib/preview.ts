@@ -2,12 +2,9 @@ import { useSyncExternalStore } from 'react'
 import { loadGlobalJson, removeGlobal, saveGlobalJson } from '@/lib/storage'
 
 /**
- * Teacher preview: one browser-wide flag that opens every locked field so a
- * teacher can walk the whole app before assigning it.
- *
- * It is deliberately unscoped (plain "ee:preview", not under any student's
- * prefix): previewing belongs to the device, never to a signed-in student,
- * and turning it on writes nothing into anyone's saved work.
+ * Teacher preview: one browser-wide flag that opens every locked field.
+ * Stored unscoped (plain "ee:preview", not under a student's prefix), so
+ * turning it on writes nothing into anyone's saved work.
  */
 const KEY = 'preview'
 const EVENT = 'ee:preview'

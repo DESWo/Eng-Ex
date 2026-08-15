@@ -63,7 +63,7 @@ export const disciplines: Discipline[] = [
     slug: 'mechanical',
     name: 'Mechanical Engineering',
     shortName: 'Mechanical',
-    tagline: 'Design machines that move the world.',
+    tagline: 'Machines, and the forces inside them.',
     description:
       'Engines, robots, roller coasters. If it moves, a mechanical engineer probably helped build it.',
     icon: Cog,
@@ -73,7 +73,7 @@ export const disciplines: Discipline[] = [
       heading: 'What do mechanical engineers do?',
       paragraphs: [
         'Mechanical engineers design things that move. Cars, robots, rockets, even the tiny motor that makes your phone buzz.',
-        'They think about forces: pushes, pulls, spins, and swings. Then they turn metal, plastic, and clever ideas into machines that work.',
+        'They think about forces: pushes, pulls, spins, and swings. Then they work out what shape of metal or plastic can take those forces without bending, overheating, or wearing out.',
       ],
       builds: ['Roller coasters', 'Robot arms', 'Car engines', 'Drones', 'Prosthetic legs', 'Wind turbines'],
       challengeTeaser:
@@ -98,8 +98,8 @@ export const disciplines: Discipline[] = [
           },
           {
             icon: Target,
-            title: 'Tuning is the real job',
-            body: 'Real engineers change one thing at a time, watch what happens, and adjust. You just did exactly that.',
+            title: 'Change one thing at a time',
+            body: 'Move both the angle and the power at once and a miss tells you nothing about which one was wrong. Change one, watch, then change the other.',
           },
         ],
       },
@@ -153,7 +153,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Mechanical engineering is a loop: guess, test, watch, improve. Machines get great one small tweak at a time.',
+        'Mechanical engineering runs as a loop: guess, test, watch, adjust. Almost nothing is right on the first attempt.',
       tradeoff:
         'Every machine trades one thing for another: speed for force, power for control, simple for strong.',
       realWorld: {
@@ -168,7 +168,7 @@ export const disciplines: Discipline[] = [
     diy: {
       title: 'Build a spoon catapult',
       intro:
-        'The catapult from the lab, on your desk, in ten minutes. No special parts needed.',
+        'The same launch you tuned in the game, built out of a spoon and some popsicle sticks.',
       diagram: 'spoon-catapult',
       materials: [
         'Plastic spoon',
@@ -192,9 +192,9 @@ export const disciplines: Discipline[] = [
     slug: 'civil',
     name: 'Civil Engineering',
     shortName: 'Civil',
-    tagline: 'Build the bridges and cities we live in.',
+    tagline: 'Bridges, roads, and the things a town shares.',
     description:
-      'Bridges, tunnels, stadiums, whole skylines. Civil engineers shape the world you walk through every day.',
+      'Bridges, tunnels, stadiums, water mains. Most of it has to keep working for decades with almost nobody looking at it.',
     icon: Building2,
     accent: '#2fb98b',
     difficulty: 'Beginner',
@@ -264,7 +264,7 @@ export const disciplines: Discipline[] = [
           {
             icon: ShieldCheck,
             title: 'Bigger quakes need stronger buildings',
-            body: 'A stronger earthquake shakes harder, so it needs a stronger design. You matched the building to the danger.',
+            body: 'A stronger earthquake shakes harder, so the design has to match the shaking the site can actually get. Building for a quake that never comes is money left in the ground.',
           },
           {
             icon: Columns3,
@@ -282,11 +282,11 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Civil engineering is the art of the tradeoff: strong enough to trust, affordable enough to build.',
+        'Civil work is sized, not maximised. Engineers decide what load a structure has to survive and build for that, because building for every load anyone can imagine costs more than anyone will pay.',
       tradeoff:
         'Civil engineers balance strength, safety, and cost, and there is never quite enough budget for all three.',
       realWorld: {
-        intro: 'You just used the tools that shape real cities.',
+        intro: 'The same three problems turn up on real projects.',
         examples: [
           'Truss bridges span highways and rivers with the exact triangles you built.',
           'Traffic engineers time real city lights the way you split the green.',
@@ -321,9 +321,9 @@ export const disciplines: Discipline[] = [
     slug: 'electrical',
     name: 'Electrical Engineering',
     shortName: 'Electrical',
-    tagline: 'Power the world with clever circuits.',
+    tagline: 'Circuits, and the grid that feeds them.',
     description:
-      'From giant power grids to the chip inside your phone, electrical engineers keep the lights on.',
+      'Power grids at one end, the chip in your phone at the other, both running on the same handful of rules.',
     icon: Zap,
     accent: '#7163dd',
     difficulty: 'Intermediate',
@@ -402,8 +402,8 @@ export const disciplines: Discipline[] = [
           },
           {
             icon: ShieldCheck,
-            title: 'A tripped breaker is a hero',
-            body: 'The breaker did not fail, it protected your house from a fire. Flipping off is exactly its job.',
+            title: 'A trip is the breaker working',
+            body: 'The breaker cuts the circuit before the wire behind the wall gets hot enough to set anything alight. Tripping is the thing it is there to do.',
           },
         ],
       },
@@ -411,7 +411,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Electrical engineering is about connection: finding the smartest path from power to people.',
+        'Electricity only flows along a complete path, and every metre of that path costs money to build and loses a little power on the way.',
       tradeoff:
         'Electrical design trades wire, cost, and safety margins against getting power everywhere it needs to go.',
       realWorld: {
@@ -426,7 +426,7 @@ export const disciplines: Discipline[] = [
     diy: {
       title: 'Build a paper clip flashlight',
       intro:
-        'A real circuit with a real switch, built from junk drawer parts. Circuit Lab, but you can hold it.',
+        'A working circuit with a switch you can open and close, built from a coin cell, an LED, and some foil.',
       diagram: 'paper-clip-flashlight',
       materials: [
         'Coin cell battery (CR2032)',
@@ -451,9 +451,9 @@ export const disciplines: Discipline[] = [
     slug: 'nuclear',
     name: 'Nuclear Engineering',
     shortName: 'Nuclear',
-    tagline: 'Turn tiny atoms into a city of power.',
+    tagline: 'Reactors, and the heat that will not switch off.',
     description:
-      'Split atoms, make heat, make electricity. Nuclear engineers run some of the most powerful machines on Earth.',
+      'Split atoms, make heat, boil water, spin a turbine. Most of the engineering is in controlling the heat, not making it.',
     icon: Atom,
     accent: '#eab308',
     tier: 'more',
@@ -488,8 +488,8 @@ export const disciplines: Discipline[] = [
         },
         {
           icon: ShieldCheck,
-          title: 'Safety is the whole job',
-          body: 'Real reactors are all about balance and backups. You brought the power up slowly and kept it cool, exactly like the pros.',
+          title: 'Power moves slower than you do',
+          body: 'The core takes time to answer a rod movement, so a correction made now shows up after you have already made the next one. That lag is why operators move in small steps and wait.',
         },
         ],
       },
@@ -543,7 +543,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Nuclear engineering is careful balance: make big power, but always carry the heat away and keep a safe margin.',
+        'A reactor makes heat whether anyone wants it to or not. Nuclear engineering is largely about always having somewhere for that heat to go.',
       tradeoff:
         'A reactor trades more power for more heat, so cooling and safety margins must grow right alongside it.',
       realWorld: {
@@ -570,16 +570,16 @@ export const disciplines: Discipline[] = [
       ],
       experiment:
         'Now pull a few dominoes out of the middle, like inserting control rods. The chain slows or stops. That is exactly how a reactor is controlled.',
-      safety: 'This one is just messy, not dangerous. Rebuilding is half the fun.',
+      safety: 'Nothing dangerous here. Just do it somewhere you do not mind picking dominoes up off the floor.',
     },
   },
   {
     slug: 'aerospace',
     name: 'Aerospace Engineering',
     shortName: 'Aerospace',
-    tagline: 'Make things fly, and keep them flying.',
+    tagline: 'Four forces, and what happens when they stop balancing.',
     description:
-      'Planes, rockets, satellites, drones. Aerospace engineers fight gravity and win.',
+      'Planes, rockets, satellites, drones. Almost every decision comes down to carrying less weight and still surviving the trip.',
     icon: Plane,
     accent: '#0ea5e9',
     tier: 'more',
@@ -703,7 +703,7 @@ export const disciplines: Discipline[] = [
     slug: 'industrial',
     name: 'Industrial Engineering',
     shortName: 'Industrial',
-    tagline: 'Make everything run faster and smoother.',
+    tagline: 'Where the work piles up, and why.',
     description:
       'Factories, hospitals, theme park lines. Industrial engineers find the slow spot and fix it.',
     icon: Factory,
@@ -715,7 +715,7 @@ export const disciplines: Discipline[] = [
       heading: 'What do industrial engineers do?',
       paragraphs: [
         'Industrial engineers make systems run better. They look at how work flows and hunt down the thing that slows everything down.',
-        'They design factory lines, shorten checkout queues, and plan hospitals so nobody waits too long. It is the engineering of efficiency.',
+        'They design factory lines, shorten checkout queues, and plan hospitals so nobody waits too long. The answer is usually one station, one desk, or one machine.',
       ],
       builds: ['Factory lines', 'Delivery routes', 'Theme park queues', 'Hospital flow', 'Warehouses', 'Airport security'],
       challengeTeaser:
@@ -829,9 +829,9 @@ export const disciplines: Discipline[] = [
     slug: 'systems',
     name: 'Systems Engineering',
     shortName: 'Systems',
-    tagline: 'Make all the parts work as one.',
+    tagline: 'Dividing a fixed budget between parts that all want more.',
     description:
-      'Spacecraft, self-driving cars, whole missions. Systems engineers keep every piece pulling together.',
+      'Spacecraft, self-driving cars, whole missions. Systems engineers own the mass, power, and money every other team is competing for.',
     icon: Satellite,
     accent: '#ec4899',
     tier: 'more',
@@ -921,7 +921,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Systems engineering is balancing the whole: sharing a limited budget so every connected part gets just enough.',
+        'Every subsystem is competing for the same fixed mass, power, and money. The design is finished when all of them fit at once.',
       tradeoff:
         'Systems engineers trade mass, power, and money across every subsystem so the whole mission still works.',
       realWorld: {
@@ -955,9 +955,9 @@ export const disciplines: Discipline[] = [
     slug: 'robotics',
     name: 'Robotics Engineering',
     shortName: 'Robotics',
-    tagline: 'Give machines a body and a brain.',
+    tagline: 'Motors, sensors, and the control loop between them.',
     description:
-      'Robot arms, drones, self-driving rovers. Robotics engineers blend motors, sensors, and code into things that move on their own.',
+      'Robot arms, drones, self-driving rovers. Robotics engineers put motors, sensors, and code together into something that moves on its own.',
     icon: Bot,
     accent: '#14b8a6',
     tier: 'more',
@@ -1062,7 +1062,7 @@ export const disciplines: Discipline[] = [
     diy: {
       title: 'Build a cardboard grabber',
       intro:
-        'Make a claw that reaches out and grabs, powered by your own hand. A first taste of robot arms.',
+        'A cardboard claw that reaches out and closes when you squeeze the near end.',
       diagram: 'grabber',
       materials: ['Thick cardboard', 'Two split pins (brads) or small bolts', 'Scissors', 'A rubber band'],
       steps: [
@@ -1081,9 +1081,9 @@ export const disciplines: Discipline[] = [
     slug: 'environmental',
     name: 'Environmental Engineering',
     shortName: 'Environmental',
-    tagline: 'Keep our water, air, and land clean.',
+    tagline: 'Cleaning up water, air, and waste.',
     description:
-      'Clean water, fresh air, less waste. Environmental engineers protect people and the planet at the same time.',
+      'Drinking water, sewage, air scrubbing, drainage. Most of it is invisible until it stops working.',
     icon: Droplets,
     accent: '#0d9488',
     tier: 'more',
@@ -1093,7 +1093,7 @@ export const disciplines: Discipline[] = [
       heading: 'What do environmental engineers do?',
       paragraphs: [
         'Environmental engineers keep the stuff we all share clean. They design the plants that make dirty water safe to drink.',
-        'They also clean up smoke, plan recycling, and protect rivers. It is engineering with the planet in mind.',
+        'They also scrub smoke out of exhaust stacks, plan recycling, and work out how much treated water a river can take before the fish start dying.',
       ],
       builds: ['Water treatment plants', 'Air scrubbers', 'Recycling systems', 'Clean rivers', 'Landfills', 'Solar farms'],
       challengeTeaser:
@@ -1114,12 +1114,12 @@ export const disciplines: Discipline[] = [
         {
           icon: Recycle,
           title: 'Only what you need',
-          body: 'Every stage costs money and energy. Clean engineers add just the stages the water actually needs, and no more.',
+          body: 'Every stage costs money to run and energy to power. Treatment engineers add the stages this particular water needs and leave the rest out.',
         },
         {
           icon: Sprout,
-          title: 'Clean water, real lives',
-          body: 'This is not a game for millions of people. Safe water is one of engineering\'s biggest gifts to the world.',
+          title: 'Clear is not the same as safe',
+          body: 'Water can look perfectly clean and still carry bacteria and dissolved chemicals. The last stages deal with the things you cannot see, which is why they are the ones you cannot skip.',
         },
         ],
       },
@@ -1173,9 +1173,9 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Environmental engineering is matching the fix to the problem: the right cleanup steps, for the least cost.',
+        'Each kind of contamination needs its own removal step. Matching the steps to what is actually in the water is most of the job.',
       tradeoff:
-        'Clean engineers trade cost and energy against how pure the water, air, or soil ends up.',
+        'Treatment engineers trade cost and energy against how pure the water, air, or soil ends up.',
       realWorld: {
         intro: 'Your filter is a shrunk-down version of a real treatment plant.',
         examples: [
@@ -1199,7 +1199,7 @@ export const disciplines: Discipline[] = [
         'Compare it to the muddy cup you started with.',
       ],
       experiment:
-        'Add more layers or finer sand and pour again. More stages catch more dirt, just like adding filters in the game. (Still do not drink it!)',
+        'Add more layers or finer sand and pour again. More stages catch more dirt, just like adding filters in the game. It is still not drinkable.',
       safety: 'This water is clearer, not safe to drink. It is a demo only.',
     },
   },
@@ -1424,7 +1424,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Structural engineering is a balance of stiffness and cost: strong enough to stand still, cheap enough to build.',
+        'Stiffness comes from shape far more than from material. Where the steel sits matters more than how much of it there is.',
       tradeoff:
         'Structural engineers trade stiffness against cost: a rock-solid tower nobody can afford is a failed design.',
       realWorld: {
@@ -1439,7 +1439,7 @@ export const disciplines: Discipline[] = [
     diy: {
       title: 'Build the tallest paper tower',
       intro:
-        'With just paper and tape, build the tallest tower that can still hold a book. Height versus strength, live.',
+        'Build the tallest tower you can out of paper and tape that will still hold a book on top.',
       diagram: 'paper-tower',
       materials: ['A few sheets of paper', 'Tape', 'A paperback book for testing'],
       steps: [
@@ -1458,9 +1458,9 @@ export const disciplines: Discipline[] = [
     slug: 'computer',
     name: 'Computer Engineering',
     shortName: 'Computer',
-    tagline: 'Build the brains inside every device.',
+    tagline: 'Logic gates, and the chips built out of them.',
     description:
-      'Chips, logic, and the tiny switches that run everything. Computer engineers design the hardware that thinks.',
+      'Chips, logic, and the tiny switches underneath. Computer engineers design the hardware that code runs on.',
     icon: CircuitBoard,
     accent: '#6164ec',
     tier: 'more',
@@ -1519,7 +1519,7 @@ export const disciplines: Discipline[] = [
           {
             icon: ToggleLeft,
             title: 'A minus sign is not free',
-            body: 'To send negative numbers, one bulb has to stop carrying a value and start carrying the sign. You have not gained anything for nothing, you have traded away half your range.',
+            body: 'To send negative numbers, one bulb has to stop carrying a value and start carrying the sign, which costs you half your counting range.',
           },
         ],
       },
@@ -1550,7 +1550,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Computer engineering is built from simple choices: tiny gates that each say yes or no, stacked into something that thinks.',
+        'Every part of a computer is built from gates that only answer yes or no. The difficulty is in how many there are and how they are wired together.',
       tradeoff:
         'Chip designers trade speed, power, and size: faster chips run hotter and cost more to make.',
       realWorld: {
@@ -1565,7 +1565,7 @@ export const disciplines: Discipline[] = [
     diy: {
       title: 'Two-switch logic light',
       intro:
-        'Wire two switches to a light two different ways and feel the difference between AND and OR, for real.',
+        'Wire two switches to a light two different ways. One wiring gives you an AND gate, the other gives you an OR gate.',
       diagram: 'two-switch',
       materials: ['A battery and a small bulb or LED', 'Two homemade switches (foil + paperclip)', 'Wire or foil strips, tape'],
       steps: [

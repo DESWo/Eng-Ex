@@ -204,9 +204,8 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
   const wallKey = layers.map((m) => `${m}${thick[m]}`).join('-') || 'open'
 
   /**
-   * One lane of radiation, lane-defense style. Each dot stands for a slice of
-   * the beam; where it dies is read off the real attenuation curve, so a weak
-   * wall visibly lets dots through to the technician (those fly red).
+   * One lane of radiation. Each dot is a slice of the beam, and where it stops
+   * is read off the attenuation curve, so leakage on screen matches the dose.
    */
   const lane = (kind: 'gamma' | 'neutron', laneY: number, strength: number, color: string) => {
     if (strength <= 0) return null
@@ -362,7 +361,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict: only after the player certifies, so the meter is the test */}
+      {/* Verdict, only after the player certifies */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
         {verdict ? (
           <p

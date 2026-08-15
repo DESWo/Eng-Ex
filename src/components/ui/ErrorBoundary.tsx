@@ -16,9 +16,9 @@ interface ErrorBoundaryState {
 }
 
 /**
- * Catches render errors so one broken subtree (most likely a game chunk that
- * failed to download, e.g. right after a deploy replaced the hashed files)
- * shows a friendly card instead of blanking the whole app.
+ * Catches render errors so one broken subtree does not blank the whole app.
+ * Usually a game chunk that failed to download, e.g. right after a deploy
+ * replaced the hashed files.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { failed: false }

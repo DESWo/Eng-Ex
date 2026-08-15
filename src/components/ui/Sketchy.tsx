@@ -4,23 +4,17 @@ import type { Drawable, Options } from 'roughjs/bin/core'
 import { cn } from '@/lib/utils'
 
 /**
- * Hand-drawn SVG shapes, for scenes that should look sketched in an engineer's
- * notebook rather than laid out by a machine.
+ * Hand-drawn SVG shapes on top of Rough.js. The generator hands back path data,
+ * which these render as plain <path> elements; nothing here touches the DOM.
+ * Colors come from Tailwind classes on the group, because a CSS rule outranks
+ * the presentation attributes Rough writes.
  *
- * Rough.js generates the wobble, but nothing here touches the DOM: the
- * generator hands back path data, which these components render as ordinary
- * <path> elements. Colors come from Tailwind classes on the group, because a
- * CSS rule outranks the presentation attributes Rough writes.
- *
- * Two rules matter when using these:
- *
- * 1. Always pass a stable `seed`. Rough re-randomizes on every call, so an
- *    unseeded shape would redraw itself differently on each React render and
- *    visibly crawl. Every component below defaults its seed from its own
- *    geometry, which keeps a shape steady while still making neighbours differ.
- * 2. Keep these on things that change at human speed. The path data is memoized
- *    on geometry, so a shape animating attributes every frame would regenerate
- *    its sketch every frame too.
+ * Two things to watch:
+ * 1. Rough re-randomizes on every call, so an unseeded shape redraws differently
+ *    on each render and visibly crawls. Each component below defaults its seed
+ *    from its own geometry.
+ * 2. Path data is memoized on geometry, so a shape animating its attributes
+ *    every frame regenerates its sketch every frame.
  */
 
 const generator = rough.generator()
@@ -65,10 +59,7 @@ interface ShapeProps {
   className?: string
   /** Tailwind stroke class for the hatching, e.g. "stroke-amber-400". */
   fillClassName?: string
-  /**
-   * Literal outline colour, for scenes that carry their palette in data rather
-   * than in Tailwind classes. Wins over `className` because it lands inline.
-   */
+  /** Literal outline colour, for palettes that live in data. Wins over `className`: it lands inline. */
   stroke?: string
   /** Literal hatching colour. Presence of either fill prop enables hatching. */
   hatchStroke?: string

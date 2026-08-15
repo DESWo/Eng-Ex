@@ -236,8 +236,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const p = sim.power[req.id] ?? 0
     return req.want === 'full' ? p >= FULL : p < LIT
   }
-  // Total copper on the board, measured wire by wire. One board unit is one
-  // centimeter of copper, which puts a workshop run in honest hundreds of cm.
+  // Total copper, wire by wire. One board unit is one centimetre.
   const wireLength = Math.round(
     wires.reduce((sum, [a, b]) => {
       const pa = terminalPos(a)
@@ -248,7 +247,6 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const overWire = round.wireBudget !== null && wireLength > round.wireBudget
   const allMet = round.requirements.every(met) && !simClosed.short && !overWire
 
-  /** Melted wiring has consequences: the house allowance, via attemptsFor. */
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 

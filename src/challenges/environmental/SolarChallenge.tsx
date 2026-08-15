@@ -213,8 +213,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
     if (att.spend()) {
       reset()
       att.refill()
-      // Running dry keeps the diagnostic: the student who just spent their
-      // last attempt is the one who needs to know why the lights went out.
+      // keep the diagnostic text even on the last attempt
       setVerdict({ ok: false, text: `${text} That was the last test switchover, so the roof is bare again with fresh attempts. Size against that number before you buy.` })
     } else {
       setVerdict({ ok: false, text })
@@ -317,7 +316,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
         </svg>
       </div>
 
-      {/* Verdict: only after the family actually switches over */}
+      {/* Verdict, only after the switchover */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
         {verdict ? (
           <p
@@ -359,7 +358,7 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
         />
       </div>
 
-      {/* Fit the actual hardware: panels onto the roof, modules into the cupboard. */}
+      {/* hardware pickers: panels and battery modules */}
       <div className="mt-4 grid gap-5 sm:grid-cols-2">
         <div>
           <p className="mb-2 font-display text-sm font-semibold">

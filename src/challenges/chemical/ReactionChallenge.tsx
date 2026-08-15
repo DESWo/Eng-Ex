@@ -62,8 +62,8 @@ const LEVELS: ChallengeLevel<ReactionSetup>[] = [
     phase: 'understand',
     concept: 'Hot reactors are thirsty',
     teach: 'Holding a reactor hot burns fuel every minute, and this plant has a gas bill. Reach the target without simply pinning the dial to maximum, because the hottest run is also the most expensive.',
-    // The budget has to bite below the top of the dial or the lesson is a lie:
-    // a 700° run burns 66 units, so 35 forces the win into 420-480°C.
+    // The budget has to bite below the top of the dial: a 700° run burns 66
+    // units, so 35 forces the win into 420-480°C.
     setup: { target: 0.4, fixedTime: 6, energyBudget: 35, curves: false, brief: 'The same reaction, now with the gas meter running.' },
   },
   {

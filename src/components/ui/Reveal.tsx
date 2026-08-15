@@ -13,16 +13,9 @@ interface RevealProps {
 }
 
 /**
- * Brings a block in as it scrolls into view, so a page reveals itself section
- * by section instead of arriving all at once.
- *
- * Fires slightly before the element reaches the fold, which reads as the page
- * keeping up with you rather than lagging behind. Runs once by default: a
- * section that re-animates every time you scroll past becomes tiring on the
- * way back up.
- *
- * MotionConfig sets reducedMotion="user" app-wide, so anyone who asked for
- * less motion gets the content without the travel.
+ * Fades a block in as it scrolls into view. Runs once unless `repeat`.
+ * The -80px viewport margin fires it just before the element reaches the fold.
+ * MotionConfig sets reducedMotion="user" app-wide, so reduced motion skips the travel.
  */
 export function Reveal({ children, delay = 0, y = 22, className, repeat = false }: RevealProps) {
   return (

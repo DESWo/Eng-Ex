@@ -18,14 +18,13 @@ import {
 type Status = { kind: 'ok' | 'error'; text: string } | null
 
 /**
- * Two ways out of this browser, because students do not all have the same one.
- * A save file is the good path; the transfer code is for a locked-down machine
- * where a download never lands anywhere findable. Both go through parseSave,
- * so a mangled file and a truncated code fail the same way, before anything is
- * written. The real fix is still the Firebase seam behind src/lib/profile.ts.
+ * Save file and transfer code, for getting progress off this browser. The code
+ * exists for machines where a download never lands anywhere findable. Both go
+ * through parseSave, so a mangled file and a truncated code fail the same way,
+ * before anything is written.
  */
 
-/** Name both sides of a mismatch, guest slot included, in one plain question. */
+/** Name both sides of a mismatch, guest slot included, in one question. */
 function mismatchQuestion(save: SaveFile, mine: string | null) {
   const theirs = typeof save.account === 'string' && save.account ? save.account : null
   const from = theirs ? `This save belongs to ${theirs}.` : 'This save was made without an account.'

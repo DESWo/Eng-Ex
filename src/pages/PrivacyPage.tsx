@@ -1,7 +1,4 @@
-/**
- * Plain-language privacy statement. Same register as the sign-in dialog:
- * say what is actually true, in short sentences, without legal padding.
- */
+/** Plain-language privacy statement. */
 export function PrivacyPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">

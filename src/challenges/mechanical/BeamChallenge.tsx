@@ -298,8 +298,7 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
             }
           />
           {round.movablePivot && (
-            /* The clamp is stated here so bumping into it reads as a rule,
-               not a broken control. */
+            /* state the clamp range, so hitting it does not look like a bug */
             <text x={pivotPx} y={GROUND_Y + 26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
               drag the pivot, up to {PIVOT_RANGE} marks either way
             </text>
@@ -336,10 +335,7 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
               const x = CENTER_X + crate.pos * PX_PER_MARK
               return (
                 <g key={i}>
-                  {/*
-                   * A pale wash under the hatching, the way a real sketch is
-                   * shaded, so the weight label keeps a surface to sit on.
-                   */}
+                  {/* pale wash under the hatching, so the weight label stays readable */}
                   <rect
                     x={x - size / 2}
                     y={BEAM_Y - 6 - size}

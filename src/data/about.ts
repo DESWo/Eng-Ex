@@ -12,33 +12,37 @@ import type { LucideIcon } from 'lucide-react'
  * The creator section is a first-person intro; personalize it however you like.
  */
 
+// PLACEHOLDER FOR DESMOND: there is no "why I built this" here any more, because
+// the old one was not written by you. Add a paragraph in your own words and put
+// the heading back to 'Why I built this'. A few plain sentences is enough.
 export const aboutWhy = {
-  heading: 'Why I built this',
+  heading: 'What this is',
   paragraphs: [
-    'Most people never find out what engineering actually feels like until college, if ever. Textbooks explain it, but they rarely let you touch it.',
-    'Engineering Explorer flips that around. Instead of reading about forces, budgets, and tradeoffs, you play with them: build a bridge and watch it fail, balance a reactor, wire a real circuit. The idea clicks because you did it, not because someone told you.',
-    'It is not meant to replace school or Khan Academy. It is meant to make engineering feel approachable and exciting, so more curious students discover a field they might love.',
+    'Twelve engineering fields. Each one has three games, five levels deep, then a short explanation of what you just did and a project you can build at home.',
+    'The games are simulations rather than quizzes. Bridge Builder assembles a truss stiffness matrix and solves it again at every position the truck rolls to, so a bridge with too few triangles comes apart the way a real mechanism does. The robot arm solves inverse kinematics, elbow-up and elbow-down. Smooth Ride works out the transmissibility of the suspension you picked, which is why the stiff setup that wins level 2 shakes itself apart on level 3.',
+    'It all runs in the browser and saves to whichever device you played on. There is no server, no account, and no analytics.',
   ],
 }
 
 export const aboutGoal = {
   heading: 'The goal',
-  body: 'Help middle school and high school students discover which kind of engineering fits them, through short, hands-on simulations. No grades and nothing compared against anyone else. Levels earn up to three stars for solving them unaided, and replaying can only improve a rating, never lower it. Every challenge ends by showing the real engineering principle behind it and where that idea shows up in industry, so students leave thinking, "I just did what real engineers do."',
+  body: 'For middle and high school students to try several kinds of engineering and work out which ones they want more of. Nothing is graded and no score is compared between students. Levels award up to three stars for solving them unaided, and replaying can raise a rating but never lower it. Each game ends with the principle behind it and where that principle is used in industry.',
   pillars: [
-    { label: 'Learn by doing', text: 'Interactive simulations, not walls of text.' },
-    { label: 'Real concepts', text: 'Forces, budgets, and tradeoffs, made visual.' },
-    { label: 'Find your fit', text: 'Sample many fields and see what excites you.' },
+    { label: 'Play first', text: 'Every field opens with the games. The explanation comes afterwards.' },
+    { label: 'Real models', text: 'The bridge solves a truss. The arm solves inverse kinematics.' },
+    { label: 'Twelve fields', text: 'Three are open from the start. Nine more unlock after those.' },
   ] as { label: string; text: string }[],
 }
 
-// Personalize this. It is written in first person as the creator.
+// PLACEHOLDER FOR DESMOND: the two paragraphs that used to be here were written
+// for you, not by you. Replace the line below with however you want to introduce
+// yourself. Write it yourself.
 export const aboutCreator = {
   heading: 'About the creator',
   name: 'Desmond Wong',
   role: 'Creator of Engineering Explorer',
   paragraphs: [
-    'Hi, I\'m Desmond. I build things at the intersection of engineering and education, and I care a lot about making technical ideas feel intuitive instead of intimidating.',
-    'I made Engineering Explorer because I wished something like it existed when I was younger: a place to try engineering for real before committing to it. If it helps even a few students find a field they love, it did its job.',
+    'I built Engineering Explorer. The roadmap below is what I am working on next.',
   ],
 }
 

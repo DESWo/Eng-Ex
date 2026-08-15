@@ -35,8 +35,8 @@ const naturalHz = (k: number, m: number) => Math.sqrt(k / m) / (2 * Math.PI)
 
 /**
  * How much of the road's shaking reaches the body. Near 1 the road passes
- * straight through; near resonance it is AMPLIFIED, which is the whole story
- * of level 3. Classic single degree-of-freedom transmissibility.
+ * straight through; near resonance it is AMPLIFIED, which is what level 3
+ * turns on. Classic single degree-of-freedom transmissibility.
  */
 const ampAt = (k: number, m: number, dampers: number, roadHz: number) => {
   const r = roadHz / naturalHz(k, m)

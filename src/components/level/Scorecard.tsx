@@ -10,19 +10,15 @@ interface ScorecardProps {
   /** Best value the player has ever recorded for each metric id. */
   best: Record<string, number>
   /**
-   * True once the level has actually been solved. Until then the numbers are
-   * only a preview: a design that has not run yet trivially "passes" every
-   * minimize goal, so scoring it would be a lie.
+   * True once the level is solved. Before that the numbers are a preview only:
+   * a design that has not run yet trivially passes every minimize goal.
    */
   scored: boolean
 }
 
 const passes = (m: LevelMetric, v: number) => (m.goal === 'min' ? v <= m.target : v >= m.target)
 
-/**
- * Level 5 only. Three competing goals with par marked on each bar, plus the
- * player's own best, so beating your last design is the thing to chase.
- */
+/** Level 5 only. Competing goals with par marked on each bar, plus the player's best. */
 export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
   const met = metrics.filter((m) => values[m.id] !== undefined && passes(m, values[m.id])).length
 

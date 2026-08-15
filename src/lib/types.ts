@@ -12,10 +12,7 @@ export interface ChallengeProps {
   onComplete: () => void
 }
 
-/**
- * The four-beat arc every challenge walks through across its five levels:
- * play it, understand its limits, analyze what is really happening, then optimize.
- */
+/** The four phases the five levels move through. */
 export type LevelPhase = 'play' | 'understand' | 'analyze' | 'optimize'
 
 /** One scored dimension on a level 5 optimization run. */
@@ -30,9 +27,8 @@ export interface LevelMetric {
 }
 
 /**
- * One level of a challenge. Every challenge has exactly five, and each one
- * introduces a single new idea rather than just tightening the numbers.
- * `setup` carries whatever per-level config that specific game needs.
+ * One level of a challenge. Every challenge has exactly five.
+ * `setup` carries whatever per-level config that game needs.
  */
 export interface ChallengeLevel<Setup = unknown> {
   n: 1 | 2 | 3 | 4 | 5
@@ -59,10 +55,7 @@ export interface ChallengeRef {
   id: string
   title: string
   goal: string
-  /**
-   * The real career behind the game, shown while playing: who does this for
-   * a living and where. Desmond's rule: every game must feel like a field.
-   */
+  /** The real job behind the game: who does this for a living, and where. */
   realJob: string
   /** Why THIS game works, shown in the "Why it works" step (one card each). */
   why: LearnPoint[]

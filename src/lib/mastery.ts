@@ -22,12 +22,9 @@ export const TIER_LABEL: Record<MasteryTier, string> = {
 }
 
 /**
- * How far somebody has actually got through a field, counted in levels rather
- * than in flow steps.
- *
- * The step-based percentage says 100% once you have beaten ONE challenge at its
- * FIRST level, which badly overstates things now every field has three games.
- * This counts the real work: fifteen levels per field.
+ * Progress through a field, counted in levels (15 per field) rather than in
+ * flow steps. The step-based percentage in useProgress reads 100% after one
+ * challenge at level 1, which is not the same question.
  */
 export function masteryFor(discipline: Discipline): Mastery {
   const store = loadJson<LevelStore>('levels', {})
@@ -38,8 +35,7 @@ export function masteryFor(discipline: Discipline): Mastery {
   for (const c of discipline.challenges) {
     const done = store[c.id]?.cleared ?? []
     cleared += done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE).length
-    // "Solid" means every game in the field is at least understood, not that
-    // one game was played to death.
+    // "solid" requires every game at level 3+, not one game played to death
     if (!done.some((n) => n >= 3)) everyGameAtThree = false
   }
 

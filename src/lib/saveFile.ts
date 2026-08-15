@@ -4,15 +4,11 @@ import { disciplines } from '@/data/disciplines'
 import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 
 /**
- * Progress lives only in the browser, and browsers lose data: cleared
- * history, a different computer, a school machine that wipes itself. A save
- * file is the escape hatch: download your progress, load it anywhere.
+ * Export and import of a student's progress, since it otherwise only exists in
+ * one browser's localStorage. The transfer code at the bottom is the same
+ * payload as text, for machines that cannot download a file.
  *
- * The transfer code below is the same payload as text, for the case a save
- * file cannot make the trip (a locked-down Chromebook, a phone, a school
- * account with no downloads). Both are stopgaps: the real fix is the Firebase
- * seam behind src/lib/profile.ts, where an account would hold this server side
- * instead of asking a student to carry their own progress around.
+ * Both are stopgaps for the Firebase seam behind src/lib/profile.ts.
  */
 
 /** Everything a person's progress lives in. Mirrors CARRIED_KEYS in profile.ts. */
@@ -41,11 +37,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 const describe = (value: unknown) =>
   value === null ? 'empty' : Array.isArray(value) ? 'a list' : `a ${typeof value}`
 
-/**
- * Levels cleared and stars earned, per field, in sentences.
- * Machine keys stay in `data`; this exists so the first screen of the file
- * means something to a person.
- */
+/** Levels cleared and stars earned, per field, in sentences. Never read back in. */
 function summarize(levels: unknown): Record<string, string> {
   const store = (isPlainObject(levels) ? levels : {}) as LevelStore
   const summary: Record<string, string> = {}
@@ -111,11 +103,9 @@ export type ParsedSave = { ok: true; save: SaveFile } | { ok: false; error: stri
 /**
  * Read a save file WITHOUT touching storage.
  *
- * Everything here is hand-editable text that has been round-tripped through a
- * downloads folder or an email, so none of it is trusted. A file that says
- * `"levels": "oops"` used to be written straight through and only fell apart
- * later, inside the games. Checking the shape up front means a bad file is a
- * sentence on screen instead of wrecked progress.
+ * The input is hand-editable text that has been through a downloads folder or
+ * an email, so none of it is trusted. Validating the shape here means a bad
+ * file fails with a message instead of half-writing over real progress.
  */
 export function parseSave(raw: string): ParsedSave {
   let parsed: unknown
@@ -146,8 +136,7 @@ export function parseSave(raw: string): ParsedSave {
       }
     }
   }
-  // `summary` is for humans, so it is never read back. Anything else extra in
-  // the file is ignored the same way.
+  // `summary` and any other extra keys are ignored
   return { ok: true, save: parsed as unknown as SaveFile }
 }
 
@@ -160,10 +149,9 @@ export function saveMatchesCurrentAccount(save: SaveFile): boolean {
 
 /**
  * Write a parsed save into the CURRENT account (or guest slot), replacing what
- * is there. A key missing from the file is cleared rather than left behind, so
- * loading a save gives you that save and nothing else, which is what the dialog
- * promises. Pass only a save from parseSave. The caller should reload the page
- * afterwards so every hook re-reads the restored state.
+ * is there. A key missing from the file is CLEARED, not left behind, so a
+ * restore is an overwrite and not a merge. Pass only a save from parseSave.
+ * Caller should reload the page afterwards so every hook re-reads.
  */
 export function applySave(save: SaveFile) {
   for (const k of SAVE_KEYS) {

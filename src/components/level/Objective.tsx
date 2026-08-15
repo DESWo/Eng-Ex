@@ -14,13 +14,9 @@ interface ObjectiveProps {
 }
 
 /**
- * The one line every game shows above its play area: what winning means, in
- * numbers, next to where the player currently stands. Desmond's rule: nobody
- * should ever win without having known what they were trying to do.
- *
- * Keyed on the goal text, so arriving at a new level replays the entrance and a
- * light sweeps across the banner once. That puts the eye on the objective at
- * the moment it changed, instead of nagging for attention all level long.
+ * The line above every play area: what winning means in numbers, next to where
+ * the player stands right now. Keyed on the goal text, so a new level replays
+ * the entrance.
  */
 export function Objective({ goal, status, attemptsLeft, met }: ObjectiveProps) {
   const urgent = attemptsLeft !== undefined && attemptsLeft !== null && attemptsLeft <= 1 && !met
@@ -38,7 +34,7 @@ export function Objective({ goal, status, attemptsLeft, met }: ObjectiveProps) {
           : 'accent-border accent-soft',
       )}
     >
-      {/* One pass of light when the objective is new. */}
+      {/* one sweep of light when the objective changes */}
       <motion.span
         aria-hidden
         initial={{ x: '-140%' }}
@@ -58,7 +54,7 @@ export function Objective({ goal, status, attemptsLeft, met }: ObjectiveProps) {
       )}
       {attemptsLeft !== undefined && attemptsLeft !== null && (
         <motion.span
-          // The last test pulses, because that one is worth pausing over.
+          // last test pulses
           animate={urgent ? { scale: [1, 1.07, 1] } : { scale: 1 }}
           transition={urgent ? { duration: 1.4, repeat: Infinity } : { duration: 0.2 }}
           className={cn(
