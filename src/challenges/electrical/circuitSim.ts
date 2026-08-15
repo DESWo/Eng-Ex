@@ -23,6 +23,17 @@ export interface SimResult {
   short: boolean
   /** part id -> how hard it is running, 1 = full power. */
   power: Record<string, number>
+  /**
+   * terminal -> the net it ended up in. Read only: it lets a meter probe name
+   * what it is touching. Nothing here feeds the solve.
+   */
+  net: Record<string, string>
+  /**
+   * net -> volts above the minus rail, for nets the solve actually referenced.
+   * A net with no entry has no path back to the source, which is exactly what a
+   * real probe reads there: nothing.
+   */
+  volts: Record<string, number>
 }
 
 /** Union-find over terminal names. */
@@ -59,8 +70,14 @@ export function simulate(
   const power: Record<string, number> = {}
   for (const { part } of parts) power[part.id] = 0
 
+  // Which net every named terminal fell into. Presentation only.
+  const net: Record<string, string> = {}
+  for (const t of [plusTerminal, minusTerminal, ...connections.flat(), ...parts.flatMap((p) => [p.a, p.b])]) {
+    net[t] = nets.find(t)
+  }
+
   // A straight wire from + to - with nothing in the way is a short circuit.
-  if (plus === minus) return { short: true, power }
+  if (plus === minus) return { short: true, power, net, volts: {} }
 
   // Collect the resistive branches between nets.
   const branches = parts
@@ -138,5 +155,9 @@ export function simulate(
     power[part.id] = current / part.ratedCurrent
   }
 
-  return { short: false, power }
+  // Node voltages the solve already knows, handed out for probing.
+  const volts: Record<string, number> = { [plus]: voltage, [minus]: 0 }
+  for (const [netId, i] of index) volts[netId] = v[i]
+
+  return { short: false, power, net, volts }
 }

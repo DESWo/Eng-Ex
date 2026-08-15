@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
-import { Badge } from '@/components/ui/Badge'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
+import {
+  AnnunciatorPanel,
+  BankLever,
+  ChartRecorder,
+  DigitalWindow,
+  Engraved,
+  Gauge,
+  GuardedControl,
+  IlluminatedButton,
+  INK,
+  MimicBoard,
+  MimicLamp,
+  PanelBay,
+  PanelSurface,
+  Plate,
+  useAnnunciators,
+} from '@/components/instruments/panel'
+import type { AnnunciatorDef } from '@/components/instruments/panel'
 import { useLevels } from '@/hooks/useLevels'
-import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +40,24 @@ const POWER_LAG = 0.12 // how much of the gap the core closes per tick
 const TEMP_LAG = 0.1
 const HOLD_TICKS = 16 // about five seconds steady to bank a win
 
+/* --------------- board only, never read by the sim --------------- */
+/** Annunciator threshold for "you are getting close to the limit". */
+const ALARM_TEMP = 750
+/** Deviation alarms stay dark until the plant is actually online. */
+const ONLINE_MW = 50
+/** Full scale on the two board meters. Display range, not a plant limit. */
+const TEMP_SCALE_MIN = 200
+const TEMP_SCALE_MAX = 1000
+
+const ALARMS: AnnunciatorDef[] = [
+  { id: 'temp-high', legend: 'Core temp high', tone: 'amber' },
+  { id: 'temp-limit', legend: 'Temp near limit', tone: 'amber' },
+  { id: 'trip', legend: 'Reactor trip', tone: 'red' },
+  { id: 'out-low', legend: 'Output below band', tone: 'white' },
+  { id: 'out-high', legend: 'Output above band', tone: 'white' },
+  { id: 'pumps-off', legend: 'Coolant pumps off', tone: 'red' },
+]
+
 interface ReactorSetup {
   label: string
   /** MW band to hold. For level 5 this is the first phase of the day. */
@@ -38,7 +70,7 @@ interface ReactorSetup {
   pumpsDraw: boolean
   /** Level 3 on: the core responds slowly, so overcorrecting oscillates. */
   lag: boolean
-  /** Level 4 on: the strip chart is available. */
+  /** Level 4 on: the chart recorder is available. */
   chart: boolean
   brief: string
 }
@@ -72,8 +104,8 @@ const LEVELS: ChallengeLevel<ReactorSetup>[] = [
     n: 4,
     title: 'Read the traces',
     phase: 'analyze',
-    concept: 'The strip chart',
-    teach: 'Turn on the chart. Power and temperature scroll past like a hospital monitor, and your own overcorrections show up as waves. A good operator leaves a flat line behind them.',
+    concept: 'The chart recorder',
+    teach: 'Turn on the recorder. Power and temperature scroll past like a hospital monitor, and your own overcorrections show up as waves. A good operator leaves a flat line behind them.',
     setup: { label: 'High summer load', band: [900, 1000], phases: null, phaseTicks: 0, pumpsDraw: true, lag: true, chart: true, brief: 'A heavy, steady load with the control-room instruments switched on.' },
   },
   {
@@ -119,6 +151,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
   const coolantRef = useRef(50)
   /** Latched the instant the run ends, so no tick lands after the verdict. */
   const overRef = useRef(false)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     setRods(100)
@@ -141,18 +174,6 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
     rodsRef.current = rods
     coolantRef.current = coolant
   }, [rods, coolant])
-
-  /** Haul the whole rod bank in or out of the core. */
-  const { bind: rodBind } = useSvgDrag((_x, y) => {
-    setRods(Math.max(0, Math.min(100, Math.round(((y - 30) / 74) * 100))))
-  })
-  const nudgeRods = (e: React.KeyboardEvent) => {
-    const step = e.shiftKey ? 10 : 2
-    if (e.key === 'ArrowDown') setRods((r) => Math.min(100, r + step))
-    else if (e.key === 'ArrowUp') setRods((r) => Math.max(0, r - step))
-    else return
-    e.preventDefault()
-  }
 
   // Which band applies right now (the day moves it on level 5).
   const phaseIndex = round.phases ? Math.min(round.phases.length - 1, Math.floor(dayTick / round.phaseTicks)) : 0
@@ -268,254 +289,323 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
   const dayPct = round.phases ? Math.round((statsRef.current.inBand / Math.max(1, statsRef.current.total)) * 100) : 0
   const failedDay = dayFinished && !wonRound && dayPct < 65
 
+  /* ---------- the board ---------- */
+  // Alarm conditions are read off the same numbers the operator sees. They
+  // latch in the annunciator hook; nothing here feeds back into the plant.
+  const online = power > ONLINE_MW
+  const alarms = useAnnunciators(ALARMS, {
+    'temp-high': shownTemp >= SAFE_TEMP,
+    'temp-limit': shownTemp >= ALARM_TEMP,
+    trip: meltdown,
+    'out-low': running && online && netPower < bandLow,
+    'out-high': running && online && netPower > bandHigh,
+    'pumps-off': running && coolant === 0,
+  })
+
+  // Latched windows belong to one run, so a new level opens on a dark board.
+  const clearAlarms = alarms.reset
+  useEffect(() => {
+    clearAlarms()
+  }, [lv.level.n, clearAlarms])
+
+  /** Scram clears the latched alarms along with the plant. */
+  const scram = () => {
+    clearAlarms()
+    reset()
+  }
+
+  const pumpDrawMw = Math.round(pumpCount * PUMP_DRAW)
+  const status = meltdown
+    ? 'Meltdown! The core ran away and overheated. The plant is stopped, so scram to bring it back online.'
+    : failedDay
+      ? `Day over: on target ${dayPct}% of the time, and the grid wants 65%. The plant is stopped there. Scram to run the day again and ride the band more closely.`
+      : wonRound
+        ? round.phases
+          ? `Day complete: on target ${dayPct}% of the time.`
+          : 'Steady and cool! The grid is happy and the core is safe.'
+        : !inBand
+          ? netPower < bandLow
+            ? 'The grid needs more than it is getting.'
+            : 'The plant is sending more than the grid wants.'
+          : shownTemp >= SAFE_TEMP
+            ? 'Power is on target, but the core is running hot.'
+            : round.lag
+              ? `Holding... ${Math.max(0, holdNeeded - heldTicks)} to go. The core drifts, so resist the urge to chase it.`
+              : 'Looking good... hold it steady!'
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {wonRound && <Confetti />}
 
       <LevelHeader
         lv={lv}
-        insight={round.chart ? <InsightToggle label="strip chart" on={showChart} onChange={setShowChart} /> : undefined}
+        insight={round.chart ? <InsightToggle label="trend recorder" on={showChart} onChange={setShowChart} /> : undefined}
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
-        <div className="flex flex-col items-end gap-1.5">
-          <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
-            {round.label} · hold {bandLow}-{bandHigh} MW
-          </Badge>
-          {round.phases && !dayFinished && (
-            <Badge className="bg-stone-100 text-ink-soft dark:bg-white/10 dark:text-stone-300">
-              Phase {phaseIndex + 1} of {round.phases.length} · on target {dayPct}%
-            </Badge>
-          )}
-        </div>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="max-w-xl text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
+        <p className="font-display text-sm font-semibold text-ink-soft dark:text-stone-400">{round.label}</p>
       </div>
 
-      {/* Scene */}
-      <div className="overflow-hidden rounded-2xl blueprint">
-        <svg viewBox={`0 0 800 ${round.chart && showChart ? 390 : 300}`} className="w-full" role="img" aria-label="Nuclear reactor scene">
-          <path d="M250 250 V150 A150 100 0 0 1 550 150 V250 Z" className="fill-slate-200 dark:fill-slate-800" />
-          <path d="M250 250 V150 A150 100 0 0 1 550 150 V250 Z" fill="none" className="stroke-slate-300 dark:stroke-slate-700" strokeWidth="3" />
-          <rect x="330" y="120" width="140" height="130" rx="16" className="fill-slate-300 dark:fill-slate-700" />
-          <motion.rect
-            x="352" y="150" width="96" height="94" rx="8"
-            animate={{ opacity: 0.25 + glow * 0.75 }}
-            transition={{ duration: 0.3 }}
-            style={{ fill: meltdown ? '#ef4444' : 'var(--accent)' }}
-          />
-          {meltdown && (
-            <motion.rect x="352" y="150" width="96" height="94" rx="8" fill="#ef4444" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.5, repeat: Infinity }} />
-          )}
-          {[368, 392, 416, 440].map((x) => (
-            <g key={x}>
-              <rect x={x - 4} y="70" width="8" height="40" rx="3" className="fill-slate-500 dark:fill-slate-400" />
-              <motion.rect
-                x={x - 4} width="8" height="96" rx="3"
-                className="fill-slate-600 dark:fill-slate-300"
-                animate={{ y: 150 - (100 - rods) * 0.9 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 26 }}
-              />
-            </g>
-          ))}
-          <rect x="470" y="200" width="90" height="14" rx="7" className="fill-sky-300 dark:fill-sky-700" />
-          <rect x="240" y="200" width="90" height="14" rx="7" className="fill-sky-300 dark:fill-sky-700" />
-          {coolant > 20 &&
-            [520, 545, 570].map((x, i) => (
-              <motion.circle
-                key={x} cx={x} r={4 + coolant / 22}
-                className="fill-sky-200/80 dark:fill-sky-400/40"
-                // cy must be seeded via `initial`, not a plain attribute, or
-                // framer-motion has no baseline to animate from.
-                initial={{ cy: 200, opacity: 0.7 }}
-                animate={{ cy: [200, 150], opacity: [0.7, 0] }}
-                transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.35 }}
-              />
-            ))}
-          <text x="400" y="285" textAnchor="middle" fontSize="14" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-            {meltdown ? 'CORE MELTDOWN' : `${netPower} MW to the grid · ${shownTemp}°C`}
-          </text>
-
-          {/* level 4 overlay: the strip chart */}
-          {round.chart && showChart && (
-            <g>
-              <rect x="60" y="308" width="680" height="70" rx="8" className="fill-white/60 dark:fill-white/5" />
-              {/* demand band */}
-              <rect
-                x="60"
-                y={308 + 70 - (bandHigh / MAX_POWER) * 66}
-                width="680"
-                height={((bandHigh - bandLow) / MAX_POWER) * 66}
-                className="fill-emerald-400/25"
-              />
-              <polyline
-                points={traceRef.current.map((s, i) => `${60 + (i / 79) * 680},${308 + 70 - powerPos(s.p) * 66}`).join(' ')}
-                fill="none" strokeWidth="2" style={{ stroke: 'var(--accent)' }}
-              />
-              <polyline
-                points={traceRef.current.map((s, i) => `${60 + (i / 79) * 680},${308 + 70 - tempPos(s.t) * 66}`).join(' ')}
-                fill="none" strokeWidth="2" className="stroke-rose-400"
-              />
-              <text x="66" y="322" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-                power (accent) · temperature (red) · green band = demand
-              </text>
-            </g>
-          )}
-        </svg>
-      </div>
-
-      {/* Gauges */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="font-display font-semibold">Power to the grid</span>
-            <span className="font-mono tabular-nums text-ink-soft dark:text-stone-400">{netPower} MW</span>
-          </div>
-          <div className="relative h-4 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
-            <div
-              className="absolute inset-y-0 bg-emerald-400/80"
-              style={{ left: `${powerPos(bandLow) * 100}%`, width: `${(powerPos(bandHigh) - powerPos(bandLow)) * 100}%` }}
-            />
-            <motion.span
-              className="absolute inset-y-0 w-1.5 rounded-full bg-ink dark:bg-white"
-              animate={{ left: `${powerPos(netPower) * 100}%` }}
-              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-ink-soft dark:text-stone-400">
-            {round.pumpsDraw ? `Each pump takes ${PUMP_DRAW} MW off this number.` : "Green = the city's demand."}
-          </p>
-        </div>
-
-        <div>
-          <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="font-display font-semibold">Core temperature</span>
-            <span
-              className={cn(
-                'font-mono tabular-nums font-semibold',
-                tempZone === 'safe' ? 'text-emerald-600 dark:text-emerald-400' : tempZone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400',
-              )}
+      <PanelSurface
+        title="Unit 1 · reactor control board"
+        header={
+          <>
+            <Plate label="Demand band" value={`${bandLow}-${bandHigh} MW`} />
+            {round.phases ? (
+              <>
+                <Plate label="Day phase" value={`${phaseIndex + 1} of ${round.phases.length}`} />
+                <Plate label="On target" value={`${dayPct}%`} />
+              </>
+            ) : (
+              <Plate label="Steady hold" value={`${Math.min(heldTicks, holdNeeded)} / ${holdNeeded}`} />
+            )}
+          </>
+        }
+      >
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <PanelBay
+            legend="Primary loop"
+            right={
+              <div className="flex flex-wrap items-center gap-1.5">
+                <DigitalWindow value={power} unit="MW gross" />
+                {round.pumpsDraw && <DigitalWindow value={`-${pumpDrawMw}`} unit="MW pumps" tone="warn" />}
+                <DigitalWindow value={netPower} unit="MW net" tone={inBand ? 'normal' : 'warn'} />
+              </div>
+            }
+          >
+            <MimicBoard
+              legend="Plant mimic"
+              viewBox="0 0 640 186"
+              summary={`Reactor mimic. Rod bank ${rods} percent inserted, ${power} megawatts gross, core at ${shownTemp} degrees, coolant flow ${coolant} percent.`}
             >
-              {shownTemp}°C
-            </span>
-          </div>
-          <div className="relative h-4 w-full overflow-hidden rounded-full bg-emerald-300/70 dark:bg-emerald-500/25">
-            <div className="absolute inset-y-0 bg-amber-300/80 dark:bg-amber-500/30" style={{ left: `${tempPos(SAFE_TEMP) * 100}%`, right: 0 }} />
-            <div className="absolute inset-y-0 bg-rose-400/80 dark:bg-rose-500/40" style={{ left: `${tempPos(MELTDOWN_TEMP) * 100}%`, right: 0 }} />
-            <motion.span
-              className="absolute inset-y-0 w-1.5 rounded-full bg-ink dark:bg-white"
-              animate={{ left: `${tempPos(shownTemp) * 100}%` }}
-              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-ink-soft dark:text-stone-400">Keep the needle out of the red.</p>
-        </div>
-      </div>
-
-      {/* Feedback */}
-      <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {wonRound ? (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            {round.phases ? `Day complete: on target ${dayPct}% of the time.` : 'Steady and cool! The grid is happy and the core is safe.'}
-          </motion.p>
-        ) : meltdown ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Meltdown! The core ran away and overheated. The plant is stopped, so scram to bring it back online.
-          </p>
-        ) : failedDay ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Day over: on target {dayPct}% of the time, and the grid wants 65%. The plant is stopped there. Scram to run the day again and ride the band more closely.
-          </p>
-        ) : (
-          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            {!inBand
-              ? netPower < bandLow
-                ? 'The grid needs more than it is getting.'
-                : 'The plant is sending more than the grid wants.'
-              : shownTemp >= SAFE_TEMP
-                ? 'Power is on target, but the core is running hot.'
-                : round.lag
-                  ? `Holding... ${Math.max(0, holdNeeded - heldTicks)} to go. The core drifts, so resist the urge to chase it.`
-                  : 'Looking good... hold it steady!'}
-          </p>
-        )}
-      </div>
-
-      {/* Rods get hauled by hand; coolant runs on a whole number of pumps. */}
-      <div className="mt-3 grid items-start gap-x-6 gap-y-4 sm:grid-cols-2">
-        <div>
-          <p className="mb-2 font-display text-sm font-semibold">
-            Control rods <span className="font-normal text-ink-soft dark:text-stone-400">· {rods}% in</span>
-          </p>
-          <svg viewBox="0 0 260 120" className="w-full max-w-[260px]" role="img" aria-label="Control rod bank" {...rodBind}>
-            <rect x="10" y="30" width="240" height="82" rx="6" className="fill-stone-200 dark:fill-white/10" />
-            {[0, 1, 2, 3, 4].map((i) => {
-              const x = 32 + i * 46
-              const depth = Math.max(2, (rods / 100) * 74)
-              return (
-                <g key={i}>
-                  <rect x={x} y="34" width="14" height="74" rx="3" className="fill-stone-300 dark:fill-white/10" />
-                  <rect x={x} y="34" width="14" height={depth} rx="3" className="fill-slate-600 dark:fill-slate-300" />
+              {/* vessel */}
+              <rect x="42" y="44" width="136" height="112" rx="10" fill="#1a2025" stroke={INK.line} strokeWidth="2" />
+              <motion.rect
+                x="66"
+                y="86"
+                width="88"
+                height="58"
+                rx="6"
+                animate={{ opacity: 0.25 + glow * 0.75 }}
+                transition={{ duration: reduced ? 0 : 0.3 }}
+                style={{ fill: meltdown ? '#e0574a' : 'var(--accent)' }}
+              />
+              {meltdown && (
+                <motion.rect
+                  x="66"
+                  y="86"
+                  width="88"
+                  height="58"
+                  rx="6"
+                  fill="#e0574a"
+                  animate={reduced ? { opacity: 0.9 } : { opacity: [0.4, 1, 0.4] }}
+                  transition={reduced ? { duration: 0 } : { duration: 0.5, repeat: Infinity }}
+                />
+              )}
+              {/* rod bank: the drive shafts telescope down into the core */}
+              {[78, 100, 122, 144].map((x) => (
+                <g key={x}>
+                  <rect x={x - 5} y="10" width="10" height="20" rx="2" fill="#4a535b" stroke="#0b0e11" />
+                  <motion.rect
+                    x={x - 3}
+                    y="26"
+                    width="6"
+                    rx="2"
+                    fill="#9aa6b0"
+                    animate={{ height: 60 + (rods / 100) * 58 }}
+                    transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 26 }}
+                  />
                 </g>
-              )
-            })}
-            <rect
-              x="10"
-              y={26 + (rods / 100) * 74}
-              width="240"
-              height="14"
-              rx="7"
-              tabIndex={0}
-              onKeyDown={nudgeRods}
-              role="slider"
-              aria-label="Control rod insertion"
-              aria-valuenow={rods}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuetext={`${rods} percent inserted`}
-              className="cursor-ns-resize fill-ink/25 outline-none dark:fill-white/35"
+              ))}
+              <text x="110" y="172" textAnchor="middle" fontSize="9" letterSpacing="1.6" fill={INK.text} className="font-body">
+                REACTOR
+              </text>
+
+              {/* hot leg to the steam generator */}
+              <path
+                d="M178 68 H 268"
+                fill="none"
+                stroke={power > 0 ? '#e0894a' : INK.lineDim}
+                strokeWidth="4"
+                className={power > 0 ? 'wire-flow' : undefined}
+              />
+              <rect x="268" y="34" width="74" height="120" rx="8" fill="#1a2025" stroke={INK.line} strokeWidth="2" />
+              <text x="305" y="172" textAnchor="middle" fontSize="9" letterSpacing="1.6" fill={INK.text} className="font-body">
+                STEAM GEN
+              </text>
+
+              {/* cold leg back through the coolant pumps */}
+              <path
+                d="M268 134 H 178"
+                fill="none"
+                stroke={coolant > 0 ? '#4a9fd0' : INK.lineDim}
+                strokeWidth="4"
+                className={coolant > 0 ? 'wire-flow' : undefined}
+              />
+              <circle cx="223" cy="134" r="13" fill="#232a30" stroke={INK.line} strokeWidth="2" />
+              <path d="M218 128 L232 134 L218 140 Z" fill={coolant > 0 ? '#4a9fd0' : INK.lineDim} />
+              <MimicLamp x={223} y={110} tone={coolant > 0 ? 'green' : 'red'} lit />
+              <text x="223" y="160" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                PUMPS
+              </text>
+
+              {/* steam to the turbine, then out to the grid */}
+              <path
+                d="M342 60 H 404"
+                fill="none"
+                stroke={power > 0 ? '#cfd6dc' : INK.lineDim}
+                strokeWidth="3"
+                className={power > 0 ? 'wire-flow' : undefined}
+              />
+              <path d="M404 40 L468 30 L468 90 L404 80 Z" fill="#232a30" stroke={INK.line} strokeWidth="2" />
+              <circle cx="506" cy="60" r="22" fill="#232a30" stroke={INK.line} strokeWidth="2" />
+              <text x="506" y="64" textAnchor="middle" fontSize="11" fill={INK.text} className="font-mono">
+                G
+              </text>
+              <text x="452" y="172" textAnchor="middle" fontSize="9" letterSpacing="1.6" fill={INK.text} className="font-body">
+                TURBINE AND GENERATOR
+              </text>
+              <path
+                d="M528 60 H 600"
+                fill="none"
+                stroke={netPower > 0 ? '#e6c34a' : INK.lineDim}
+                strokeWidth="3"
+                className={netPower > 0 ? 'wire-flow' : undefined}
+              />
+              <path d="M600 30 V 96 M586 44 H 614 M590 62 H 610" stroke={INK.line} strokeWidth="2" fill="none" />
+              <text x="600" y="120" textAnchor="middle" fontSize="9" letterSpacing="1.4" fill={INK.text} className="font-body">
+                GRID
+              </text>
+            </MimicBoard>
+          </PanelBay>
+
+          <PanelBay legend="Plant instruments">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+              <Gauge
+                label="Net output to grid"
+                unit="MW"
+                value={netPower}
+                min={0}
+                max={MAX_POWER}
+                majorTicks={6}
+                bands={[{ from: bandLow, to: bandHigh, tone: 'green' }]}
+                valueText={`${netPower} megawatts, band ${bandLow} to ${bandHigh}`}
+                tone={inBand ? 'normal' : 'warn'}
+              />
+              <Gauge
+                label="Core temperature"
+                unit="°C"
+                value={shownTemp}
+                min={TEMP_SCALE_MIN}
+                max={TEMP_SCALE_MAX}
+                majorTicks={5}
+                bands={[
+                  { from: SAFE_TEMP, to: MELTDOWN_TEMP, tone: 'amber' },
+                  { from: MELTDOWN_TEMP, to: TEMP_SCALE_MAX, tone: 'red' },
+                ]}
+                valueText={`${shownTemp} degrees celsius, safe below ${SAFE_TEMP}`}
+                tone={tempZone === 'safe' ? 'normal' : tempZone === 'warning' ? 'warn' : 'alarm'}
+              />
+            </div>
+          </PanelBay>
+        </div>
+
+        {round.chart && showChart && (
+          <PanelBay legend="Trend recorder">
+            <ChartRecorder
+              legend="Chart 1 · output and core temperature"
+              span={80}
+              pens={[
+                {
+                  id: 'power',
+                  label: 'Output',
+                  color: 'var(--accent)',
+                  points: traceRef.current.map((s) => powerPos(s.p)),
+                  readout: `${netPower} MW`,
+                },
+                {
+                  id: 'temp',
+                  label: 'Core temp',
+                  color: '#e0574a',
+                  points: traceRef.current.map((s) => tempPos(s.t)),
+                  readout: `${shownTemp} °C`,
+                  dashed: true,
+                },
+              ]}
+              band={{ from: powerPos(bandLow), to: powerPos(bandHigh), label: 'Green paper is the band the grid wants' }}
+              summary={`Trend of output and core temperature over the last ${traceRef.current.length} ticks. Output ${netPower} megawatts, core ${shownTemp} degrees.`}
             />
-            <text x="130" y="20" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-              drag the rod bank
-            </text>
-          </svg>
+          </PanelBay>
+        )}
+
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          <PanelBay legend="Alarms">
+            <AnnunciatorPanel state={alarms} columns={3} legend="Annunciator windows" />
+            <Engraved className="mt-2 block text-[9px] leading-snug text-slate-400">
+              A window stays lit after the trouble passes. Press ack to clear it.
+            </Engraved>
+          </PanelBay>
+
+          <PanelBay legend="Controls">
+            <div className="flex flex-wrap items-start gap-4">
+              <BankLever
+                label="Control rod bank"
+                value={rods}
+                topValue={0}
+                bottomValue={100}
+                step={2}
+                bigStep={10}
+                detent={10}
+                onChange={setRods}
+                valueText={(v) => `${Math.round(v)} percent inserted`}
+                hint="Handle up withdraws the rods and power climbs"
+              />
+              <div className="min-w-[190px] flex-1">
+                <Engraved className="mb-1.5 block">Coolant pump bank</Engraved>
+                <div className="flex flex-wrap gap-1.5">
+                  {[0, 25, 50, 75, 100].map((v, i) => (
+                    <IlluminatedButton
+                      key={v}
+                      legend={i === 0 ? 'Off' : `${i} pump${i > 1 ? 's' : ''}`}
+                      sub={round.pumpsDraw && i > 0 ? `${i * PUMP_DRAW} MW` : undefined}
+                      lit={coolant === v}
+                      tone={i === 0 ? 'white' : 'green'}
+                      pressed={coolant === v}
+                      onClick={() => setCoolant(v)}
+                      ariaLabel={i === 0 ? 'Coolant pumps off' : `Run ${i} coolant pump${i > 1 ? 's' : ''}`}
+                    />
+                  ))}
+                </div>
+                <Engraved className="mt-2 block text-[9px] leading-snug text-slate-400">
+                  {round.pumpsDraw
+                    ? `Running ${pumpCount} pump${pumpCount === 1 ? '' : 's'} costs ${pumpDrawMw} MW of output.`
+                    : 'Each pump pulls heat out of the core.'}
+                </Engraved>
+              </div>
+            </div>
+            <div className="mt-3">
+              <GuardedControl
+                legend="Scram"
+                description="Drops every rod and starts the run over from a cold core."
+                onFire={scram}
+              />
+            </div>
+          </PanelBay>
         </div>
 
-        <div>
-          <p className="mb-2 font-display text-sm font-semibold">
-            Coolant pumps <span className="font-normal text-ink-soft dark:text-stone-400">· {coolant}% flow</span>
+        <PanelBay legend="Plant status">
+          <p
+            aria-live="polite"
+            className={cn(
+              'min-h-[2.25rem] font-body text-[13px] leading-snug',
+              meltdown || failedDay ? 'text-[#f08678]' : wonRound ? 'text-[#8fe3c4]' : 'text-slate-300',
+            )}
+          >
+            {status}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {[0, 25, 50, 75, 100].map((v, i) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setCoolant(v)}
-                aria-pressed={coolant === v}
-                className={cn(
-                  'rounded-2xl px-3.5 py-2.5 font-display text-sm font-semibold transition-colors duration-200',
-                  coolant === v
-                    ? 'accent-bg on-accent shadow-clay'
-                    : 'bg-stone-100 text-ink-soft hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10',
-                )}
-              >
-                {i === 0 ? 'Off' : `${i} pump${i > 1 ? 's' : ''}`}
-              </button>
-            ))}
-          </div>
-          {round.pumpsDraw && (
-            <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
-              Running {pumpCount} pump{pumpCount === 1 ? '' : 's'} costs {Math.round(pumpCount * PUMP_DRAW)} MW of output.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Button variant="ghost" onClick={reset} aria-label="Scram: drop all rods now and start the run over">
-          <RotateCcw className="h-4 w-4" />
-          Scram: drop all rods now
-        </Button>
-      </div>
+        </PanelBay>
+      </PanelSurface>
 
       {lv.level.metrics && (
         <div className="mt-4">
@@ -540,7 +630,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
               ? `On target ${dayPct}% with a ${Math.round(statsRef.current.peak)}°C peak. Try a calmer day.`
               : 'Steady state held. Well run.'
           }
-          onReplay={reset}
+          onReplay={scram}
         />
       )}
     </Card>

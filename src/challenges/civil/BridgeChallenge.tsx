@@ -1,16 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Eraser, Hammer, RotateCcw, Truck, Undo2 } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Eraser, PenLine, RotateCcw, Truck, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
-import { Badge } from '@/components/ui/Badge'
-import { Meter } from '@/components/ui/Meter'
 import { memberKey, solveTruss, type SolveOutcome, type TrussJoint } from '@/challenges/civil/truss'
 import { InsightToggle } from '@/components/level/InsightToggle'
 import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
+import {
+  ApprovalStamp,
+  CursorMark,
+  DatumLine,
+  DimString,
+  DraftingSheet,
+  DrawingKey,
+  GridBubble,
+  GroundHatch,
+  INK,
+  LETTER,
+  LoadArrow,
+  NoteBlock,
+  PEN,
+  PinSupport,
+  Redline,
+  RevisionStamp,
+  ScaleBar,
+  Schedule,
+  SheetTool,
+  SnapGrid,
+  StencilPalette,
+  TRACK,
+  TitleBlock,
+  useSheetCursor,
+  type SheetStatus,
+} from '@/components/instruments/drafting'
 import { useLevels } from '@/hooks/useLevels'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -184,6 +209,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const handledRunRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const reduced = useReducedMotion()
 
   const busy = phase === 'testing'
 
@@ -216,6 +242,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const jointAt = (id: string) => joints.find((j) => j.id === id)
   const beamKeys = beams.map((b) => b.key)
   const materialOf = (key: string) => beams.find((b) => b.key === key)?.material ?? 'wood'
+  /** The mark a member carries on the drawing, so a redline can name it. */
+  const markOf = (key: string) => `M${beams.findIndex((b) => b.key === key) + 1}`
 
   const lengthOf = (key: string) => {
     const [a, b] = key.split('|')
@@ -304,10 +332,9 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const touchedBy = (id: string, remaining: { key: string }[]) =>
     remaining.some((b) => b.key.split('|').includes(id))
 
-  const handleCanvasClick = (event: React.MouseEvent<SVGRectElement>) => {
-    if (busy || tool !== 'build') return
-    const p = svgPoint(event)
-    if (!p) return
+  /** Set a joint, or draw from the glowing one to here. Pointer and keyboard share it. */
+  const drawAt = (p: { x: number; y: number }) => {
+    if (busy) return
     const id = jointId(p.x, p.y)
 
     if (selected === id) {
@@ -338,6 +365,14 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     })
   }
 
+  const handleCanvasClick = (event: React.MouseEvent<SVGRectElement>) => {
+    if (busy || tool !== 'build') return
+    const p = svgPoint(event)
+    if (!p) return
+    board.setCursor(p)
+    drawAt(p)
+  }
+
   const removeBeam = (key: string) => {
     if (busy || tool !== 'remove') return
     pushHistory()
@@ -360,6 +395,41 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
       )
     })
   }
+
+  /**
+   * Erasing from the keyboard mirrors drawing: pick one end of the member, then
+   * the other, and it goes. Delete takes the whole joint under the cursor.
+   */
+  const eraseAt = (p: { x: number; y: number }) => {
+    if (busy) return
+    const id = jointId(p.x, p.y)
+    if (!joints.some((j) => j.id === id)) return
+    if (!selected || selected === id) {
+      setSelected(selected === id ? null : id)
+      return
+    }
+    const key = memberKey(selected, id)
+    if (beamKeys.includes(key)) {
+      removeBeam(key)
+      setSelected(null)
+    } else {
+      setSelected(id)
+    }
+  }
+
+  const board = useSheetCursor({
+    step: GRID,
+    bounds: { minX: MIN_X, maxX: MAX_X, minY: MIN_Y, maxY: MAX_Y },
+    start: { x: LEFT_X + GRID, y: ROAD_Y },
+    onCommit: (p) => (tool === 'build' ? drawAt(p) : eraseAt(p)),
+    onCancel: () => setSelected(null),
+    onDelete: (p) => {
+      const j = jointAt(jointId(p.x, p.y))
+      // The two bank anchors are part of the site, not of your drawing.
+      if (tool === 'remove' && j && !j.fixed) removeJoint(j.id)
+    },
+    disabled: busy,
+  })
 
   const undo = () => {
     const last = history[history.length - 1]
@@ -499,29 +569,37 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
 
   const forceView = round.forces && showForces
 
-  /** After a test, colour each beam either by how hard it worked, or by push/pull. */
-  const beamColor = (key: string) => {
-    if (phase === 'failed' && test?.outcome?.worst?.key === key) return '#f43f5e'
+  /**
+   * The pen a member is drawn with. Before the load has run that is its
+   * material; after it, either how hard it worked or which way it was pushed.
+   */
+  const memberInk = (key: string) => {
+    if (phase === 'failed' && test?.outcome?.worst?.key === key) return INK.red
     const util = test?.utilization[key]
-    if (util === undefined) return MATERIALS[materialOf(key)].color
+    if (util === undefined) return INK.line
     if (forceView) {
       const f = test?.force[key] ?? 0
-      if (Math.abs(f) < 0.5) return '#94a3b8' // idle
-      return f > 0 ? '#3b82f6' : '#ef4444' // pulled = blue, pushed = red
+      if (Math.abs(f) < 0.5) return INK.soft // idle
+      return f > 0 ? INK.check : INK.red // pulled = check blue, pushed = red
     }
-    if (util >= 1) return '#f43f5e'
-    if (util >= 0.75) return '#f59e0b'
-    if (util >= 0.4) return '#eab308'
-    return '#22c55e'
+    if (util >= 1) return INK.red
+    if (util >= 0.75) return INK.amber
+    if (util >= 0.4) return INK.line
+    return INK.soft
   }
 
-  const beamWidth = (key: string, isRoad: boolean) => {
+  const memberWeight = (key: string, isRoad: boolean) => {
     if (forceView) {
       const util = test?.utilization[key]
-      if (util !== undefined) return 4 + Math.min(1, util) * 8
+      if (util !== undefined) return 2.4 + Math.min(1, util) * 5.5
     }
-    return isRoad ? 9 : 6
+    const base = materialOf(key) === 'steel' ? PEN.heavy : PEN.member
+    return isRoad ? base + 1.2 : base
   }
+
+  /** Squashed members are drawn broken, so push and pull read without colour. */
+  const memberDash = (key: string) =>
+    forceView && (test?.force[key] ?? 0) < -0.5 ? '10 5' : undefined
 
   /**
    * How much of the hardest-worked beam's strength is still in hand, as a
@@ -532,12 +610,45 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
   const failMode = test?.outcome?.status === 'unstable' ? 'unstable' : test?.outcome?.worst?.mode
   const sagFailed =
     phase === 'failed' && test?.failedAt === null && round.maxDeflection !== null && (test?.peakSag ?? 0) > round.maxDeflection
-  const truckStopX = test?.failedAt ? (jointAt(test.failedAt)?.x ?? RIGHT_X) - 20 : VIEW_W + 60
+  const loadStopX = test?.failedAt ? (jointAt(test.failedAt)?.x ?? RIGHT_X) : VIEW_W + 60
   const leftover = round.budget !== null ? round.budget - cost : 0
-  const gridDots: { x: number; y: number }[] = []
-  for (let x = MIN_X; x <= MAX_X; x += GRID) {
-    for (let y = MIN_Y; y <= MAX_Y; y += GRID) gridDots.push({ x, y })
+
+  /* ---------- the sheet ---------- */
+  const status: SheetStatus = phase === 'passed' ? 'approved' : phase === 'failed' ? 'revise' : 'draft'
+  const worstKey = test?.outcome?.worst?.key
+  const worstForce = worstKey ? Math.abs(Math.round(test?.force[worstKey] ?? 0)) : 0
+  const worstCap = worstKey
+    ? failMode === 'tension'
+      ? MATERIALS[materialOf(worstKey)].tension
+      : MATERIALS[materialOf(worstKey)].compression
+    : 0
+  const worstUtil = test ? Math.max(0, ...Object.values(test.utilization)) : 0
+
+  // Schedule lines, one per material, reconciled so they add to the number the
+  // budget check actually uses.
+  const scheduleRows = round.materials
+    .map((id) => {
+      const mine = beams.filter((b) => b.material === id)
+      const px = mine.reduce((sum, b) => sum + lengthOf(b.key), 0)
+      return { id, count: mine.length, metres: px / PX_PER_M, amount: Math.round(px * MATERIALS[id].cost) }
+    })
+    .filter((r) => r.count > 0)
+  const drift = cost - scheduleRows.reduce((sum, r) => sum + r.amount, 0)
+  if (scheduleRows.length > 0) scheduleRows[0].amount += drift
+
+  const cursorStation = ((board.cursor.x - LEFT_X) / PX_PER_M).toFixed(1)
+  const cursorLevel = ((ROAD_Y - board.cursor.y) / PX_PER_M).toFixed(1)
+  const cursorJoint = joints.some((j) => j.id === jointId(board.cursor.x, board.cursor.y))
+
+  // Column grid: one bubble every two modules across the crossing.
+  const bubbles: { x: number; label: string }[] = []
+  for (let x = LEFT_X; x <= RIGHT_X; x += GRID * 2) {
+    bubbles.push({ x, label: String.fromCharCode(65 + bubbles.length) })
   }
+
+  // The truss depth, measured off whatever has actually been drawn.
+  const topY = joints.reduce((min, j) => Math.min(min, j.y), ROAD_Y)
+  const depthM = (ROAD_Y - topY) / PX_PER_M
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -550,65 +661,269 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
 
       <Objective
         goal={`Carry the ${round.load} t ${round.label.toLowerCase()} across${round.budget !== null ? ` for $${round.budget.toLocaleString()} or less` : ''}${round.maxDeflection !== null ? `, with the deck dipping under ${round.maxDeflection} cm` : ''}`}
-        status={`the road ${deckComplete ? 'reaches across' : 'does not reach across yet'}`}
+        status={`the deck ${deckComplete ? 'reaches both banks' : 'does not reach across yet'}`}
         met={won}
       />
 
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
-          <p className="mt-1 text-xs text-ink-soft dark:text-stone-500">
-            {tool === 'build'
-              ? 'Click to drop a joint and chain beams from the glowing one. Click the glowing joint to let go. The road must reach across at anchor height.'
-              : 'Click a beam to take it out. Clicking a joint removes it and every beam on it.'}
-          </p>
-        </div>
-        <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
-          {round.label} · {round.load} t
-        </Badge>
-      </div>
+      <p className="mb-3 max-w-2xl text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
 
-      {/* Build canvas */}
-      <div className="relative overflow-hidden rounded-2xl bg-sky-100/70 dark:bg-sky-950/40">
-        {/* Tool switch, right where the building happens. */}
-        <div className="absolute left-3 top-3 z-10 flex gap-1 rounded-full bg-white/85 p-1 shadow-sm backdrop-blur dark:bg-stone-900/85">
-          <button
-            type="button"
-            onClick={() => setTool('build')}
-            aria-pressed={tool === 'build'}
-            disabled={busy}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-150',
-              tool === 'build' ? 'accent-bg on-accent' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
+      <DraftingSheet
+        tools={
+          <>
+            <SheetTool
+              active={tool === 'build'}
+              onClick={() => setTool('build')}
+              disabled={busy}
+              icon={<PenLine className="h-3.5 w-3.5" />}
+              label="draw"
+            />
+            <SheetTool
+              active={tool === 'remove'}
+              onClick={() => setTool('remove')}
+              disabled={busy}
+              icon={<Eraser className="h-3.5 w-3.5" />}
+              label="erase"
+              tone="red"
+            />
+            <p id="board-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft)]">
+              {tool === 'build'
+                ? 'Click the board to set a joint, then click on to run a member from the glowing one. Click it again to let go. The deck has to reach both banks at datum level.'
+                : 'Click a member to erase it. Click a joint to erase it and everything on it.'}{' '}
+              Keyboard: arrow keys walk the grid, enter sets a joint or draws to it, escape lets go, delete erases the joint under the cursor.
+            </p>
+          </>
+        }
+        titleBlock={
+          <TitleBlock
+            project="Riverside crossing"
+            drawing={`${lv.level.n}. ${lv.level.title}`}
+            sheetNo={`S-0${lv.level.n}`}
+            scale="1 square = 2 m"
+            checking={`${round.load} t ${round.label.toLowerCase()}${round.budget !== null ? `, $${round.budget.toLocaleString('en-US')} cap` : ', no cost cap'}${round.maxDeflection !== null ? `, ${round.maxDeflection} cm sag max` : ''}`}
+            rev={runId}
+            status={status}
+          />
+        }
+        footer={
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft)]">
+              <span
+                role="status"
+                aria-live={board.active ? 'polite' : 'off'}
+                className={cn(LETTER, 'tabular-nums')}
+                style={{ letterSpacing: TRACK.normal }}
+              >
+                cursor {cursorStation} m along, {cursorLevel} m up · {cursorJoint ? 'joint here' : 'clear'}
+              </span>
+              <span className={cn(LETTER, 'tabular-nums')} style={{ letterSpacing: TRACK.normal }}>
+                {beams.length} members · depth {depthM.toFixed(1)} m
+                {test ? ` · worst member ${Math.round(worstUtil * 100)}% of capacity · sag ${test.peakSag} cm` : ''}
+              </span>
+            </div>
+
+            {test && (
+              <DrawingKey
+                title="key"
+                items={
+                  forceView
+                    ? [
+                        { label: 'pulled apart', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.check} strokeWidth="3" /> },
+                        { label: 'squashed', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.red} strokeWidth="3" strokeDasharray="6 3" /> },
+                        { label: 'thicker means harder worked', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.line} strokeWidth="5" /> },
+                      ]
+                    : [
+                        { label: 'lightly loaded', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.soft} strokeWidth="2" /> },
+                        { label: 'working', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.line} strokeWidth="3" /> },
+                        { label: 'near capacity', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.amber} strokeWidth="3" /> },
+                        { label: 'over capacity', sample: <line x1="1" y1="5" x2="25" y2="5" stroke={INK.red} strokeWidth="3.5" /> },
+                      ]
+                }
+              />
             )}
-          >
-            <Hammer className="h-3.5 w-3.5" />
-            Build
-          </button>
-          <button
-            type="button"
-            onClick={() => setTool('remove')}
-            aria-pressed={tool === 'remove'}
-            disabled={busy}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors duration-150',
-              tool === 'remove' ? 'bg-rose-500 text-white' : 'text-ink-soft hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/10',
-            )}
-          >
-            <Eraser className="h-3.5 w-3.5" />
-            Remove
-          </button>
-        </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {round.materials.length > 1 && (
+                <StencilPalette
+                  label="material stencil"
+                  value={material}
+                  onChange={(id) => setMaterial(id as MaterialId)}
+                  disabled={busy}
+                  options={round.materials.map((id) => ({
+                    id,
+                    mark: id === 'steel' ? 'S' : 'W',
+                    label: MATERIALS[id].label,
+                    note: `$${MATERIALS[id].cost * PX_PER_M}/m · holds ${MATERIALS[id].compression}-${MATERIALS[id].tension}`,
+                    swatch:
+                      id === 'steel' ? (
+                        <>
+                          <line x1="1" y1="7" x2="25" y2="7" stroke={INK.line} strokeWidth="4.4" />
+                          <line x1="13" y1="2" x2="13" y2="12" stroke={INK.paper} strokeWidth="1.4" />
+                        </>
+                      ) : (
+                        <>
+                          <line x1="1" y1="7" x2="25" y2="7" stroke={INK.line} strokeWidth="3.2" />
+                          {[5, 11, 17, 23].map((x) => (
+                            <line key={x} x1={x - 3} y1="10" x2={x} y2="4" stroke={INK.soft} strokeWidth="0.9" />
+                          ))}
+                        </>
+                      ),
+                  }))}
+                />
+              )}
+              <Schedule
+                title="materials schedule"
+                className={round.materials.length > 1 ? undefined : 'sm:col-span-2'}
+                columns={[
+                  { key: 'mark', label: 'mark' },
+                  { key: 'qty', label: 'qty', align: 'right' },
+                  { key: 'length', label: 'length', align: 'right' },
+                  { key: 'rate', label: 'rate', align: 'right' },
+                  { key: 'amount', label: 'amount', align: 'right' },
+                ]}
+                empty="Nothing scheduled yet. Draw the span and the quantities land here."
+                rows={scheduleRows.map((r) => ({
+                  key: r.id,
+                  cells: {
+                    mark: `${r.id === 'steel' ? 'S' : 'W'} ${MATERIALS[r.id].label}`,
+                    qty: r.count,
+                    length: `${r.metres.toFixed(1)} m`,
+                    rate: `$${MATERIALS[r.id].cost * PX_PER_M}/m`,
+                    amount: `$${r.amount.toLocaleString('en-US')}`,
+                  },
+                }))}
+                foot={
+                  round.budget === null
+                    ? [{ label: 'total, materials free this sheet', value: `$${cost.toLocaleString('en-US')}` }]
+                    : [
+                        { label: 'total', value: `$${cost.toLocaleString('en-US')}` },
+                        { label: 'budget', value: `$${round.budget.toLocaleString('en-US')}` },
+                        {
+                          label: overBudget ? 'over by' : 'left',
+                          value: `$${Math.abs(leftover).toLocaleString('en-US')}`,
+                          tone: overBudget ? 'over' : 'ok',
+                        },
+                      ]
+                }
+              />
+            </div>
+
+            {/* Verdicts are lettered notes on the sheet. */}
+            <div aria-live="polite" className="min-h-[2.5rem] space-y-2">
+              {phase === 'passed' && (
+                <NoteBlock n={1} tone="check">
+                  It holds. The deck carried {round.load} t
+                  {round.budget !== null ? ` for $${cost.toLocaleString('en-US')}` : ''}
+                  {round.budget !== null && leftover > 0 ? `, $${leftover.toLocaleString('en-US')} under budget` : ''}. Stamped
+                  and signed off.
+                </NoteBlock>
+              )}
+              {sagFailed && (
+                <NoteBlock n={1} tone="amber">
+                  It held, but the deck dipped {test?.peakSag} cm and the limit is {round.maxDeflection} cm. Nothing broke, it is
+                  just too floppy. A deeper truss buys stiffness; more steel on its own does not.
+                </NoteBlock>
+              )}
+              {phase === 'failed' && !sagFailed && failMode === 'unstable' && (
+                <NoteBlock n={1} tone="red">
+                  The frame folded and dropped the load. Those shapes could not hold themselves rigid, so brace the squares into
+                  triangles.
+                </NoteBlock>
+              )}
+              {phase === 'failed' && !sagFailed && failMode === 'tension' && worstKey && (
+                <NoteBlock n={1} tone="red">
+                  Snap! Member {markOf(worstKey)} was pulled apart under {worstForce} of tension, and it is only good for {worstCap}.
+                  {round.materials.length > 1 && materialOf(worstKey) === 'wood'
+                    ? ' It is wood: steel takes more than twice the pull.'
+                    : ' Add another load path so no single member carries this much.'}
+                </NoteBlock>
+              )}
+              {phase === 'failed' && !sagFailed && failMode === 'compression' && worstKey && (
+                <NoteBlock n={1} tone="red">
+                  Crunch! Member {markOf(worstKey)} buckled under {worstForce} of compression against a {worstCap} limit. Squeezed
+                  members give out sooner than stretched ones.
+                  {round.materials.length > 1 && materialOf(worstKey) === 'wood'
+                    ? ' That one is wood: swap it to steel or shorten it with a joint.'
+                    : ' Shorter members and more triangles spread the squeeze.'}
+                </NoteBlock>
+              )}
+              {phase === 'build' && overBudget && (
+                <NoteBlock n={1} tone="red">
+                  The schedule is over budget by ${(cost - (round.budget ?? 0)).toLocaleString('en-US')}. Take material out before
+                  you run the check.
+                </NoteBlock>
+              )}
+              {tooLongTick > 0 && (
+                <motion.div
+                  key={tooLongTick}
+                  initial={reduced ? { opacity: 1 } : { opacity: 0, y: -4 }}
+                  animate={reduced ? { opacity: 1 } : { opacity: [0, 1, 1, 0], y: 0 }}
+                  transition={reduced ? { duration: 0 } : { duration: 2.6, times: [0, 0.12, 0.75, 1] }}
+                  role="status"
+                >
+                  <NoteBlock n="reach" tone="amber">
+                    That member is longer than 6.5 m. Drop a joint partway and run two shorter ones.
+                  </NoteBlock>
+                </motion.div>
+              )}
+            </div>
+          </div>
+        }
+      >
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
           className="w-full touch-none"
-          role="img"
-          aria-label="Free-build bridge canvas"
+          role="application"
+          aria-label={`Bridge elevation, sheet S-0${lv.level.n}. ${beams.length} members drawn, deck ${deckComplete ? 'reaches both banks' : 'stops short'}.`}
+          aria-describedby="board-help"
+          {...board.boardProps}
         >
-          <rect x={LEFT_X} y={ROAD_Y + 20} width={RIGHT_X - LEFT_X} height={VIEW_H - ROAD_Y - 20} className="fill-sky-300/80 dark:fill-sky-900" />
-          <path d={`M0 ${ROAD_Y} h${LEFT_X} v${VIEW_H - ROAD_Y} H0 Z`} className="fill-emerald-300 dark:fill-emerald-950" />
-          <path d={`M${VIEW_W} ${ROAD_Y} h-${VIEW_W - RIGHT_X} v${VIEW_H - ROAD_Y} H${VIEW_W} Z`} className="fill-emerald-300 dark:fill-emerald-950" />
+          {/* the site: two banks, the water between them */}
+          <path d={`M0 ${ROAD_Y} h${LEFT_X} v${VIEW_H - ROAD_Y} H0 Z`} fill={INK.grid} opacity="0.18" />
+          <path d={`M${VIEW_W} ${ROAD_Y} h-${VIEW_W - RIGHT_X} v${VIEW_H - ROAD_Y} H${VIEW_W} Z`} fill={INK.grid} opacity="0.18" />
+          <GroundHatch x={0} y={ROAD_Y} width={LEFT_X} />
+          <GroundHatch x={RIGHT_X} y={ROAD_Y} width={VIEW_W - RIGHT_X} />
+          <line x1={LEFT_X} y1={300} x2={RIGHT_X} y2={300} stroke={INK.soft} strokeWidth={PEN.thin} />
+          {[316, 330].map((y) => (
+            <line key={y} x1={LEFT_X + 30} y1={y} x2={RIGHT_X - 30} y2={y} stroke={INK.soft} strokeWidth={PEN.hair} strokeDasharray="26 18" opacity="0.7" />
+          ))}
+          <text x={LEFT_X + 12} y={294} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="9" fill={INK.soft}>
+            river
+          </text>
+
+          <SnapGrid x0={MIN_X} y0={MIN_Y} x1={MAX_X} y1={MAX_Y} step={GRID} major={2} />
+
+          {bubbles.map((b) => (
+            <GridBubble key={b.label} x={b.x} y={32} label={b.label} leaderTo={MIN_Y - 8} />
+          ))}
+
+          <DatumLine x1={MIN_X - 24} x2={MAX_X + 6} y={ROAD_Y} label="datum, deck level" />
+
+          {/* the sag limit for level 5, drawn at the same exaggeration as the sag */}
+          {round.maxDeflection !== null && (
+            <g className="pointer-events-none">
+              <line
+                x1={MIN_X}
+                y1={ROAD_Y + sagLinePx(round.maxDeflection)}
+                x2={MAX_X}
+                y2={ROAD_Y + sagLinePx(round.maxDeflection)}
+                strokeDasharray="10 5"
+                strokeWidth={PEN.dim}
+                stroke={INK.amber}
+              />
+              <text
+                x={MAX_X}
+                y={ROAD_Y + sagLinePx(round.maxDeflection) + 13}
+                textAnchor="end"
+                className={LETTER}
+                style={{ letterSpacing: TRACK.normal }}
+                fontSize="10"
+                fill={INK.amber}
+              >
+                sag limit {round.maxDeflection} cm, drawn x{SAG_DRAW}
+              </text>
+            </g>
+          )}
 
           <rect
             x="0"
@@ -624,29 +939,18 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
             className={busy || tool !== 'build' ? '' : 'cursor-crosshair'}
           />
 
-          {gridDots.map(({ x, y }) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" className="pointer-events-none fill-stone-400/40 dark:fill-white/15" />
-          ))}
-          {/* the sag limit for level 5, drawn at the same exaggeration as the sag */}
-          {round.maxDeflection !== null && (
-            <g className="pointer-events-none">
-              <line x1={MIN_X} y1={ROAD_Y + sagLinePx(round.maxDeflection)} x2={MAX_X} y2={ROAD_Y + sagLinePx(round.maxDeflection)} strokeDasharray="6 6" strokeWidth="2" className="stroke-rose-400/70" />
-              <text x={MAX_X} y={ROAD_Y + sagLinePx(round.maxDeflection) + 15} textAnchor="end" fontSize="12" fontWeight="700" className="fill-rose-500/90 font-display">
-                sag limit {round.maxDeflection} cm
-              </text>
-            </g>
-          )}
-          <line x1={MIN_X} y1={ROAD_Y} x2={MAX_X} y2={ROAD_Y} strokeDasharray="2 10" strokeWidth="2" className="pointer-events-none stroke-stone-400/60 dark:stroke-stone-500/50" />
-
           {beams.map(({ key }) => {
             const [a, b] = key.split('|')
             const pa = pos(a)
             const pb = pos(b)
             const isRoad = roadBeams.includes(key)
             const removable = tool === 'remove' && !busy
+            const util = test?.utilization[key]
+            const mid = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 }
+            const f = test?.force[key] ?? 0
             return (
-              // In build mode beams ignore the pointer entirely, so a click
-              // near one always places or selects instead of deleting.
+              // In draw mode members ignore the pointer entirely, so a click
+              // near one always places or selects instead of erasing.
               <g
                 key={key}
                 onClick={(e) => { e.stopPropagation(); removeBeam(key) }}
@@ -659,18 +963,30 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                   y1={pa.y}
                   x2={pb.x}
                   y2={pb.y}
-                  stroke={beamColor(key)}
-                  strokeWidth={beamWidth(key, isRoad)}
-                  strokeLinecap="round"
+                  stroke={memberInk(key)}
+                  strokeWidth={memberWeight(key, isRoad)}
+                  strokeDasharray={memberDash(key)}
+                  strokeLinecap="butt"
                   className={removable ? 'transition-opacity group-hover:opacity-30' : undefined}
                 />
+                {/* Members worth reading get their number lettered beside them. */}
+                {forceView && util !== undefined && util >= 0.5 && (
+                  <text x={mid.x} y={mid.y - 5} textAnchor="middle" className={LETTER} fontSize="9" fontWeight="700" fill={memberInk(key)}>
+                    {f > 0 ? 't' : 'c'} {Math.abs(Math.round(f))}
+                  </text>
+                )}
+                {!forceView && util !== undefined && util >= 0.75 && (
+                  <text x={mid.x} y={mid.y - 5} textAnchor="middle" className={LETTER} fontSize="9" fontWeight="700" fill={memberInk(key)}>
+                    {Math.round(util * 100)}%
+                  </text>
+                )}
                 {removable && (
                   <line
                     x1={pa.x}
                     y1={pa.y}
                     x2={pb.x}
                     y2={pb.y}
-                    stroke="#f43f5e"
+                    stroke={INK.red}
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeDasharray="7 5"
@@ -681,7 +997,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
             )
           })}
 
-          {/* Placement preview: where the next joint lands, and the beam it would chain. */}
+          {/* Where the next joint lands, and the member it would run. */}
           {tool === 'build' && !busy && hover && (() => {
             const from = selected ? jointAt(selected) : null
             const tooFar = from ? Math.hypot(hover.x - from.x, hover.y - from.y) > MAX_LEN : false
@@ -693,25 +1009,15 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                     y1={from.y}
                     x2={hover.x}
                     y2={hover.y}
-                    stroke={tooFar ? '#f43f5e' : '#22c55e'}
-                    strokeWidth="4"
-                    strokeLinecap="round"
+                    stroke={tooFar ? INK.red : INK.check}
+                    strokeWidth={PEN.dim}
                     strokeDasharray="8 6"
-                    opacity="0.8"
                   />
                 )}
-                <circle
-                  cx={hover.x}
-                  cy={hover.y}
-                  r="7"
-                  fill="none"
-                  stroke={tooFar ? '#f43f5e' : '#22c55e'}
-                  strokeWidth="2.5"
-                  opacity="0.9"
-                />
+                <circle cx={hover.x} cy={hover.y} r="6" fill="none" stroke={tooFar ? INK.red : INK.check} strokeWidth={PEN.dim} />
                 {tooFar && (
-                  <text x={hover.x} y={hover.y - 14} textAnchor="middle" className="fill-rose-500 font-display text-[13px] font-bold">
-                    too far for one beam
+                  <text x={hover.x} y={hover.y - 13} textAnchor="middle" className={LETTER} fontSize="10" fontWeight="700" fill={INK.red}>
+                    too long for one member
                   </text>
                 )}
               </g>
@@ -729,169 +1035,127 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                 className={cn('group', removable ? 'cursor-pointer' : 'pointer-events-none')}
                 pointerEvents={removable ? 'auto' : 'none'}
               >
-                {j.fixed && <path d={`M${p.x - 15} ${p.y + 18} L${p.x} ${p.y} L${p.x + 15} ${p.y + 18} Z`} className="fill-stone-500 dark:fill-stone-400" />}
+                {j.fixed && <PinSupport x={p.x} y={p.y} />}
                 {removable && <circle cx={p.x} cy={p.y} r="14" fill="transparent" />}
-                <circle cx={p.x} cy={p.y} r={isSelected ? 8 : 6} className={isSelected ? 'fill-[var(--accent)]' : 'fill-stone-600 dark:fill-stone-300'} stroke="white" strokeWidth="2.5" />
-                {isSelected && <circle cx={p.x} cy={p.y} r="13" fill="none" style={{ stroke: 'var(--accent)' }} strokeWidth="2" strokeDasharray="4 4" />}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isSelected ? 5.5 : 4}
+                  fill={INK.paper}
+                  stroke={isSelected ? INK.check : INK.line}
+                  strokeWidth={PEN.dim}
+                />
+                {isSelected && (
+                  <rect x={p.x - 10} y={p.y - 10} width="20" height="20" fill="none" stroke={INK.check} strokeWidth={PEN.thin} strokeDasharray="4 3" />
+                )}
                 {removable && (
-                  <circle cx={p.x} cy={p.y} r="12" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="4 4" className="opacity-0 transition-opacity group-hover:opacity-100" />
+                  <circle cx={p.x} cy={p.y} r="11" fill="none" stroke={INK.red} strokeWidth={PEN.thin} strokeDasharray="4 3" className="opacity-0 transition-opacity group-hover:opacity-100" />
                 )}
               </g>
             )
           })}
 
+          {/* dimensions: the crossing, and how deep the truss you drew is */}
+          <DimString x1={LEFT_X} y1={ROAD_Y} x2={RIGHT_X} y2={ROAD_Y} offset={150} label={`${((RIGHT_X - LEFT_X) / PX_PER_M).toFixed(2)} m clear span`} />
+          {topY < ROAD_Y && (
+            <DimString x1={LEFT_X} y1={topY} x2={LEFT_X} y2={ROAD_Y} offset={52} label={`${depthM.toFixed(2)} m`} />
+          )}
+          <ScaleBar x={20} y={398} pxPerUnit={PX_PER_M} units={4} />
+
           {(phase === 'testing' || phase === 'failed') && (
             <motion.g
               key={runId}
-              initial={{ x: -140, y: ROAD_Y, rotate: 0 }}
-              animate={phase === 'failed' && test?.failedAt ? { x: truckStopX, y: ROAD_Y + 34, rotate: -12 } : { x: truckStopX, y: ROAD_Y }}
-              transition={phase === 'failed' && test?.failedAt ? { type: 'spring', stiffness: 200, damping: 15 } : { duration: test?.failedAt ? 1.6 : 2.8, ease: 'linear' }}
+              initial={{ x: LEFT_X - 100, y: 0 }}
+              animate={
+                phase === 'failed' && test?.failedAt
+                  ? { x: loadStopX, y: (displaced?.[test.failedAt]?.y ?? ROAD_Y) - ROAD_Y }
+                  : { x: loadStopX, y: 0 }
+              }
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : phase === 'failed' && test?.failedAt
+                    ? { type: 'spring', stiffness: 200, damping: 15 }
+                    : { duration: test?.failedAt ? 1.6 : 2.8, ease: 'linear' }
+              }
               className="pointer-events-none"
             >
-              <rect x="-62" y="-38" width="48" height="23" rx="5" className="fill-rose-500" />
-              <rect x="-14" y="-30" width="19" height="15" rx="4" className="fill-rose-400" />
-              <circle cx="-46" cy="-8" r="8" className="fill-ink dark:fill-stone-900" />
-              <circle cx="-16" cy="-8" r="8" className="fill-ink dark:fill-stone-900" />
+              <LoadArrow x={0} y={ROAD_Y - 6} length={34 + round.load * 2.4} label={`${round.load} t`} />
             </motion.g>
           )}
-        </svg>
-      </div>
 
-      {/* Feedback */}
-      <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
-        {phase === 'passed' && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            It holds! Carried {round.load} tons{round.budget !== null ? ` for $${cost.toLocaleString('en-US')}` : ''}.
-            {round.budget !== null && leftover > 0 && (
-              <Badge className="bg-emerald-200 text-emerald-900 dark:bg-emerald-500/25 dark:text-emerald-200">
-                ${leftover.toLocaleString('en-US')} under budget
-              </Badge>
-            )}
-          </motion.div>
-        )}
-        {sagFailed && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            It held, but the deck dipped {test?.peakSag} cm and the limit is {round.maxDeflection} cm. Nothing broke, it is just too floppy. A deeper truss buys stiffness; more steel on its own does not.
-          </motion.p>
-        )}
-        {phase === 'failed' && !sagFailed && failMode === 'unstable' && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            The frame folded and dropped the truck. Those shapes could not hold themselves rigid, so brace the squares into triangles.
-          </motion.p>
-        )}
-        {phase === 'failed' && !sagFailed && failMode === 'tension' && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Snap! The red beam was pulled apart under {Math.abs(Math.round(test?.force[test.outcome!.worst!.key] ?? 0))} of tension.
-            {round.materials.length > 1 && test?.outcome?.worst && materialOf(test.outcome.worst.key) === 'wood'
-              ? ' It is wood: steel takes more than twice the pull.'
-              : ' Add another load path so no single beam carries this much.'}
-          </motion.p>
-        )}
-        {phase === 'failed' && !sagFailed && failMode === 'compression' && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Crunch! The red beam buckled under {Math.abs(Math.round(test?.force[test.outcome!.worst!.key] ?? 0))} of compression. Squeezed beams give out sooner than stretched ones.
-            {round.materials.length > 1 && test?.outcome?.worst && materialOf(test.outcome.worst.key) === 'wood'
-              ? ' That one is wood: swap it to steel or shorten it with a joint.'
-              : ' Shorter beams and more triangles spread the squeeze.'}
-          </motion.p>
-        )}
-        {phase === 'build' && overBudget && (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Over budget by ${(cost - (round.budget ?? 0)).toLocaleString('en-US')}.
-          </p>
-        )}
-        {phase === 'build' && !overBudget && test && (
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink-soft dark:text-stone-400">
-            {forceView ? (
-              <>
-                From the last run:
-                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">pulled apart</Badge>
-                <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300">squashed</Badge>
-                <span>thicker means harder worked</span>
-              </>
-            ) : (
-              <>
-                Beam colours from the last run:
-                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">easy</Badge>
-                <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300">working</Badge>
-                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">near limit</Badge>
-                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">failed</Badge>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Material picker + budget */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-[auto,1fr]">
-        {round.materials.length > 1 && (
-          <div>
-            <p className="mb-2 font-display text-sm font-semibold">Build with</p>
-            <div className="flex gap-2">
-              {round.materials.map((id) => {
-                const m = MATERIALS[id]
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setMaterial(id)}
-                    className={cn(
-                      'rounded-2xl border-2 px-4 py-2 text-left transition-colors duration-200',
-                      material === id ? 'accent-border accent-soft' : 'border-stone-200 hover:border-stone-300 dark:border-white/10 dark:hover:border-white/25',
-                    )}
-                  >
-                    <span className="mb-1 block h-2.5 w-8 rounded-full" style={{ backgroundColor: m.color }} />
-                    <span className="font-display text-sm font-bold">{m.label}</span>
-                    <span className="block text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">
-                      ${m.cost}/length · holds {m.compression}-{m.tension}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-        <div className="self-end">
-          {round.budget !== null ? (
-            <Meter
-              label="Material cost"
-              display={`$${cost.toLocaleString('en-US')} of $${round.budget.toLocaleString('en-US')}`}
-              fraction={cost / round.budget}
-              barClass={overBudget ? 'bg-rose-500' : cost / round.budget > 0.9 ? 'bg-amber-400' : 'bg-emerald-500'}
+          {/* the verdict, drawn on the sheet */}
+          {phase === 'failed' && test?.outcome?.worst && (() => {
+            const [a, b] = test.outcome.worst.key.split('|')
+            const pa = pos(a)
+            const pb = pos(b)
+            const mid = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 }
+            const noteX = mid.x < VIEW_W / 2 ? 470 : 250
+            return (
+              <Redline
+                x={mid.x}
+                y={mid.y}
+                rx={Math.abs(pb.x - pa.x) / 2 + 15}
+                ry={Math.abs(pb.y - pa.y) / 2 + 15}
+                noteX={noteX}
+                noteY={356}
+                seed={`${runId}-${test.outcome.worst.key}`}
+                rev={runId}
+                note={[
+                  `${markOf(test.outcome.worst.key)} over capacity`,
+                  `${failMode === 'tension' ? 'pull' : 'push'} ${worstForce} against ${worstCap} allowed`,
+                  `${Math.round(worstUtil * 100)}% of capacity, ${MATERIALS[materialOf(test.outcome.worst.key)].label.toLowerCase()}`,
+                ]}
+              />
+            )
+          })()}
+          {phase === 'failed' && test?.outcome?.status === 'unstable' && test.failedAt && (
+            <Redline
+              x={pos(test.failedAt).x}
+              y={pos(test.failedAt).y - 20}
+              rx={58}
+              ry={48}
+              noteX={pos(test.failedAt).x < VIEW_W / 2 ? 470 : 250}
+              noteY={356}
+              seed={`${runId}-fold`}
+              rev={runId}
+              note={['frame folds here', 'no triangle to hold this bay', 'brace it and run the check again']}
             />
-          ) : (
-            <p className="font-display text-sm font-semibold text-ink-soft dark:text-stone-400">
-              Materials are free this level. Build whatever holds.
-            </p>
           )}
-          <p className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
-            {beams.length} beams{!deckComplete && ' · the road does not reach across yet'}
-          </p>
-          {tooLongTick > 0 && (
-            <motion.p
-              key={tooLongTick}
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: [0, 1, 1, 0], y: 0 }}
-              transition={{ duration: 2.6, times: [0, 0.12, 0.75, 1] }}
-              role="status"
-              className="mt-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400"
-            >
-              That beam is too long. Drop a joint partway and chain two shorter ones.
-            </motion.p>
+          {sagFailed && (
+            <Redline
+              x={(LEFT_X + RIGHT_X) / 2}
+              y={ROAD_Y + sagLinePx(test?.peakSag ?? 0) / 2}
+              rx={132}
+              ry={30}
+              noteX={250}
+              noteY={356}
+              seed={`${runId}-sag`}
+              rev={runId}
+              note={[`deck sag ${test?.peakSag} cm`, `limit ${round.maxDeflection} cm, nothing broke`]}
+            />
           )}
-        </div>
-      </div>
+          {phase === 'passed' && (
+            <ApprovalStamp x={400} y={112} lines={[`${round.load} t carried`, `rev ${String(runId).padStart(2, '0')}, ${spare}% strength spare`]} />
+          )}
+          {phase === 'failed' && (
+            <RevisionStamp x={400} y={112} lines={[`rev ${String(runId).padStart(2, '0')}`, 'see redline']} />
+          )}
+
+          {board.active && !busy && <CursorMark x={board.cursor.x} y={board.cursor.y} tone={tool === 'remove' ? INK.red : INK.check} />}
+        </svg>
+      </DraftingSheet>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button variant="accent" size="lg" onClick={runTest} disabled={busy || overBudget || !deckComplete}>
           <Truck className="h-5 w-5" />
-          {busy ? 'Crossing...' : 'Send the truck'}
+          {busy ? 'Load crossing...' : 'Run the load check'}
         </Button>
         <Button variant="ghost" onClick={undo} disabled={busy || history.length === 0} aria-label="Undo last change">
           <Undo2 className="h-4 w-4" />
           Undo
         </Button>
-        <Button variant="ghost" onClick={reset} disabled={busy} aria-label="Clear the bridge">
+        <Button variant="ghost" onClick={reset} disabled={busy} aria-label="Clear the drawing">
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
@@ -914,7 +1178,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           message={
             lv.level.metrics
               ? `Carried ${round.load} t for $${cost.toLocaleString('en-US')}, dipping ${test?.peakSag} cm with ${spare} % strength to spare. Try it leaner, or deeper.`
-              : 'Solid bridge. On you go.'
+              : 'Signed off. On you go.'
           }
           onReplay={reset}
         />

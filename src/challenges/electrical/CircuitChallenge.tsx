@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { PlugZap, RotateCcw, Undo2 } from 'lucide-react'
+import { useReducedMotion } from 'framer-motion'
+import { RotateCcw, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
@@ -11,6 +11,34 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { Meter } from '@/components/ui/Meter'
+import {
+  BenchPanel,
+  BenchVerdict,
+  BreakerHandle,
+  Crosshair,
+  JunctionDot,
+  LampSymbol,
+  Oscilloscope,
+  ProbeMeter,
+  ProbeTip,
+  SchematicSheet,
+  ScorchedRun,
+  SourceSymbol,
+  SpecList,
+  SwitchSymbol,
+  TestPoint,
+  ToolSelector,
+  Wire,
+  benchLabel,
+  findHops,
+  orthRoute,
+  stepNode,
+  type BenchNode,
+  type BreakerState,
+  type Hop,
+  type MeterReading,
+  type Pt,
+} from '@/components/instruments/bench'
 import { useLevels } from '@/hooks/useLevels'
 import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
@@ -176,6 +204,12 @@ const BAT = { x: 120, y: 185, plus: { x: 170, y: 135 }, minus: { x: 170, y: 235 
 
 const wireKey = (a: string, b: string) => [a, b].sort().join('~')
 
+/* Sheet size. Wider than the parts need, so the title block has its own corner.
+   Nothing here feeds the copper bill: that is measured pin to pin. */
+const SHEET = { w: 800, h: 400 }
+const SCOPE_DIVS_Y = 8
+const SAMPLES = 60
+
 export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const lv = useLevels('circuit', LEVELS)
   const round = lv.level.setup
@@ -187,6 +221,13 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const [showFlow, setShowFlow] = useState(true)
   const completedRef = useRef(false)
 
+  /* Bench state: which tool is in hand, where the cursor sits, where the probe
+     is clipped on, and what the main breaker is doing. */
+  const [tool, setTool] = useState<'spool' | 'probe'>('spool')
+  const [cursor, setCursor] = useState<string>(BAT_P)
+  const [probeAt, setProbeAt] = useState<string | null>(null)
+  const [breaker, setBreaker] = useState<BreakerState>('open')
+
   // Clear the board whenever the level changes, so a render never sees wires
   // belonging to parts the new level does not have.
   useEffect(() => {
@@ -195,6 +236,10 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setSwitchOn(true)
     setWonRound(false)
     setVerdict(null)
+    setTool('spool')
+    setCursor(BAT_P)
+    setProbeAt(null)
+    setBreaker('open')
   }, [lv.level.n])
 
   const bulbs = round.parts.filter((p) => p.kind === 'bulb')
@@ -236,7 +281,8 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const p = sim.power[req.id] ?? 0
     return req.want === 'full' ? p >= FULL : p < LIT
   }
-  // Total copper, wire by wire. One board unit is one centimetre.
+  // Total copper, wire by wire. One board unit is one centimetre. The schematic
+  // is not a scale drawing, so this measures pin to pin, not the drawn route.
   const wireLength = Math.round(
     wires.reduce((sum, [a, b]) => {
       const pa = terminalPos(a)
@@ -250,11 +296,17 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
+  /** Any edit puts the breaker back in your hand. */
+  const stand = () => {
+    if (!wonRound) setBreaker('open')
+  }
+
   /** Close the case and power the board for real. */
   const powerUp = () => {
     if (wonRound) return
     if (allMet) {
       setWonRound(true)
+      setBreaker('closed')
       setVerdict({ ok: true, text: 'That circuit does exactly what was asked. Nice wiring.' })
       lv.clearLevel(lv.level.metrics ? { wire: wireLength, runs: wires.length } : undefined)
       if (!completedRef.current) {
@@ -269,9 +321,11 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       : overWire
         ? `The wiring works but uses ${wireLength} cm of copper against a budget of ${round.wireBudget} cm. Route it more directly.`
         : `${unmet} of the ${round.requirements.length} requirements ${unmet === 1 ? 'is' : 'are'} not met. Test with the switch before powering up.`
+    setBreaker('tripped')
     if (att.spend()) {
       reset()
       att.refill()
+      setBreaker('tripped')
       setVerdict({ ok: false, text: 'The bench supply cut out. Board stripped. Trace the current path with a finger before rebuilding.' })
     } else {
       setVerdict({ ok: false, text })
@@ -280,6 +334,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
 
   const clickTerminal = (id: string) => {
     setVerdict(null)
+    stand()
     if (selected === null) {
       setSelected(id)
       return
@@ -304,8 +359,12 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setSelected(null)
   }
 
-  const removeWire = (key: string) => setWires((prev) => prev.filter(([a, b]) => wireKey(a, b) !== key))
+  const removeWire = (key: string) => {
+    stand()
+    setWires((prev) => prev.filter(([a, b]) => wireKey(a, b) !== key))
+  }
   const undo = () => {
+    stand()
     setWires((prev) => prev.slice(0, -1))
     setSelected(null)
   }
@@ -314,6 +373,11 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     setSelected(null)
     setWonRound(false)
     setVerdict(null)
+    setBreaker('open')
+  }
+  const throwSwitch = () => {
+    stand()
+    setSwitchOn((v) => !v)
   }
 
   const allTerminals = [
@@ -321,6 +385,218 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     BAT_N,
     ...round.parts.flatMap((p) => [terminalId(p.id, 'a'), terminalId(p.id, 'b')]),
   ]
+
+  /* ------------------------- bench readouts ------------------------- */
+
+  /** Reference designators: LP1, SW1, and their pins. */
+  const designator = useMemo(() => {
+    const map: Record<string, string> = { [BAT_P]: 'BT1 +', [BAT_N]: 'BT1 −' }
+    let lamps = 0
+    let sws = 0
+    for (const p of round.parts) {
+      const tag = p.kind === 'bulb' ? `LP${++lamps}` : `SW${++sws}`
+      map[p.id] = tag
+      map[terminalId(p.id, 'a')] = `${tag} A`
+      map[terminalId(p.id, 'b')] = `${tag} B`
+    }
+    return map
+  }, [round])
+
+  const nodes: BenchNode[] = useMemo(
+    () =>
+      allTerminals
+        .map((id) => {
+          const p = terminalPos(id)
+          return p ? { id, x: p.x, y: p.y, label: designator[id] ?? id } : null
+        })
+        .filter((n): n is BenchNode => n !== null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [round, designator],
+  )
+
+  /** Short-circuit path: the run of wire that ties + straight back to −. */
+  const faultRun = useMemo(() => {
+    if (!live.short) return new Set<string>()
+    const links: { key: string | null; a: string; b: string }[] = wires.map(([a, b]) => ({ key: wireKey(a, b), a, b }))
+    if (switchOn) {
+      for (const s of switches) links.push({ key: null, a: terminalId(s.id, 'a'), b: terminalId(s.id, 'b') })
+    }
+    const from: Record<string, { prev: string; key: string | null } | null> = { [BAT_P]: null }
+    const queue = [BAT_P]
+    while (queue.length > 0) {
+      const here = queue.shift()!
+      if (here === BAT_N) break
+      for (const l of links) {
+        const next = l.a === here ? l.b : l.b === here ? l.a : null
+        if (!next || next in from) continue
+        from[next] = { prev: here, key: l.key }
+        queue.push(next)
+      }
+    }
+    const path = new Set<string>()
+    let step = from[BAT_N]
+    let at = BAT_N
+    while (step) {
+      if (step.key) path.add(step.key)
+      at = step.prev
+      step = from[at]
+    }
+    return path
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wires, switchOn, live.short, round])
+
+  /** Amps flowing out of each net, so a conductor knows whether it is working. */
+  const netCurrent = useMemo(() => {
+    const amps: Record<string, number> = {}
+    if (live.short) return amps
+    for (const b of bulbs) {
+      const i = (live.power[b.id] ?? 0) * BULB.ratedCurrent
+      if (i <= 0.001) continue
+      for (const side of ['a', 'b'] as const) {
+        const n = live.net[terminalId(b.id, side)]
+        if (n) amps[n] = (amps[n] ?? 0) + i
+      }
+    }
+    return amps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, round])
+
+  /** Routed conductors, plus the hop list for every crossing. */
+  const routed = useMemo(() => {
+    const lead = (id: string) => (id.endsWith('.a') ? ('left' as const) : ('right' as const))
+    const runs = wires
+      .map(([a, b]) => {
+        const pa = terminalPos(a)
+        const pb = terminalPos(b)
+        if (!pa || !pb) return null
+        return { id: wireKey(a, b), a, b, pts: orthRoute(pa as Pt, lead(a), pb as Pt, lead(b)) }
+      })
+      .filter((r): r is { id: string; a: string; b: string; pts: Pt[] } => r !== null)
+    const hops = findHops(runs)
+    return { runs, hops: hops as Record<string, Hop[]> }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wires, round])
+
+  /** How many conductors land on each pin. Two or more is a junction. */
+  const landings = useMemo(() => {
+    const count: Record<string, number> = {}
+    for (const [a, b] of wires) {
+      count[a] = (count[a] ?? 0) + 1
+      count[b] = (count[b] ?? 0) + 1
+    }
+    return count
+  }, [wires])
+
+  /* Scope: total current out of the supply, sampled at 10 Hz. */
+  const perDivY = bulbs.length > 2 ? 1 : 0.5
+  const fullScale = perDivY * SCOPE_DIVS_Y
+  const sourceCurrent = live.short
+    ? fullScale
+    : bulbs.reduce((sum, b) => sum + (live.power[b.id] ?? 0) * BULB.ratedCurrent, 0)
+  const [trace, setTrace] = useState<number[]>(() => new Array(SAMPLES).fill(0))
+  const reduced = useReducedMotion()
+  const signalRef = useRef(sourceCurrent)
+  signalRef.current = sourceCurrent
+
+  useEffect(() => {
+    if (reduced) return
+    const id = setInterval(() => setTrace((t) => [...t.slice(1), signalRef.current]), 100)
+    return () => clearInterval(id)
+  }, [reduced])
+  // Reduced motion gets no sweep, so the trace steps only when the circuit does.
+  useEffect(() => {
+    if (reduced) setTrace((t) => [...t.slice(1), sourceCurrent])
+  }, [reduced, sourceCurrent])
+  useEffect(() => setTrace(new Array(SAMPLES).fill(0)), [lv.level.n])
+
+  /* Meter: one node at a time, COM on the minus rail. */
+  const reading: MeterReading = useMemo(() => {
+    if (!probeAt) {
+      return { value: '- - -', unit: 'V', note: 'probe in its holster', state: 'none' }
+    }
+    const tag = designator[probeAt] ?? probeAt
+    if (live.short) {
+      return { value: 'SHRT', unit: '', node: tag, note: '+ tied to − through bare copper', state: 'over' }
+    }
+    const netId = live.net[probeAt]
+    const volts = netId === undefined ? undefined : live.volts[netId]
+    if (volts === undefined) {
+      return { value: '- - -', unit: 'V', node: tag, note: 'no path back to the supply', state: 'none' }
+    }
+    const partId = probeAt.slice(0, probeAt.lastIndexOf('.'))
+    const bulb = bulbs.find((b) => b.id === partId)
+    const sw = switches.find((s) => s.id === partId)
+    const note = bulb
+      ? `${((live.power[bulb.id] ?? 0) * BULB.ratedCurrent).toFixed(2)} A through ${designator[bulb.id]}`
+      : sw
+        ? `${designator[sw.id]} is ${switchOn ? 'closed' : 'open'}`
+        : probeAt === BAT_N
+          ? 'meter reference'
+          : 'supply rail'
+    return { value: volts.toFixed(2), unit: 'V', node: tag, note }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [probeAt, live, switchOn, designator, round])
+
+  const announce = probeAt
+    ? `Probe on ${reading.node}. ${reading.value === '- - -' ? 'No reading' : `${reading.value} ${reading.unit}`}. ${reading.note}.`
+    : 'Probe parked. Move it onto a pin to take a reading.'
+
+  /* ------------------------- bench controls ------------------------- */
+
+  const act = (id: string) => {
+    setCursor(id)
+    if (tool === 'probe') {
+      setProbeAt(id)
+      return
+    }
+    clickTerminal(id)
+  }
+
+  const onSheetKey = (e: React.KeyboardEvent) => {
+    const dirs: Record<string, 'left' | 'right' | 'up' | 'down'> = {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+    }
+    if (e.key in dirs) {
+      e.preventDefault()
+      const next = stepNode(nodes, cursor, dirs[e.key])
+      if (!next) return
+      setCursor(next)
+      if (tool === 'probe') setProbeAt(next)
+      return
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      act(cursor)
+      return
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault()
+      const last = [...wires].reverse().find(([a, b]) => a === cursor || b === cursor)
+      if (last) removeWire(wireKey(last[0], last[1]))
+      return
+    }
+    if (e.key === 'Escape') setSelected(null)
+  }
+
+  const cursorPos = terminalPos(cursor)
+  const probePos = probeAt ? terminalPos(probeAt) : null
+  const flowing = round.flow && showFlow
+
+  const specs = round.requirements.map((req) => ({ text: req.text, met: met(req) }))
+  const idleText = bulbs.some((b) => (live.power[b.id] ?? 0) > LIT && (live.power[b.id] ?? 0) < FULL)
+    ? 'Something is glowing, but not at full strength.'
+    : 'Wire the pins, test with the switch, then throw the main breaker.'
+  const shown = verdict
+    ? verdict
+    : simClosed.short
+      ? {
+          ok: false,
+          text: 'Short circuit! A wire runs straight from + back to − with nothing in between, so all the power races through it.',
+        }
+      : null
 
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
@@ -332,193 +608,195 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       />
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-      <Objective
-        goal={`Meet all ${round.requirements.length} requirement${round.requirements.length === 1 ? '' : 's'}${round.wireBudget !== null ? ` within ${round.wireBudget} cm of copper` : ''}, no shorts`}
-        status={`copper used: ${wireLength} cm`}
-        attemptsLeft={att.left}
-        met={wonRound}
-      />
+        <Objective
+          goal={`Meet all ${round.requirements.length} requirement${round.requirements.length === 1 ? '' : 's'}${round.wireBudget !== null ? ` within ${round.wireBudget} cm of copper` : ''}, no shorts`}
+          status={`copper used: ${wireLength} cm`}
+          attemptsLeft={att.left}
+          met={wonRound}
+        />
 
         <div className="max-w-md">
           <p className="text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
           <p className="mt-1 text-xs text-ink-soft dark:text-stone-500">
-            Click a terminal, then another, to run a wire. Click a wire to remove it.
+            Hold the spool to run wire pin to pin. Hold the probe to read one pin at a time. Arrow keys
+            walk the cursor, enter uses the tool, delete cuts the wire at that pin.
           </p>
         </div>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">{round.label}</Badge>
       </div>
 
-      {/* Board */}
-      <div className="overflow-hidden rounded-2xl blueprint">
-        <svg viewBox="0 0 800 360" className="w-full" role="img" aria-label="Circuit board">
-          {/* wires */}
-          {wires.map(([a, b]) => {
-            const pa = terminalPos(a)
-            const pb = terminalPos(b)
-            const key = wireKey(a, b)
-            if (!pa || !pb) return null
+      <BenchPanel
+        title="bench 01 · 9 v dc supply"
+        meta={
+          <>
+            <span className={cn(benchLabel, 'text-[var(--bench-dim,#a29b93)]')}>
+              {wires.length} runs · {wireLength} cm copper
+            </span>
+            <ToolSelector
+              value={tool}
+              onChange={(id) => {
+                setTool(id)
+                setSelected(null)
+                if (id === 'probe') setProbeAt(cursor)
+              }}
+              options={[
+                { id: 'spool' as const, label: 'wire spool', hint: 'Run wire between two pins' },
+                { id: 'probe' as const, label: 'meter probe', hint: 'Read one pin at a time' },
+              ]}
+            />
+          </>
+        }
+      >
+        <SchematicSheet
+          viewBox={`0 0 ${SHEET.w} ${SHEET.h}`}
+          width={SHEET.w}
+          height={SHEET.h}
+          label={`Circuit schematic, level ${lv.level.n}: ${round.label}`}
+          titleBlock={[`circuit lab · ${round.label}`, `sheet ${lv.level.n} of 5 · 9 v dc`, `${wires.length} runs · ${wireLength} cm`]}
+          stamp={wonRound ? 'spec met' : undefined}
+        >
+          {/* conductors */}
+          {routed.runs.map((run) => {
+            const netId = live.net[run.a]
+            const carrying = !live.short && netId !== undefined && (netCurrent[netId] ?? 0) > 0
+            const faulted = faultRun.has(run.id)
             return (
-              <g key={key} onClick={() => removeWire(key)} className="cursor-pointer">
-                <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="transparent" strokeWidth="16" />
-                <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#d97706" strokeWidth="5" strokeLinecap="round" />
-                {round.flow && showFlow && !live.short && bulbs.some((bl) => (live.power[bl.id] ?? 0) > LIT) && (
-                  <motion.line
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    stroke="#fde047"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="4 14"
-                    animate={{ strokeDashoffset: [0, -36] }}
-                    transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
-                  />
-                )}
-              </g>
+              <Wire
+                key={run.id}
+                pts={run.pts}
+                hops={routed.hops[run.id]}
+                state={faulted ? 'fault' : carrying ? 'live' : 'dead'}
+                flow={flowing && carrying}
+                label={`Wire from ${designator[run.a] ?? run.a} to ${designator[run.b] ?? run.b}. ${
+                  tool === 'probe' ? 'Press enter to probe this net.' : 'Press enter to cut it.'
+                }`}
+                onActivate={() => (tool === 'probe' ? (setCursor(run.a), setProbeAt(run.a)) : removeWire(run.id))}
+              />
             )
           })}
 
-          {/* battery */}
-          <g>
-            <rect x={BAT.x - 34} y={BAT.y - 60} width="68" height="120" rx="10" className="fill-stone-700 dark:fill-stone-600" />
-            <text x={BAT.x} y={BAT.y + 6} textAnchor="middle" fontSize="17" fontWeight="800" className="fill-white font-display">
-              {VOLTAGE}V
-            </text>
-            <line x1={BAT.x + 34} y1={BAT.plus.y} x2={BAT.plus.x} y2={BAT.plus.y} strokeWidth="4" className="stroke-stone-500" />
-            <line x1={BAT.x + 34} y1={BAT.minus.y} x2={BAT.minus.x} y2={BAT.minus.y} strokeWidth="4" className="stroke-stone-500" />
-            <text x={BAT.plus.x + 16} y={BAT.plus.y + 5} fontSize="18" fontWeight="800" className="fill-rose-500 font-display">+</text>
-            <text x={BAT.minus.x + 16} y={BAT.minus.y + 6} fontSize="18" fontWeight="800" className="fill-ink-soft font-display dark:fill-stone-300">−</text>
-          </g>
+          {/* the run that cooked */}
+          {routed.runs
+            .filter((run) => faultRun.has(run.id))
+            .map((run) => (
+              <ScorchedRun key={`char-${run.id}`} pts={run.pts} hops={routed.hops[run.id]} />
+            ))}
 
-          {/* parts */}
+          <SourceSymbol x={BAT.x} y={BAT.y} volts={VOLTAGE} plusPin={BAT.plus} minusPin={BAT.minus} />
+
           {round.parts.map((part) => {
             if (part.kind === 'bulb') {
               const p = live.short ? 0 : live.power[part.id] ?? 0
-              const glow = Math.max(0, Math.min(1, p))
               return (
-                <g key={part.id}>
-                  <line x1={part.x + termOffset.a} y1={part.y} x2={part.x - 16} y2={part.y} strokeWidth="4" className="stroke-stone-500" />
-                  <line x1={part.x + 16} y1={part.y} x2={part.x + termOffset.b} y2={part.y} strokeWidth="4" className="stroke-stone-500" />
-                  {glow > LIT && <circle cx={part.x} cy={part.y} r={26 + glow * 16} fill="#fde047" opacity={0.16 + glow * 0.24} />}
-                  <circle
-                    cx={part.x}
-                    cy={part.y}
-                    r="22"
-                    className={glow > LIT ? '' : 'fill-stone-300 dark:fill-stone-600'}
-                    style={glow > LIT ? { fill: `rgb(253, ${200 + Math.round(glow * 40)}, ${71 + Math.round(glow * 60)})` } : undefined}
-                  />
-                  <text x={part.x} y={part.y + 48} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-                    {part.label}
-                    {glow > LIT && glow < FULL ? ' (dim)' : ''}
-                  </text>
-                </g>
+                <LampSymbol
+                  key={part.id}
+                  x={part.x}
+                  y={part.y}
+                  lead={52}
+                  glow={Math.max(0, Math.min(1, p))}
+                  designator={designator[part.id]}
+                  caption={part.label}
+                />
               )
             }
-            // switch
-            const a = { x: part.x + termOffset.a, y: part.y }
-            const b = { x: part.x + termOffset.b, y: part.y }
             return (
-              <g key={part.id}>
-                <line
-                  x1={a.x}
-                  y1={a.y}
-                  x2={switchOn ? b.x : b.x - 14}
-                  y2={switchOn ? b.y : b.y - 26}
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  className={switchOn ? 'stroke-emerald-500' : 'stroke-stone-400'}
+              <g
+                key={part.id}
+                role="button"
+                tabIndex={0}
+                aria-pressed={switchOn}
+                aria-label={`${designator[part.id]}, ${switchOn ? 'closed' : 'open'}. Press to throw it.`}
+                onClick={throwSwitch}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    throwSwitch()
+                  }
+                }}
+                className="cursor-pointer outline-none"
+              >
+                <rect x={part.x - 46} y={part.y - 40} width="92" height="66" rx="8" fill="transparent" />
+                <SwitchSymbol
+                  x={part.x}
+                  y={part.y}
+                  lead={52}
+                  closed={switchOn}
+                  designator={designator[part.id]}
+                  caption={`${part.label} · ${switchOn ? 'closed' : 'open'}`}
                 />
-                <rect
-                  x={part.x - 46}
-                  y={part.y - 34}
-                  width="92"
-                  height="54"
-                  rx="10"
-                  fill="transparent"
-                  onClick={() => setSwitchOn((v) => !v)}
-                  className="cursor-pointer"
-                />
-                <text x={part.x} y={part.y + 40} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-                  {part.label}: {switchOn ? 'closed' : 'open'} (tap)
-                </text>
               </g>
             )
           })}
 
-          {/* terminals on top */}
-          {allTerminals.map((id) => {
-            const p = terminalPos(id)
-            const isSel = selected === id
-            if (!p) return null
-            return (
-              <g key={id} onClick={() => clickTerminal(id)} className="cursor-pointer">
-                <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={isSel ? 8 : 6}
-                  className={isSel ? 'fill-[var(--accent)]' : 'fill-stone-600 dark:fill-stone-300'}
-                  stroke="white"
-                  strokeWidth="2.5"
-                />
-              </g>
-            )
-          })}
-        </svg>
-      </div>
-
-      {/* Requirements checklist */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {round.requirements.map((req) => {
-          const ok = met(req)
-          return (
-            <span
-              key={req.text}
-              className={cn(
-                'rounded-full px-3 py-1.5 font-display text-sm font-semibold',
-                ok
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                  : 'bg-stone-100 text-ink-soft dark:bg-white/10 dark:text-stone-400',
-              )}
+          {/* pins: every one is a test point, and a filled dot means joined */}
+          {nodes.map((n) => (
+            <g
+              key={n.id}
+              onClick={() => act(n.id)}
+              className="cursor-pointer"
+              aria-hidden
             >
-              {ok ? '✓' : '○'} {req.text}
-            </span>
-          )
-        })}
-      </div>
+              <circle cx={n.x} cy={n.y} r="15" fill="transparent" />
+              <TestPoint
+                x={n.x}
+                y={n.y}
+                state={selected === n.id ? 'armed' : probeAt === n.id ? 'probed' : 'idle'}
+                r={(landings[n.id] ?? 0) >= 2 ? 6.5 : 5.5}
+              />
+              {(landings[n.id] ?? 0) >= 2 && (
+                <JunctionDot x={n.x} y={n.y} live={!live.short && (netCurrent[live.net[n.id] ?? ''] ?? 0) > 0} />
+              )}
+            </g>
+          ))}
 
-      {/* Feedback */}
-      <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
-        {verdict ? (
-          <p
-            className={cn(
-              'rounded-xl px-4 py-2.5 text-sm font-semibold',
-              verdict.ok
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
-            )}
-          >
-            {verdict.text}
-          </p>
-        ) : simClosed.short ? (
-          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Short circuit! A wire runs straight from + back to − with nothing in between, so all the
-            power races through it.
-          </p>
-        ) : (
-          <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
-            {bulbs.some((b) => (live.power[b.id] ?? 0) > LIT && (live.power[b.id] ?? 0) < FULL)
-              ? 'Something is glowing, but not at full strength.'
-              : 'Wire the parts up, test with the switch, then power the board for real.'}
-          </p>
-        )}
-      </div>
+          {probePos && <ProbeTip x={probePos.x} y={probePos.y} />}
+
+          {/* one cursor, one tab stop: the keyboard path to every pin */}
+          {cursorPos && (
+            <g
+              role="button"
+              tabIndex={0}
+              aria-label={`Sheet cursor on ${designator[cursor] ?? cursor}, holding the ${tool === 'probe' ? 'meter probe' : 'wire spool'}. Arrow keys move pin to pin, enter uses the tool, delete cuts the wire at this pin.`}
+              aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Enter Delete"
+              onKeyDown={onSheetKey}
+              className="outline-none"
+            >
+              <Crosshair x={cursorPos.x} y={cursorPos.y} />
+            </g>
+          )}
+        </SchematicSheet>
+
+        <div className="mt-3 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_auto]">
+          <ProbeMeter reading={reading} mode="DCV" announce={announce} />
+          <Oscilloscope
+            samples={trace}
+            perDivY={perDivY}
+            perDivX="0.6 s"
+            unit="A"
+            channel="ch1 · supply current"
+            overRange={live.short}
+            divsY={SCOPE_DIVS_Y}
+          />
+          <BreakerHandle
+            state={breaker}
+            onThrow={powerUp}
+            label="main"
+            rating={`${VOLTAGE} v`}
+            disabled={wonRound}
+            className="lg:h-full lg:justify-center"
+          />
+        </div>
+
+        <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          <SpecList items={specs} />
+          <BenchVerdict verdict={shown} idle={idleText} />
+        </div>
+      </BenchPanel>
 
       {round.wireBudget !== null && (
         <div className="mt-3">
           <Meter
-            label="Copper used"
+            label="Copper billed pin to pin"
             display={`${wireLength} of ${round.wireBudget} cm`}
             fraction={wireLength / round.wireBudget}
             barClass={overWire ? 'bg-rose-500' : 'bg-emerald-500'}
@@ -527,10 +805,6 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button variant="accent" size="lg" onClick={powerUp} disabled={wonRound}>
-          <PlugZap className="h-5 w-5" />
-          Power it for real
-        </Button>
         <Button variant="ghost" onClick={undo} disabled={wires.length === 0} aria-label="Undo last wire">
           <Undo2 className="h-4 w-4" />
           Undo
@@ -539,7 +813,9 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">{wires.length} runs · {wireLength} cm copper</Badge>
+        <p className="ml-auto text-xs text-ink-soft dark:text-stone-500">
+          The supply is live for testing. Throw the main breaker to run it for real.
+        </p>
       </div>
 
       {lv.level.metrics && (
