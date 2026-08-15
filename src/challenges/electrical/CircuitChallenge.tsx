@@ -469,8 +469,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
         return { id: wireKey(a, b), a, b, pts: orthRoute(pa as Pt, lead(a), pb as Pt, lead(b)) }
       })
       .filter((r): r is { id: string; a: string; b: string; pts: Pt[] } => r !== null)
-    const hops = findHops(runs)
-    return { runs, hops: hops as Record<string, Hop[]> }
+    return { runs, hops: findHops(runs) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wires, round])
 
@@ -549,7 +548,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     clickTerminal(id)
   }
 
-  const onSheetKey = (e: React.KeyboardEvent) => {
+  const onSheetKey = (e: KeyboardEvent) => {
     const dirs: Record<string, 'left' | 'right' | 'up' | 'down'> = {
       ArrowLeft: 'left',
       ArrowRight: 'right',
