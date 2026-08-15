@@ -33,7 +33,7 @@ export function LevelRail({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {levels.map((l) => {
           const cleared = isCleared(l.n)
           const locked = l.n > unlockedThrough
@@ -52,7 +52,9 @@ export function LevelRail({
               }
               title={locked ? 'Clear the level before this one to unlock' : l.title}
               className={cn(
-                'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-3',
+                // 44px square minimum: these are the most tapped controls in the
+                // app and most of the audience is on an iPad, not a mouse.
+                'flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-3',
                 'text-sm font-bold font-mono tabular-nums transition-colors duration-200',
                 isActive && 'accent-bg on-accent shadow-clay',
                 !isActive && cleared && 'accent-soft accent-text hover:brightness-105',

@@ -228,7 +228,7 @@ export const disciplines: Discipline[] = [
           {
             icon: PiggyBank,
             title: 'Share the load, spend less',
-            body: 'More triangles spread the weight over more beams, so none of them snaps, and you do not overpay for one giant beam.',
+            body: 'More triangles spread the weight over more beams, so no single one is pushed past its limit. That is what lets cheap timber carry most of the span, with steel saved for the few beams working hardest.',
           },
         ],
       },
@@ -251,7 +251,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Route,
             title: 'Everyone shares the crossing',
-            body: 'Add walkers and buses and it gets trickier. Real traffic engineers juggle them all on the same clock.',
+            body: 'Give walkers their own phase and every changeover burns a few more seconds of green. Real traffic engineers juggle cars, walkers, and lost time on the same one-minute clock.',
           },
         ],
       },
@@ -269,7 +269,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Columns3,
             title: 'Bracing stiffens the frame',
-            body: 'X-braces and a solid core stop the floors from swaying apart when the ground jerks back and forth.',
+            body: 'Braces and a stronger frame stop the floors from swaying apart when the ground jerks back and forth.',
           },
           {
             icon: Anchor,
@@ -379,8 +379,8 @@ export const disciplines: Discipline[] = [
           },
           {
             icon: Lightbulb,
-            title: 'One loop can run a lot',
-            body: 'Put a bulb and a buzzer in the same loop and both go at once, all from a single battery.',
+            title: 'Series shares, parallel does not',
+            body: 'Chain two bulbs in one loop and they split the battery\'s push, so both glow dim. Give each bulb its own loop back to the battery and both burn at full brightness.',
           },
         ],
       },
@@ -787,7 +787,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Users,
             title: 'The best aisle gets crowded',
-            body: 'Everything wants to live at the front, but a front aisle full of the busiest products fills up with pickers queueing round each other. Real warehouses spread the traffic out on purpose.',
+            body: 'Everything wants to live at the front, but real warehouses cannot allow it: a front aisle full of the busiest products fills up with pickers queueing round each other, so layouts spread the traffic out on purpose.',
           },
         ],
       },
@@ -880,7 +880,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Share2,
             title: 'Odds multiply, so they only go down',
-            body: 'If every subsystem has to survive, the chance of all of them making it is each chance multiplied together. Four parts that are each 95 percent reliable give a mission that is only 81 percent reliable.',
+            body: 'If every subsystem has to survive, the chance of all of them making it is each chance multiplied together. The four on this probe are 99, 99.5, 97 and 92 percent on their own, and the probe carrying all four starts out just under 88.',
           },
           {
             icon: ShieldCheck,
@@ -971,7 +971,7 @@ export const disciplines: Discipline[] = [
       ],
       builds: ['Factory arms', 'Drones', 'Mars rovers', 'Prosthetic hands', 'Warehouse bots', 'Surgical robots'],
       challengeTeaser:
-        'A robot arm needs to grab a part. Turn its two joints until the gripper lands right on the target.',
+        'A prize is sitting at the bottom of the claw machine. Drag the claw onto it and the arm works out what angle each joint needs.',
     },
     challenges: [
       {
@@ -987,13 +987,13 @@ export const disciplines: Discipline[] = [
         },
         {
           icon: Crosshair,
-          title: 'Small turns near the end',
-          body: 'When you are close, tiny changes to the elbow move the gripper just a little. That is how robots fine-tune.',
+          title: 'Two ways to reach one spot',
+          body: 'Almost every point can be reached with the elbow bent up or bent down. The claw lands in exactly the same place either way, while the arm fills completely different space, which is what decides whether it clears the shelf.',
         },
         {
           icon: Cpu,
-          title: 'Real robots do this math',
-          body: 'You found the angles by feel. A robot computes them instantly, thousands of times a second.',
+          title: 'The arm solves it, not you',
+          body: 'You dragged a point and the arm worked backwards to the angles each joint had to hold. That backwards step is the hard part, and it is running inside every arm that moves.',
         },
         ],
       },
@@ -1051,7 +1051,7 @@ export const disciplines: Discipline[] = [
       tradeoff:
         'Robots trade reach, speed, and precision: a long, fast arm is rarely also a delicate one.',
       realWorld: {
-        intro: 'The angles you found are what real robots compute constantly.',
+        intro: 'The angles the arm worked out for you are what real robots compute constantly.',
         examples: [
           'Factory arms weld and assemble by solving joint angles thousands of times a second.',
           'Surgical robots place their tools with millimeter precision the same way.',
@@ -1504,12 +1504,12 @@ export const disciplines: Discipline[] = [
         id: 'binary',
         title: 'Binary Bulbs',
         goal: 'Send the reading',
-        realJob: 'This is how every number in every computer on earth is actually stored and sent.',
+        realJob: 'This is the core idea behind how computers store and send numbers, from sensor readings to memory chips.',
         why: [
           {
             icon: Binary,
             title: 'Every place is worth double',
-            body: 'Bulbs are worth 1, 2, 4, 8, 16 and so on, so any whole number can be built by switching on the right few. This is how every value inside every computer is actually stored.',
+            body: 'Bulbs are worth 1, 2, 4, 8, 16 and so on, so any whole number can be built by switching on the right few. That place-value trick is the heart of how computers store numbers.',
           },
           {
             icon: Cable,

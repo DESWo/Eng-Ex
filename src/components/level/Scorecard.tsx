@@ -73,7 +73,8 @@ export function Scorecard({ metrics, values, best, scored }: ScorecardProps) {
       </div>
 
       <p className="mt-3 text-xs text-ink-soft dark:text-stone-400">
-        The black line is par. No single design hits every target, so try a few and keep the one you like best.
+        The line on each bar marks par. Pars pull in different directions, so chase all three and see
+        how close you get.
       </p>
     </div>
   )
