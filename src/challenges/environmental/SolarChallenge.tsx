@@ -143,7 +143,7 @@ const LEVELS: ChallengeLevel<SolarSetup>[] = [
     title: 'Quote the system',
     phase: 'optimize',
     concept: 'Never dark, never wasteful',
-    teach: 'Batteries are dearer per unit than panels, but panels without storage spill their surplus into nothing. Find the pairing that keeps the house lit without a roof full of capacity that has nowhere to go.',
+    teach: 'Batteries are dearer per unit than panels, but panels without storage spill their surplus into nothing. Find the pairing that keeps the house lit without a roof full of capacity that has nowhere to go. Honesty note before you quote: real installs cost more than the friendly rounded prices here, and real batteries lose a little energy on every charge. The shape of the tradeoff is the part that carries over.',
     setup: { battery: true, matchDailyTotal: false, maxUnmet: 2, budget: 8000, chart: true, brief: 'Give the family a system that works and a number they will accept.' },
     metrics: [
       { id: 'unmet', label: 'Energy gone without', goal: 'min', target: 0.5, unit: ' kWh' },
@@ -213,7 +213,9 @@ export function SolarChallenge({ onComplete }: ChallengeProps) {
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'Out of test switchovers. Fresh roof, empty meter. Look at when the house actually uses power before you buy.' })
+      // Running dry keeps the diagnostic: the student who just spent their
+      // last attempt is the one who needs to know why the lights went out.
+      setVerdict({ ok: false, text: `${text} That was the last test switchover, so the roof is bare again with fresh attempts. Size against that number before you buy.` })
     } else {
       setVerdict({ ok: false, text })
     }

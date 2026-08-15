@@ -26,6 +26,10 @@ const DRY_MASS = 2000
 const SHIELD_PER_CM = 60 // kg of heat shield per centimetre
 const SHIELD_CAPACITY = 1400 // heat each centimetre can soak up before burning through
 const SKIP_ANGLE = 1.5 // shallower than this and you bounce back off the atmosphere
+// The ablator chars usefully up to a point, then the surface flash-fails no
+// matter how thick the stack behind it is. This is what makes a too-steep
+// entry fatal: thickness fixes the soak, nothing fixes the pulse.
+const PEAK_HEAT_LIMIT = 160 // W/cm² the shield face can stand
 
 /**
  * Capsule shapes. A blunt nose pushes a thick shock wave ahead of it that holds
@@ -35,13 +39,15 @@ const SKIP_ANGLE = 1.5 // shallower than this and you bounce back off the atmosp
 const SHAPES = {
   sharp: { label: 'Sharp cone', cd: 0.6, noseR: 0.3, extraMass: 0, note: 'Slippery, but the tip takes the heat' },
   rounded: { label: 'Rounded', cd: 1.0, noseR: 1.0, extraMass: 80, note: 'A middle ground' },
-  blunt: { label: 'Blunt capsule', cd: 1.4, noseR: 2.5, extraMass: 200, note: 'Heavy, but rides its own shock wave' },
+  // The blunt shell is priced so it does not dominate level 5: light enough to
+  // win on heat, heavy enough that the mass par belongs to the rounded shape.
+  blunt: { label: 'Blunt capsule', cd: 1.4, noseR: 2.5, extraMass: 350, note: 'Heavy, but rides its own shock wave' },
 } as const
 type ShapeId = keyof typeof SHAPES
 const SHAPE_IDS = Object.keys(SHAPES) as ShapeId[]
 
 interface Flight {
-  fail: null | 'skip' | 'burnt'
+  fail: null | 'skip' | 'burnt' | 'peak'
   peakG: number
   peakQ: number
   totalQ: number
@@ -85,7 +91,14 @@ function reenter(angleDeg: number, shapeId: ShapeId, shieldCm: number): Flight {
   }
 
   return {
-    fail: angleDeg < SKIP_ANGLE ? 'skip' : totalQ > capacity ? 'burnt' : null,
+    fail:
+      angleDeg < SKIP_ANGLE
+        ? 'skip'
+        : totalQ > capacity
+          ? 'burnt'
+          : peakQ > PEAK_HEAT_LIMIT
+            ? 'peak'
+            : null,
     peakG,
     peakQ,
     totalQ,
@@ -114,7 +127,7 @@ const LEVELS: ChallengeLevel<EntrySetup>[] = [
     title: 'Come home',
     phase: 'play',
     concept: 'The entry corridor',
-    teach: 'Too shallow and you skip off the atmosphere like a stone on a pond. Too steep and there is more heat than the shield can soak up. Find the angle in between.',
+    teach: 'Drag the handle on the dashed approach line to set the angle. Too shallow and you skip off the atmosphere like a stone on a pond. Too steep and the heat arrives faster than the shield face can shed it. Find the angle in between.',
     setup: { shape: 'rounded', shield: 8, gLimit: null, traces: false, brief: 'Your capsule is falling out of orbit. Pick the angle it meets the atmosphere at.' },
   },
   {
@@ -148,10 +161,16 @@ const LEVELS: ChallengeLevel<EntrySetup>[] = [
     concept: 'Crew, mass, and heat',
     teach: 'Shallow is gentle on the crew but soaks for ages, so it needs a thick shield. Steep needs less shield but crushes them. Blunt cuts the heat but carries weight. Nothing wins all three.',
     setup: { shape: null, shield: null, gLimit: 20, traces: true, brief: 'Sign off the final capsule design: kind to the crew, light on the pad, and cool on the way down.' },
+    // PEAK_HEAT_LIMIT already burns off anything past 160, so a heating par of
+    // 175 was free on every capsule that survived, and 470 kg was reachable by
+    // one design in ninety-two. At 560 kg and 100 W/cm² each pair has a capsule
+    // that takes it (rounded 8 cm at 3° for crew and mass, blunt 5 cm at 2.5°
+    // for crew and heat, blunt 3 cm at 6° for mass and heat) and nothing takes
+    // all three. Proven by grid over every shape, thickness, and half degree.
     metrics: [
       { id: 'peakG', label: 'Peak g on the crew', goal: 'min', target: 12, unit: ' g' },
-      { id: 'mass', label: 'Heat shield mass', goal: 'min', target: 470, unit: ' kg' },
-      { id: 'peakQ', label: 'Peak heating', goal: 'min', target: 175 },
+      { id: 'mass', label: 'Heat shield mass', goal: 'min', target: 560, unit: ' kg' },
+      { id: 'peakQ', label: 'Peak heating', goal: 'min', target: 100 },
     ],
   },
 ]
@@ -216,7 +235,9 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
       ? 'Too shallow. The capsule skipped off the atmosphere like a stone and is heading for deep space.'
       : f.fail === 'burnt'
         ? `Shield burned through: it soaked ${Math.round(f.totalQ).toLocaleString()} of heat and could only take ${Math.round(f.capacity).toLocaleString()}.`
-        : `The crew blacked out at ${f.peakG.toFixed(1)} g against a limit of ${setup.gLimit}. Ease the angle back.`
+        : f.fail === 'peak'
+          ? `The shield face flashed away at ${Math.round(f.peakQ)} W/cm², past the ${PEAK_HEAT_LIMIT} it can stand. That steep, the heat all arrives at once, and thickness does not help.`
+          : `The crew blacked out at ${f.peakG.toFixed(1)} g against a limit of ${setup.gLimit}. Ease the angle back.`
     if (att.spend()) {
       reset()
       att.refill()

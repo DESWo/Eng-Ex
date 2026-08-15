@@ -128,7 +128,7 @@ const LEVELS: ChallengeLevel<SectionSetup>[] = [
     metrics: [
       { id: 'sag', label: 'Sag under load', goal: 'min', target: 8, unit: ' mm' },
       { id: 'mass', label: 'Weight', goal: 'min', target: 45, unit: ' kg/m' },
-      { id: 'cost', label: 'Cost per metre', goal: 'min', target: 45 },
+      { id: 'cost', label: 'Cost, $ per metre of beam', goal: 'min', target: 45 },
     ],
   },
 ]
@@ -315,13 +315,25 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
             )}
           </g>
 
-          {/* grab handle on the top edge */}
+          {/* grab handle on the top edge: the pill is only the picture of the
+              handle. The transparent rect over it is the real target, 44px
+              tall so a fingertip can find it. Keyboard focus lands there too. */}
           <rect
             x={x0 - 6}
             y={y0 - 7}
             width={w + 12}
             height="14"
             rx="7"
+            aria-hidden="true"
+            className="pointer-events-none"
+            style={{ fill: 'var(--accent)' }}
+            opacity="0.85"
+          />
+          <rect
+            x={x0 - 6}
+            y={y0 - 22}
+            width={w + 12}
+            height="44"
             tabIndex={0}
             onKeyDown={nudgeDepth}
             role="slider"
@@ -330,9 +342,8 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
             aria-valuemin={80}
             aria-valuemax={300}
             aria-valuetext={`${depth} millimetres deep`}
+            fill="transparent"
             className="cursor-ns-resize outline-none"
-            style={{ fill: 'var(--accent)' }}
-            opacity="0.85"
           />
 
           {/* level 4 overlay: bending stress across the depth */}
@@ -457,7 +468,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
 
       <p className="mt-4 text-sm text-ink-soft dark:text-stone-400">
         Drag the top of the section to make the beam deeper. Currently{' '}
-        <span className="accent-text font-display font-bold">{depth} mm</span>.
+        <span className="accent-text font-display font-bold">{depth} mm</span>. Cost is dollars per metre of beam, rounded.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

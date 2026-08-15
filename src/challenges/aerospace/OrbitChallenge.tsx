@@ -21,6 +21,9 @@ const R_START = 1.05 // parking orbit, about 320 km up
 const SPEED_SCALE = 7900 // our speed unit -> m/s
 const EARTH_KM = 6371
 const MAX_BURN = 1200 // m/s per burn
+// Both burns at full still leave the ship about 2,000 m/s short of escape
+// speed from either burn point, so every orbit here is a closed one. Raise
+// this past that margin and computeOrbit needs a hyperbolic case again.
 const PULSE = 25 // one press of the engine
 // A long burn is ~500 m/s, which is twenty presses of the fine control. The
 // coarse button gets you into the neighbourhood; PULSE still trims the result.
@@ -39,7 +42,7 @@ const BURN_DIRS: { id: BurnDir; label: string; note: string }[] = [
 ]
 
 interface Orbit {
-  fail: null | 'escape' | 'crash' | 'no-burn'
+  fail: null | 'crash' | 'no-burn'
   /** Radius the transfer ellipse reaches, before the second burn. */
   rApo: number
   apo: number
@@ -55,7 +58,7 @@ interface Orbit {
  *
  * The first burn can point any way, which is the whole point of level 1: firing
  * outwards feels like the way to climb, but it barely lifts the far side and it
- * drags the near side down into the atmosphere. Only a forward burn adds the
+ * drags the near side down into the planet. Only a forward burn adds the
  * energy that actually raises an orbit.
  */
 function computeOrbit(burn1: number, dir: BurnDir, burn2: number): Orbit {
@@ -68,7 +71,6 @@ function computeOrbit(burn1: number, dir: BurnDir, burn2: number): Orbit {
   else vr = dv
 
   const vSq = vt * vt + vr * vr
-  if (vSq >= 2 / R_START) return { fail: 'escape', ...blank }
   if (burn1 <= 0) return { fail: 'no-burn', ...blank }
 
   const a1 = 1 / (2 / R_START - vSq)
@@ -88,7 +90,6 @@ function computeOrbit(burn1: number, dir: BurnDir, burn2: number): Orbit {
   // Second burn happens at the top, where the velocity is purely sideways.
   const vApo = h / rApo
   const v2 = vApo + burn2 / SPEED_SCALE
-  if (v2 >= Math.sqrt(2 / rApo)) return { fail: 'escape', ...blank, rApo }
 
   const a2 = 1 / (2 / rApo - v2 * v2)
   const other = 2 * a2 - rApo
@@ -132,7 +133,7 @@ const LEVELS: ChallengeLevel<OrbitSetup>[] = [
     title: 'One tank',
     phase: 'understand',
     concept: 'Fuel is finite',
-    teach: 'Nothing refuels in orbit, so the whole mission is planned around one fixed budget of speed change. A wasteful direction will not reach this ring at all, however hard you push.',
+    teach: 'Engineers count fuel in metres per second of speed change, which is why the tank here reads in m/s rather than in litres. Nothing refuels in orbit, so the whole mission is planned around one fixed budget. A wasteful direction will not reach this ring at all, however hard you push.',
     setup: { target: 1.6, tolKm: 400, secondBurn: false, maxE: null, fuel: 800, dirs: ['prograde', 'radial', 'retrograde'], readout: false, brief: 'A higher ring, and the upper stage has only so much left in it.' },
   },
   {
@@ -158,10 +159,14 @@ const LEVELS: ChallengeLevel<OrbitSetup>[] = [
     concept: 'High, round, or cheap',
     teach: 'A higher orbit sees more of the planet, a rounder one keeps the signal steady, and both cost fuel. Getting high is cheap if you accept a lopsided orbit. Pick your compromise.',
     setup: { target: 1.6, tolKm: 9999, secondBurn: true, maxE: 0.35, fuel: null, dirs: ['prograde'], readout: true, brief: 'Park a communications satellite as high and as round as the tank allows.' },
+    // With fuel and roundness both at par the highest a burn plan can reach is
+    // 4,055 km, so a height par of 4,200 keeps all three from falling to one
+    // design. Each pair is still comfortably winnable. Proven by grid over
+    // every 25 m/s pulse of both burns.
     metrics: [
       { id: 'fuel', label: 'Fuel spent', goal: 'min', target: 1450, unit: ' m/s' },
       { id: 'round', label: 'Roundness', goal: 'min', target: 0.03 },
-      { id: 'alt', label: 'High point', goal: 'max', target: 4000, unit: ' km' },
+      { id: 'alt', label: 'High point', goal: 'max', target: 4200, unit: ' km' },
     ],
   },
 ]
@@ -332,7 +337,7 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
           )}
 
           {/* transfer ellipse, and the final orbit once the second burn is in */}
-          {orbit.fail !== 'escape' && orbit.fail !== 'no-burn' && (
+          {orbit.fail !== 'no-burn' && (
             <polyline
               points={transfer.map(([x, y]) => `${x},${y}`).join(' ')}
               fill="none"
@@ -413,27 +418,25 @@ export function OrbitChallenge({ onComplete }: ChallengeProps) {
                 : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
             )}
           >
-            {orbit.fail === 'escape'
-              ? 'Too much. The satellite escaped Earth entirely and is on its way to nowhere.'
-              : orbit.fail === 'crash'
-                ? burnDir === 'radial'
-                  ? `Pushing outwards barely lifted the far side to ${Math.round(apoKm).toLocaleString()} km, and it dragged the near side down into the ground. Height is not what you were missing.`
-                  : burnDir === 'retrograde'
-                    ? 'Slowing down dropped the far side of your orbit straight into the planet.'
-                    : 'The low point ended up inside the atmosphere. That is a re-entry, not an orbit.'
-                : orbit.fail === 'no-burn'
-                  ? 'Nothing yet. Fire the engine and watch which part of the orbit moves.'
-                  : overFuel
-                    ? `Over budget by ${Math.round(fuel - (setup.fuel ?? 0))} m/s. There is only so much in the tank.`
-                    : solved
-                      ? setup.secondBurn
-                        ? `Parked. High point ${Math.round(apoKm).toLocaleString()} km, low point ${Math.round(periKm).toLocaleString()} km.`
-                        : `The high point reaches ${Math.round(apoKm).toLocaleString()} km, right on the ring.`
-                      : setup.secondBurn && orbit.e > (setup.maxE ?? 1)
-                        ? `The orbit touches ${Math.round(apoKm).toLocaleString()} km but drops back to ${Math.round(periKm).toLocaleString()} km. Burn again at the top to lift the low side.`
-                        : apoKm < targetKm
-                          ? `High point only ${Math.round(apoKm).toLocaleString()} km. Still short of the ring.`
-                          : `High point ${Math.round(apoKm).toLocaleString()} km, past the ring.`}
+            {orbit.fail === 'crash'
+              ? burnDir === 'radial'
+                ? `Pushing outwards barely lifted the far side to ${Math.round(apoKm).toLocaleString()} km, and it dragged the near side down into the ground. Height is not what you were missing.`
+                : burnDir === 'retrograde'
+                  ? 'Slowing down dropped the far side of your orbit straight into the planet.'
+                  : 'The low point ended up under the ground. That is a crash, not an orbit.'
+              : orbit.fail === 'no-burn'
+                ? 'Nothing yet. Fire the engine and watch which part of the orbit moves.'
+                : overFuel
+                  ? `Over budget by ${Math.round(fuel - (setup.fuel ?? 0))} m/s. There is only so much in the tank.`
+                  : solved
+                    ? setup.secondBurn
+                      ? `Parked. High point ${Math.round(apoKm).toLocaleString()} km, low point ${Math.round(periKm).toLocaleString()} km.`
+                      : `The high point reaches ${Math.round(apoKm).toLocaleString()} km, right on the ring.`
+                    : setup.secondBurn && orbit.e > (setup.maxE ?? 1)
+                      ? `The orbit touches ${Math.round(apoKm).toLocaleString()} km but drops back to ${Math.round(periKm).toLocaleString()} km. Burn again at the top to lift the low side.`
+                      : apoKm < targetKm
+                        ? `High point only ${Math.round(apoKm).toLocaleString()} km. Still short of the ring.`
+                        : `High point ${Math.round(apoKm).toLocaleString()} km, past the ring.`}
           </p>
         )}
       </div>

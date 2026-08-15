@@ -82,7 +82,7 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     phase: 'optimize',
     concept: 'Cheap, low, and even',
     teach: 'Wide footings sink less and stay even, but concrete and excavation are billed by the square metre. Find the pair that keeps the frame straight without digging half the site out.',
-    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'Sign off the foundation design for the real building.' },
+    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'Sign off the foundation design for the real building. No cost cap this time, but every square metre you pour goes on the scorecard.' },
     metrics: [
       { id: 'cost', label: 'Groundworks cost', goal: 'min', target: 1400 },
       { id: 'settle', label: 'Worst settlement', goal: 'min', target: 26, unit: ' mm' },

@@ -17,6 +17,10 @@ import { cn } from '@/lib/utils'
 /* ------------------- tuning knobs (edit freely) ------------------- */
 const NTU_PER_SEG = 0.5 // heat-transfer units each section of pipe adds
 const MAX_SEG = 8
+// Starting rig: same way, 2 sections gives 43%, which loses level 1 untouched.
+// Both real moves rescue it (a third section: 47.5%, flipping: 50%), so the
+// first win costs one decision instead of zero.
+const DEFAULT_SEG = 2
 const HOT_IN = 90 // °C
 const COLD_IN = 20 // °C
 
@@ -63,7 +67,9 @@ const LEVELS: ChallengeLevel<ExchangerSetup>[] = [
     phase: 'understand',
     concept: 'Longer is dearer',
     teach: 'Every section of exchanger is more metal, more floor space, and more to clean. Hit the target with as few sections as the physics allows rather than just building it long.',
-    setup: { target: 0.55, maxSegments: 6, fixedFlow: null, profile: false, brief: 'The same swap, now with an accountant counting the pipe sections.' },
+    // Target sits below the 50% same-way ceiling on purpose: this level is
+    // about pipe economy, and discovering the direction trick is level 3's job.
+    setup: { target: 0.48, maxSegments: 6, fixedFlow: null, profile: false, brief: 'The same swap, now with an accountant counting the pipe sections.' },
   },
   {
     n: 3,
@@ -78,7 +84,7 @@ const LEVELS: ChallengeLevel<ExchangerSetup>[] = [
     title: 'Read the profile',
     phase: 'analyze',
     concept: 'Temperature along the pipe',
-    teach: 'Turn on the readout. It draws both fluids\' temperatures down the length of the exchanger. Same-way, the lines rush together and flatten. Opposite-way, they stay a steady gap apart the whole run, which is why they keep trading.',
+    teach: 'Turn on the readout. It draws both fluids\' temperatures down the length of the exchanger. Same way, the two lines close on each other and the gap is nearly gone by the outlet. Opposite ways, they run parallel with the same gap the whole length, which is why every section keeps trading.',
     setup: { target: 0.7, maxSegments: 8, fixedFlow: null, profile: true, brief: 'The same exchanger, with the temperatures drawn along its length.' },
   },
   {
@@ -101,7 +107,7 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
   const setup = lv.level.setup
 
   const [flow, setFlow] = useState<Flow>('same')
-  const [segments, setSegments] = useState(3)
+  const [segments, setSegments] = useState(DEFAULT_SEG)
   const [won, setWon] = useState(false)
   const [showProfile, setShowProfile] = useState(true)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
@@ -110,7 +116,7 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
 
   useEffect(() => {
     setFlow(setup.fixedFlow ?? 'same')
-    setSegments(3)
+    setSegments(DEFAULT_SEG)
     setWon(false)
     setVerdict(null)
   }, [lv.level.n, setup.fixedFlow])
@@ -125,7 +131,7 @@ export function HeatExchangerChallenge({ onComplete }: ChallengeProps) {
 
   const reset = () => {
     setFlow(setup.fixedFlow ?? 'same')
-    setSegments(3)
+    setSegments(DEFAULT_SEG)
     setWon(false)
     setVerdict(null)
   }

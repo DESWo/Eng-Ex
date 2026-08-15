@@ -11,43 +11,52 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
+/**
+ * Shaking is measured the way engineers measure it at a site: sideways ground
+ * acceleration as a percentage of gravity. 22 %g is a jolt you would struggle
+ * to stand up in, 38 %g throws unsecured furniture across the room. A frame's
+ * `holds` is the same quantity, so demand and capacity are directly comparable.
+ */
 const FRAMES = {
-  wood: { label: 'Wood frame', cost: 3000, stability: 10, fill: '#c89b6b' },
-  steel: { label: 'Steel frame', cost: 6000, stability: 18, fill: '#9aa7b5' },
-  concrete: { label: 'Reinforced concrete', cost: 9000, stability: 26, fill: '#b6b1a9' },
+  wood: { label: 'Wood frame', cost: 3000, holds: 10, fill: '#c89b6b' },
+  steel: { label: 'Steel frame', cost: 6000, holds: 18, fill: '#9aa7b5' },
+  concrete: { label: 'Reinforced concrete', cost: 9000, holds: 26, fill: '#b6b1a9' },
 } as const
 
 const BRACE_COST = 1500
-const BRACE_STABILITY = 6
+const BRACE_HOLD = 6
 const MAX_BRACES = 3
 const ISOLATION_COST = 4000
-const ISOLATION_STABILITY = 12
+const ISOLATION_HOLD = 12
 
 interface QuakeSetup {
   label: string
-  magnitude: number
+  /** Sideways ground shaking at the site, in percent of gravity. */
+  shaking: number
   /** Budget, or null while materials are free. */
   budget: number | null
   /** Level 3 on: base isolation is on the menu. */
   isolationOffered: boolean
-  /** Level 4 on: the drift readout is available. */
+  /** Level 4 on: the sway readout is available. */
   drift: boolean
-  /** Level 5: sway the building can take and still be usable, or null. */
+  /** Level 5: top-floor sway the building can take and stay usable, in cm. */
   maxSway: number | null
   brief: string
 }
 
 /**
- * Sway at the top floor. Stiffness fights the shake down; isolation lets the
- * building ride it, which cuts what the floors feel by almost half.
+ * Sway at the top floor, in centimetres. Stiffness fights the shake down;
+ * rollers let the building ride it, which cuts what the floors feel by almost
+ * half. Over five storeys, 9 cm is the sort of drift a hospital is designed
+ * for and 16 cm is the sort that brings the ceilings down.
  */
-const swayOf = (magnitude: number, stability: number, isolation: boolean) =>
-  Math.round(((magnitude * 18) / Math.max(1, stability)) * (isolation ? 0.55 : 1) * 10) / 10
+const swayOf = (shaking: number, holds: number, isolation: boolean) =>
+  Math.round(((shaking * 18) / Math.max(1, holds)) * (isolation ? 0.55 : 1) * 10) / 10
 
 const LEVELS: ChallengeLevel<QuakeSetup>[] = [
   {
@@ -55,44 +64,47 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     title: 'Ride it out',
     phase: 'play',
     concept: 'Stiffer survives',
-    teach: 'It is the wobbling block-tower party game, played for keeps. A quake shakes the ground and the building has to keep up. Pick a frame and add braces until it can take the tremor. Money is no object today.',
-    setup: { label: 'Magnitude 5 tremor', magnitude: 22, budget: null, isolationOffered: false, drift: false, maxSway: null, brief: 'A small tremor is due. Make the tower strong enough to stand through it.' },
+    teach: 'It is the wobbling block-tower party game, played for keeps. The ground yanks sideways and the building has to keep up. The badge says how hard it yanks, as a percentage of gravity: at 22 %g you could not stay on your feet. Pick a frame and add braces until it can take that. Money is no object today.',
+    setup: { label: 'Sharp jolt', shaking: 22, budget: null, isolationOffered: false, drift: false, maxSway: null, brief: 'A sharp jolt is due. Make the tower strong enough to stand through it.' },
   },
   {
     n: 2,
     title: 'The quote arrives',
     phase: 'understand',
     concept: 'Strength costs money',
-    teach: 'Concrete everywhere would survive anything and nobody can pay for it. A bigger quake and a real budget, so every point of stability now has a price on it.',
-    setup: { label: 'Magnitude 6 quake', magnitude: 32, budget: 11000, isolationOffered: false, drift: false, maxSway: null, brief: 'A stronger quake, and this time the client is watching the invoice.' },
+    teach: 'Concrete everywhere would survive anything and nobody can pay for it. A harder shake and a real budget, so every point of shaking the building can take now has a price on it.',
+    setup: { label: 'Strong quake', shaking: 32, budget: 11000, isolationOffered: false, drift: false, maxSway: null, brief: 'Harder shaking, and this time the client is watching the invoice.' },
   },
   {
     n: 3,
     title: 'Fight it or ride it',
     phase: 'understand',
     concept: 'Two philosophies',
-    teach: 'Base isolation puts the building on rollers so the ground moves underneath it. On this budget there are exactly two designs that live: a stiff one that fights the shake, and a softer one on rollers that rides it. Both are real engineering.',
-    setup: { label: 'Magnitude 6 quake', magnitude: 34, budget: 11000, isolationOffered: true, drift: false, maxSway: null, brief: 'A tighter budget than pure strength can satisfy. There is another way in the parts list.' },
+    teach: 'Base isolation puts the building on rollers so the ground slides underneath it. On this budget there are exactly two designs that live: a stiff one that fights the shake, and a softer one on rollers that rides it. Both are real engineering.',
+    setup: { label: 'Strong quake', shaking: 34, budget: 11000, isolationOffered: true, drift: false, maxSway: null, brief: 'A tighter budget than pure strength can satisfy. There is another way in the parts list.' },
   },
   {
     n: 4,
     title: 'See the sway',
     phase: 'analyze',
     concept: 'Drift, floor by floor',
-    teach: 'Turn on the drift readout. It shows how far the top floor swings and how the movement builds up the height of the building. Two designs that both survive can feel completely different inside.',
-    setup: { label: 'Magnitude 6 quake', magnitude: 36, budget: 12500, isolationOffered: true, drift: true, maxSway: null, brief: 'The same job, with the sway drawn out so you can compare designs.' },
+    teach: 'Turn on the sway readout. It shows how far the top floor swings and how the movement builds up the height of the building. Two designs that both survive can feel completely different inside. Worth knowing: real quakes get one magnitude number for the whole event, but what a building feels is the shaking at its own address, which is what the badge reports here. One number for how much a building can take is a stand-in for a whole design code.',
+    setup: { label: 'Strong quake', shaking: 36, budget: 12500, isolationOffered: true, drift: true, maxSway: null, brief: 'The same job, with the sway drawn out so you can compare designs.' },
   },
   {
     n: 5,
     title: 'Still standing is not enough',
     phase: 'optimize',
     concept: 'Usable after the quake',
-    teach: 'A hospital that survives but sways so hard every ceiling comes down is still a write-off. The cheapest surviving design here sways far too much, so survival alone no longer passes.',
-    setup: { label: 'Magnitude 7 monster', magnitude: 44, budget: 16000, isolationOffered: true, drift: true, maxSway: 12, brief: 'Design the building to stand AND stay usable when the big one hits.' },
+    teach: 'A hospital that survives but sways so hard every ceiling comes down is still a write-off. The cheapest way to reach this shake on stiffness alone sways 18 cm, well past what the wards can take, so standing up no longer passes on its own. Rollers buy quiet cheaply, mass and bracing buy spare strength, and nothing is best at both.',
+    setup: { label: 'Violent quake', shaking: 38, budget: 16000, isolationOffered: true, drift: true, maxSway: 16, brief: 'Design the hospital to stand AND open its doors the next morning.' },
+    // Pars proven three ways apart: of the seven designs that survive here, four
+    // meet each par and none meets more than two. Cheap means swaying, quiet
+    // means costly, and spare strength means concrete.
     metrics: [
-      { id: 'cost', label: 'Build cost', goal: 'min', target: 15000 },
-      { id: 'sway', label: 'Top-floor sway', goal: 'min', target: 10 },
-      { id: 'margin', label: 'Stability margin', goal: 'max', target: 4 },
+      { id: 'cost', label: 'Build cost', goal: 'min', target: 13500 },
+      { id: 'sway', label: 'Top-floor sway', goal: 'min', target: 9, unit: ' cm' },
+      { id: 'margin', label: 'Spare strength', goal: 'max', target: 6, unit: ' %g' },
     ],
   },
 ]
@@ -128,13 +140,20 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
 
   const frame = FRAMES[frameId]
   const cost = frame.cost + braces * BRACE_COST + (isolation ? ISOLATION_COST : 0)
-  const stability = frame.stability + braces * BRACE_STABILITY + (isolation ? ISOLATION_STABILITY : 0)
+  const holds = frame.holds + braces * BRACE_HOLD + (isolation ? ISOLATION_HOLD : 0)
   const overBudget = round.budget !== null && cost > round.budget
-  const sway = swayOf(round.magnitude, stability, isolation)
+  const sway = swayOf(round.shaking, holds, isolation)
   const tooSwayey = round.maxSway !== null && sway > round.maxSway
-  const survives = stability >= round.magnitude && !tooSwayey
+  const survives = holds >= round.shaking && !tooSwayey
   const busy = phase === 'shaking'
   const leftover = round.budget !== null ? round.budget - cost : 0
+
+  // Levels 2, 3 and 5 hold the verdict back until the tower has actually been
+  // shaken, so "Shake it!" is a commitment rather than a confirmation. Level 1
+  // shows it while the controls are still new, and level 4 exists to be read.
+  // Every control change drops back to 'build', which hides it again.
+  const outcomeVisible =
+    lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
 
   const rebuild = <T,>(setter: (v: T) => void) => (value: T) => {
     if (busy) return
@@ -149,7 +168,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     if (stands) {
       setPhase('passed')
       lv.clearLevel(
-        lv.level.metrics ? { cost, sway, margin: stability - round.magnitude } : undefined,
+        lv.level.metrics ? { cost, sway, margin: holds - round.shaking } : undefined,
       )
       if (!completedRef.current) {
         completedRef.current = true
@@ -164,7 +183,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     }
   }
 
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
 
   const shake = () => {
     if (busy || overBudget) return
@@ -183,7 +202,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     setPhase('build')
   }
 
-  const amplitude = 6 + round.magnitude / 4
+  const amplitude = 6 + round.shaking / 4
   const floors = 5
   const floorHeight = 38
   const baseY = 290
@@ -194,11 +213,12 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
 
       <LevelHeader
         lv={lv}
-        insight={round.drift ? <InsightToggle label="drift" on={showDrift} onChange={setShowDrift} /> : undefined}
+        insight={round.drift ? <InsightToggle label="sway" on={showDrift} onChange={setShowDrift} /> : undefined}
       />
 
       <Objective
-        goal={`Stand through a magnitude-${Math.round(round.magnitude / 6)} shake${round.budget !== null ? ` for ${round.budget.toLocaleString()} or less` : ''}${round.maxSway !== null ? `, swaying no more than ${round.maxSway}` : ''}`}
+        goal={`Stand through ${round.shaking} %g of ground shaking${round.budget !== null ? ` for $${round.budget.toLocaleString()} or less` : ''}${round.maxSway !== null ? `, swaying no more than ${round.maxSway} cm` : ''}`}
+        status={`this design: ${frame.label.toLowerCase()}${braces > 0 ? ` + ${braces} brace${braces > 1 ? 's' : ''}` : ''}${isolation ? ' + rollers' : ''} · $${cost.toLocaleString('en-US')}`}
         attemptsLeft={att.left}
         met={phase === 'passed'}
       />
@@ -207,7 +227,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           <Waves className="mr-1 h-4 w-4" />
-          {round.label}
+          {round.label} · {round.shaking} %g
         </Badge>
       </div>
 
@@ -314,9 +334,9 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
           >
-            {stability >= round.magnitude
-              ? `It stood, but the top floor swung ${sway} and everything inside is wrecked. The limit for a usable building is ${round.maxSway}. Rollers cut the sway nearly in half.`
-              : `Down it goes! Stability ${stability} was not enough for a ${round.magnitude} shake. Brace it, upgrade it${round.isolationOffered ? ', or put it on rollers' : ''}.`}
+            {holds >= round.shaking
+              ? `It stood, but the top floor swung ${sway} cm and everything inside is wrecked. A usable building may sway ${round.maxSway} cm. Rollers cut the sway nearly in half.`
+              : `Down it goes! This frame holds ${holds} %g and the ground shook at ${round.shaking} %g. Brace it, upgrade it${round.isolationOffered ? ', or put it on rollers' : ''}.`}
           </motion.p>
         )}
         {phase === 'build' && overBudget && (
@@ -350,7 +370,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                     <span className="mb-1 block h-2.5 w-8 rounded-full" style={{ backgroundColor: f.fill }} />
                     <span className="font-display text-sm font-bold">{f.label}</span>
                     <span className="block text-xs font-mono tabular-nums text-ink-soft dark:text-stone-400">
-                      ${f.cost.toLocaleString('en-US')} · stability {f.stability}
+                      ${f.cost.toLocaleString('en-US')} · holds {f.holds} %g
                     </span>
                   </button>
                 )
@@ -361,7 +381,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           <div className="flex flex-wrap items-center gap-6">
             <div>
               <p className="mb-2 font-display text-sm font-semibold">
-                2. X-braces (${BRACE_COST.toLocaleString('en-US')} each, +{BRACE_STABILITY})
+                2. X-braces (${BRACE_COST.toLocaleString('en-US')} each, +{BRACE_HOLD} %g)
               </p>
               <div className="flex gap-2">
                 {[0, 1, 2, 3].map((n) => (
@@ -385,7 +405,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             {round.isolationOffered && (
             <div>
               <p className="mb-2 font-display text-sm font-semibold">
-                3. Base isolation (${ISOLATION_COST.toLocaleString('en-US')}, +{ISOLATION_STABILITY})
+                3. Rollers under the base (${ISOLATION_COST.toLocaleString('en-US')}, +{ISOLATION_HOLD} %g)
               </p>
               <button
                 type="button"
@@ -420,23 +440,37 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             </p>
           )}
           <Meter
-            label="Stability"
-            display={`${stability} vs quake ${round.magnitude}`}
-            fraction={stability / 60}
-            markerFraction={round.magnitude / 60}
-            barClass={survives ? 'bg-emerald-500' : 'bg-amber-400'}
+            label="Shaking this design holds"
+            display={
+              outcomeVisible
+                ? `${holds} %g against ${round.shaking} %g of shaking`
+                : `${holds} %g. Shake it to see whether that is enough`
+            }
+            fraction={holds / 60}
+            markerFraction={outcomeVisible ? round.shaking / 60 : undefined}
+            barClass={!outcomeVisible ? 'accent-bg' : survives ? 'bg-emerald-500' : 'bg-amber-400'}
           />
           {round.drift && showDrift && (
             <Meter
               label="Top-floor sway"
-              display={round.maxSway !== null ? `${sway} of ${round.maxSway} allowed` : `${sway}`}
-              fraction={Math.min(1, sway / 24)}
+              display={
+                !outcomeVisible
+                  ? 'shake it to find out'
+                  : round.maxSway !== null
+                    ? `${sway} cm of ${round.maxSway} cm allowed`
+                    : `${sway} cm`
+              }
+              fraction={outcomeVisible ? Math.min(1, sway / 24) : 0}
               markerFraction={round.maxSway !== null ? round.maxSway / 24 : undefined}
-              barClass={tooSwayey ? 'bg-rose-500' : sway <= 10 ? 'bg-emerald-500' : 'bg-amber-400'}
+              barClass={
+                !outcomeVisible ? 'accent-bg' : tooSwayey ? 'bg-rose-500' : sway <= 10 ? 'bg-emerald-500' : 'bg-amber-400'
+              }
             />
           )}
           <p className="text-xs text-ink-soft dark:text-stone-400">
-            The black line marks how much stability this quake demands.
+            {outcomeVisible
+              ? 'The black line marks how hard the ground shakes here.'
+              : 'Add up what the frame and the extras hold, then commit. The shake tells you the rest.'}
           </p>
         </div>
       </div>
@@ -456,7 +490,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ cost, sway, margin: stability - round.magnitude }}
+            values={outcomeVisible ? { cost, sway, margin: holds - round.shaking } : { cost }}
             best={lv.best}
             scored={phase === 'passed'}
           />
@@ -468,7 +502,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Stood at ${sway} of sway for $${cost.toLocaleString('en-US')}. Try the other philosophy.`
+              ? `Stood at ${sway} cm of sway for $${cost.toLocaleString('en-US')}, with ${holds - round.shaking} %g to spare. Try the other philosophy.`
               : 'It stands. On to the next one.'
           }
           onReplay={reset}

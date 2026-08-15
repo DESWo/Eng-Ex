@@ -30,6 +30,11 @@ interface Schedule {
   cost: number
   /** Per task: when it can start, and how many days it could slip without hurting. */
   rows: { id: string; start: number; days: number; slack: number; critical: boolean }[]
+  /**
+   * The deepest cut made to any one task, as a percentage of its original
+   * length. It is a measure of how far the plan departs from the estimates, not
+   * a risk the schedule then goes on to model.
+   */
   worstSqueeze: number
 }
 
@@ -117,13 +122,15 @@ const LEVELS: ChallengeLevel<PathSetup>[] = [
     n: 5,
     title: 'Commit to a date',
     phase: 'optimize',
-    concept: 'Fast, cheap, or safe',
-    teach: 'The cheapest days to buy come from squeezing one task hard, but a task compressed to its limit is the one most likely to blow up. Spreading the squeeze is safer and dearer.',
+    concept: 'Fast, cheap, or gentle',
+    teach: 'The cheapest days come from cutting one task hard, and the scorecard measures the deepest cut you made to any single task. Spread the same days across several tasks and every task stays closer to its original plan, but you pay more for them.',
     setup: { deadline: 12, budget: null, readout: true, brief: 'Give the customer a date you can actually hit.' },
+    // Par is set so no plan can take all three: the cheapest 10-day plan cuts one
+    // task by 60%, and holding every cut to half costs more than 33.
     metrics: [
       { id: 'days', label: 'Project length', goal: 'min', target: 10, unit: ' days' },
-      { id: 'cost', label: 'Overtime spend', goal: 'min', target: 35 },
-      { id: 'squeeze', label: 'Worst compression', goal: 'min', target: 60, unit: '%' },
+      { id: 'cost', label: 'Overtime spend', goal: 'min', target: 33 },
+      { id: 'squeeze', label: 'Deepest cut', goal: 'min', target: 50, unit: '%' },
     ],
   },
 ]

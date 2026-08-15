@@ -86,10 +86,15 @@ const LEVELS: ChallengeLevel<TitrationSetup>[] = [
     concept: 'Accurate, lean, and quick',
     teach: 'Land in the middle of the band, using as little base as possible and in as few pours as you can manage. Every drop of reagent costs money, and every pour costs time on the line.',
     setup: { band: [6, 6.6], curve: true, brief: 'Neutralise the batch to spec: dead in the band, without wasting reagent.' },
+    // Only 46, 47 and 48 mL land in this band, and the pars split them: 46 mL
+    // is lean and quick but sits 2 tenths off centre, while the centred pours
+    // (47, 48) cost more reagent and more pours. No single play beats all three.
     metrics: [
-      { id: 'offset', label: 'Distance from band centre', goal: 'min', target: 2, unit: ' (×0.1 pH)' },
-      { id: 'reagent', label: 'Base used', goal: 'min', target: 48, unit: ' mL' },
-      { id: 'pours', label: 'Pours', goal: 'min', target: 8 },
+      // Kept as whole tenths of a pH point: the scorecard ticker rounds every
+      // value to an integer, so "2 tenths of pH" is honest where "0.2" is not.
+      { id: 'offset', label: 'Distance from band centre', goal: 'min', target: 1, unit: ' tenths of pH' },
+      { id: 'reagent', label: 'Base used', goal: 'min', target: 46, unit: ' mL' },
+      { id: 'pours', label: 'Pours', goal: 'min', target: 6 },
     ],
   },
 ]
@@ -148,9 +153,13 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
-    const text = ph > setup.band[1]
-      ? `pH ${ph.toFixed(2)}: overshot past the band into alkali. That close to the cliff, one pour flips it. Ease off.`
-      : `pH ${ph.toFixed(2)}: still too acid, the band is ${setup.band[0]} to ${setup.band[1]}. Keep pouring, gently as you near the top.`
+    // Overshoot splits at neutral: the band tops out below 7, so a flask just
+    // past it is still faintly acid, and calling that "alkali" is bad chemistry.
+    const text = ph > 7
+      ? `pH ${ph.toFixed(2)}: shot right through neutral into alkali. That close to the cliff, one pour flips it. Ease off.`
+      : ph > setup.band[1]
+        ? `pH ${ph.toFixed(2)}: past the band, nearly neutral now. The spec wants it a touch more acid than this, so creep up in smaller pours.`
+        : `pH ${ph.toFixed(2)}: still too acid, the band is ${setup.band[0]} to ${setup.band[1]}. Keep pouring, gently as you near the top.`
     if (att.spend()) {
       reset()
       att.refill()

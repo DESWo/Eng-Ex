@@ -17,24 +17,33 @@ import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
+// Gusts are metres per second, sway is centimetres at the top floor.
 const CORES = {
-  wood: { label: 'Wood core', cost: 3, stiff: 8, fill: '#c89b6b' },
-  steel: { label: 'Steel core', cost: 6, stiff: 16, fill: '#9aa7b5' },
-  concrete: { label: 'Concrete core', cost: 9, stiff: 24, fill: '#b6b1a9' },
+  wood: { label: 'Wood core', cost: 3, stiff: 10, fill: '#c89b6b' },
+  steel: { label: 'Steel core', cost: 6, stiff: 20, fill: '#9aa7b5' },
+  concrete: { label: 'Concrete core', cost: 9, stiff: 30, fill: '#b6b1a9' },
 } as const
 
-const DAMPER_COST = 5
-const DAMPER_STIFF = 12
+// The core and the braced base are the static side: they add stiffness, and
+// stiffness is what carries the push of the wind. The tuned damper is the
+// dynamic side: a swinging weight that soaks up the sway, so it multiplies
+// the amplitude down instead of adding a single point of stiffness.
 const WIDE_COST = 4
-const WIDE_STIFF = 9
+const WIDE_STIFF = 12
+const DAMPER_COST = 5
+const DAMPER_FACTOR = 0.55 // fraction of the sway that survives the damper
+const SWAY_K = 10 // turns gust speed over stiffness into top-floor centimetres
 
 type CoreId = keyof typeof CORES
 
 interface TowerSetup {
   label: string
+  /** Gust speed in m/s. The frame needs at least this much stiffness. */
   wind: number
   /** Budget, or null while money is no object. */
   budget: number | null
+  /** Most the top floor may swing in cm, or null before comfort matters. */
+  swayLimit: number | null
   floors: number
   /** Which upgrades are on the menu yet. */
   upgrades: boolean
@@ -43,9 +52,9 @@ interface TowerSetup {
   brief: string
 }
 
-/** How far the top floor swings: wind against stiffness. */
-const swayOf = (wind: number, stiffness: number) =>
-  Math.round(((wind * 10) / Math.max(1, stiffness)) * 10) / 10
+/** How far the top floor swings in cm: gusts against stiffness, calmed by the damper. */
+const swayOf = (wind: number, stiffness: number, damped: boolean) =>
+  Math.round(((wind * SWAY_K) / Math.max(1, stiffness)) * (damped ? DAMPER_FACTOR : 1) * 10) / 10
 
 const LEVELS: ChallengeLevel<TowerSetup>[] = [
   {
@@ -54,43 +63,43 @@ const LEVELS: ChallengeLevel<TowerSetup>[] = [
     phase: 'play',
     concept: 'Tall things sway',
     teach: 'It is the wobbly block-tower game, scaled up to a real building. Wind pushes hardest at the top, and a bendy core lets the whole stack wave around. Pick a core stiff enough to beat the breeze. Spend whatever you like.',
-    setup: { label: 'Gentle breeze', wind: 12, budget: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-storey block on an open site. Stop it waving at the neighbours.' },
+    setup: { label: 'Gentle breeze', wind: 12, budget: null, swayLimit: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-storey block on an open site. Stop it waving at the neighbours.' },
   },
   {
     n: 2,
     title: 'The developer calls',
     phase: 'understand',
     concept: 'Stiffness per dollar',
-    teach: 'Concrete solves everything and costs the most per point of stiffness. With a real budget, the strongest core is no longer automatically the right one.',
-    setup: { label: 'City gusts', wind: 26, budget: 12, floors: 6, upgrades: true, swayReadout: false, brief: 'A taller block in gustier air, and now every dollar is argued over.' },
+    teach: 'Concrete solves everything and costs the most. With a real budget the strongest core is no longer automatically the right one, and watch the damper: it calms the swinging but adds no stiffness at all.',
+    setup: { label: 'City gusts', wind: 20, budget: 8, swayLimit: null, floors: 6, upgrades: true, swayReadout: false, brief: 'A taller block in gustier air, and now every dollar is argued over.' },
   },
   {
     n: 3,
-    title: 'More than one trick',
+    title: 'Stiff is not steady',
     phase: 'understand',
-    concept: 'Three ways to fight sway',
-    teach: 'A stiffer core resists the wind, a wide base braces against it, and a tuned damper is a huge weight up top that swings against the sway. No core alone survives this level, so the upgrades stop being optional extras.',
-    setup: { label: 'Storm front', wind: 30, budget: 14, floors: 7, upgrades: true, swayReadout: false, brief: 'Wind no core can beat alone. Time to combine tricks.' },
+    concept: 'Stiffness fights the push, damping fights the swing',
+    teach: 'The core and the wide base add stiffness, which is what stops the wind pushing the frame over. The tuned damper does something different: a huge weight up top that swings against the sway and calms the movement without stiffening anything. This storm demands both, so neither trick works alone.',
+    setup: { label: 'Storm front', wind: 26, budget: 15, swayLimit: 5, floors: 7, upgrades: true, swayReadout: false, brief: 'Strong enough is only half the job now. The top floor has a sway limit too.' },
   },
   {
     n: 4,
     title: 'Feel the top floor',
     phase: 'analyze',
     concept: 'The sway readout',
-    teach: 'Turn on the readout. Two towers that both survive can move very differently: the number is how far the top floor swings, and the people up there feel every bit of it.',
-    setup: { label: 'Storm front', wind: 32, budget: 15, floors: 8, upgrades: true, swayReadout: true, brief: 'Same storm, with the top-floor movement measured.' },
+    teach: 'Turn on the readout. Two towers that both stand can move very differently: the number is how many centimetres the top floor swings, and the people up there feel every one of them.',
+    setup: { label: 'Storm front', wind: 28, budget: 16, swayLimit: 5.5, floors: 8, upgrades: true, swayReadout: true, brief: 'Same storm, with the top-floor movement measured.' },
   },
   {
     n: 5,
     title: 'Nine floors, no seasickness',
     phase: 'optimize',
     concept: 'Standing is the easy part',
-    teach: 'The wind is survivable several ways now, and they are not equal: the cheap one sways enough to slosh coffee nine floors up. Keep it stiff enough to be comfortable without gold-plating the core.',
-    setup: { label: 'Hurricane season', wind: 36, budget: 20, floors: 9, upgrades: true, swayReadout: true, brief: 'Sign off the tower people will actually live in.' },
+    teach: 'Several designs survive this wind now, and they are not equal: one is cheap, one barely moves, one has stiffness to spare. Keep it comfortable without gold-plating the core.',
+    setup: { label: 'Hurricane season', wind: 30, budget: 20, swayLimit: 6, floors: 9, upgrades: true, swayReadout: true, brief: 'Sign off the tower people will actually live in.' },
     metrics: [
-      { id: 'cost', label: 'Build cost', goal: 'min', target: 16 },
-      { id: 'sway', label: 'Top-floor sway', goal: 'min', target: 9.8 },
-      { id: 'margin', label: 'Stiffness margin', goal: 'max', target: 1 },
+      { id: 'cost', label: 'Build cost', goal: 'min', target: 14 },
+      { id: 'sway', label: 'Top-floor sway', goal: 'min', target: 4, unit: ' cm' },
+      { id: 'margin', label: 'Stiffness margin', goal: 'max', target: 2 },
     ],
   },
 ]
@@ -118,11 +127,14 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
 
   const core = CORES[coreId]
   const cost = core.cost + (damper ? DAMPER_COST : 0) + (wide ? WIDE_COST : 0)
-  const stiffness = core.stiff + (damper ? DAMPER_STIFF : 0) + (wide ? WIDE_STIFF : 0)
+  // Only the core and the bracing stiffen the frame. The damper shows up in
+  // the sway number instead.
+  const stiffness = core.stiff + (wide ? WIDE_STIFF : 0)
   const overBudget = round.budget !== null && cost > round.budget
   const strongEnough = stiffness >= round.wind
-  const swayTop = swayOf(round.wind, stiffness)
-  const win = strongEnough && !overBudget
+  const swayTop = swayOf(round.wind, stiffness, damper)
+  const calmEnough = round.swayLimit === null || swayTop <= round.swayLimit
+  const win = strongEnough && calmEnough && !overBudget
 
   // Levels 2, 3 and 5 keep quiet before sign-off: the storm grades the design,
   // not a live meter. Levels 1 and 4 keep their readouts, and any verdict shows
@@ -134,7 +146,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
     if (wonRound) return
     if (win) {
       setWonRound(true)
-      setVerdict({ ok: true, text: 'Rock steady. The storm leans on it and it barely moves.' })
+      setVerdict({ ok: true, text: `Rock steady. Gusts of ${round.wind} m/s and the top floor moves ${swayTop} cm.` })
       lv.clearLevel(
         lv.level.metrics ? { cost, sway: swayTop, margin: stiffness - round.wind } : undefined,
       )
@@ -144,13 +156,17 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
+    // Stiff enough and damped enough are different failures, and mixing them
+    // up is exactly the mistake this game exists to unteach.
     const text = overBudget
       ? `Rejected: this design costs $${cost} and the developer capped it at $${round.budget}.`
-      : `It failed the wind test: stiffness ${stiffness} against gusts of ${round.wind}. The top floors whipped around.`
+      : !strongEnough
+        ? `Blown over: stiffness ${stiffness} against ${round.wind} m/s gusts. Stiffness comes from the core and the bracing. The damper only calms the swinging, it carries none of the push.`
+        : `It stood, but the top floor swung ${swayTop} cm and the limit is ${round.swayLimit} cm. Stiff enough is not the same as damped enough.`
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'Out of wind-tunnel slots. Back to the plain wood core. Compare stiffness per dollar before the next run.' })
+      setVerdict({ ok: false, text: 'Out of wind-tunnel slots. Back to the plain wood core. Work out what the storm needs first: stiffness to carry the push, damping to calm the swing.' })
     } else {
       setVerdict({ ok: false, text })
     }
@@ -164,8 +180,9 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
     setVerdict(null)
   }
 
-  // Sway amplitude grows when wind beats stiffness.
-  const sway = Math.max(1.5, Math.min(16, (round.wind - stiffness) * 0.9 + 2))
+  // The drawn wobble tracks the computed sway, so adding the damper visibly
+  // calms the tower even before any readout confirms it.
+  const sway = Math.max(1.5, Math.min(16, swayTop * 1.1))
   const floorH = 22
   const towerH = round.floors * floorH
   const baseY = 300
@@ -181,10 +198,10 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`Beat wind ${round.wind} with stiffness${round.budget !== null ? ` on a $${round.budget} budget` : ''}`}
+        goal={`Beat ${round.wind} m/s gusts with stiffness${round.swayLimit !== null ? `, sway ${round.swayLimit} cm or less` : ''}${round.budget !== null ? `, on a $${round.budget} budget` : ''}`}
         status={
           outcomeVisible
-            ? `this design: stiffness ${stiffness} · $${cost}`
+            ? `this design: stiffness ${stiffness} · sway ${swayTop} cm · $${cost}`
             : `this design: ${core.label.toLowerCase()}${wide ? ' + wide base' : ''}${damper ? ' + damper' : ''} · $${cost}`
         }
         attemptsLeft={att.left}
@@ -195,7 +212,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         <p className="max-w-md text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
         <Badge className="accent-soft accent-text px-4 py-1.5 text-sm">
           <Wind className="mr-1 h-4 w-4" />
-          {round.label} · wind {round.wind}
+          {round.label} · gusts {round.wind} m/s
         </Badge>
       </div>
 
@@ -297,9 +314,9 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         {outcomeVisible ? (
           <Meter
             label="Stiffness"
-            display={`${stiffness} vs wind ${round.wind}`}
-            fraction={stiffness / 48}
-            markerFraction={round.wind / 48}
+            display={`${stiffness} vs ${round.wind} m/s gusts`}
+            fraction={stiffness / 45}
+            markerFraction={round.wind / 45}
             barClass={strongEnough ? 'bg-emerald-500' : 'bg-amber-400'}
           />
         ) : (
@@ -310,9 +327,10 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
         {round.swayReadout && showSway && outcomeVisible && (
           <Meter
             label="Top-floor sway"
-            display={`${swayTop}`}
-            fraction={Math.min(1, swayTop / 20)}
-            barClass={swayTop <= 9.8 ? 'bg-emerald-500' : 'bg-amber-400'}
+            display={round.swayLimit !== null ? `${swayTop} of ${round.swayLimit} cm` : `${swayTop} cm`}
+            fraction={Math.min(1, swayTop / 12)}
+            markerFraction={round.swayLimit !== null ? round.swayLimit / 12 : undefined}
+            barClass={calmEnough ? 'bg-emerald-500' : 'bg-amber-400'}
           />
         )}
       </div>
@@ -377,7 +395,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
                 wide ? 'accent-border accent-soft accent-text' : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400',
               )}
             >
-              Wide base +{WIDE_STIFF} (${WIDE_COST})
+              Wide base: stiffness +{WIDE_STIFF} (${WIDE_COST})
             </button>
             <button
               type="button"
@@ -388,11 +406,11 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
                 damper ? 'accent-border accent-soft accent-text' : 'border-stone-200 text-ink-soft hover:border-stone-300 dark:border-white/10 dark:text-stone-400',
               )}
             >
-              Damper +{DAMPER_STIFF} (${DAMPER_COST})
+              Damper: sway ×{DAMPER_FACTOR} (${DAMPER_COST})
             </button>
           </div>
           <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
-            A damper is a heavy weight up top that swings against the sway. Real skyscrapers use them.
+            The wide base braces the frame: more stiffness against the push. The damper is a heavy weight up top that swings against the sway: it calms the movement but adds no stiffness. Real skyscrapers use both.
           </p>
         </div>
         )}
@@ -426,7 +444,7 @@ export function TowerChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Stands at ${swayTop} of sway for $${cost}. Try another combination.`
+              ? `Stands at ${swayTop} cm of sway for $${cost}. Try another combination.`
               : 'Rock steady. Build on.'
           }
           onReplay={reset}

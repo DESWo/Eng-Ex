@@ -61,7 +61,7 @@ const LEVELS: ChallengeLevel<DecaySetup>[] = [
     phase: 'play',
     concept: 'Heat after shutdown',
     teach: 'It plays like an idle game running in reverse: the reactor is OFF and still earning heat you never asked for, fastest right after shutdown. Pick a cooling setting for each stretch of time and keep the fuel below the damage line.',
-    setup: { modes: BASIC, limit: 900, battery: null, curve: false, brief: 'The reactor scrammed an hour ago. Keep it cool for the next day.' },
+    setup: { modes: BASIC, limit: 900, battery: null, curve: false, brief: 'The reactor just scrammed, an emergency shutdown, and the first hour starts now. Keep it cool for the next day.' },
   },
   {
     n: 2,
@@ -95,9 +95,15 @@ const LEVELS: ChallengeLevel<DecaySetup>[] = [
     teach: 'This becomes the station emergency procedure. Keep the peak temperature down, leave the core cold at the end, and use as little of the battery as you can, because nobody knows when the grid comes back.',
     setup: { modes: ALL, limit: 900, battery: 300, curve: true, brief: 'Write the cooling procedure the operators will follow next time.' },
     metrics: [
-      { id: 'peak', label: 'Peak fuel temp', goal: 'min', target: 420, unit: '°C' },
-      { id: 'battery', label: 'Battery used', goal: 'min', target: 160, unit: ' kWh' },
-      { id: 'final', label: 'Temp after a day', goal: 'min', target: 320, unit: '°C' },
+      // Pars come from walking all 64 procedures: 12 of them survive the day
+      // on the 300 kWh bank, and none clears all three pars. Holding the peak
+      // under 400°C costs at least 145 kWh, and finishing under 300°C costs at
+      // least 45, so a thrifty procedure gives up the peak and a calm one
+      // gives up the bank. Pump high, pump low, then natural flow used to take
+      // all three at once.
+      { id: 'peak', label: 'Peak fuel temp', goal: 'min', target: 400, unit: '°C' },
+      { id: 'battery', label: 'Battery used', goal: 'min', target: 120, unit: ' kWh' },
+      { id: 'final', label: 'Temp after a day', goal: 'min', target: 300, unit: '°C' },
     ],
   },
 ]
@@ -232,10 +238,10 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                 <line x1={x - 6} y1="160" x2={x + 66} y2="160" strokeWidth="1.5" className="stroke-stone-400 dark:stroke-stone-600" />
                 {showCurve && setup.curve && (
                   <>
-                    <text x={x + 13} y={154 - heatH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
+                    <text x={x + 13} y={154 - heatH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-rose-600 font-mono tabular-nums dark:fill-rose-300">
                       {b.heat}
                     </text>
-                    <text x={x + 47} y={154 - coolH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-sky-700 font-display dark:fill-sky-300">
+                    <text x={x + 47} y={154 - coolH} textAnchor="middle" fontSize="11" fontWeight="700" className="fill-sky-700 font-mono tabular-nums dark:fill-sky-300">
                       {MODES[b.mode].mw}
                     </text>
                   </>
@@ -252,7 +258,7 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
                     >
                       {short ? 'heating up' : 'cooling down'}
                     </text>
-                    <text x={x + 30} y="204" textAnchor="middle" fontSize="13" fontWeight="700" className="fill-ink font-display dark:fill-stone-200">
+                    <text x={x + 30} y="204" textAnchor="middle" fontSize="13" fontWeight="700" className="fill-ink font-mono tabular-nums dark:fill-stone-200">
                       {Math.round(b.temp)}°C
                     </text>
                   </>
@@ -268,7 +274,13 @@ export function DecayHeatChallenge({ onComplete }: ChallengeProps) {
           <text x="44" y="94" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">cooling</text>
 
           <text x="24" y="240" fontSize="12" fontWeight="700" className={cn('font-display', outcomeVisible && melted ? 'fill-rose-600 dark:fill-rose-300' : 'fill-ink-soft dark:fill-stone-400')}>
-            {outcomeVisible ? `Peak fuel temperature ${Math.round(peak)}°C` : 'Run the procedure to read the temperatures'}
+            {outcomeVisible ? (
+              <>
+                Peak fuel temperature <tspan className="font-mono tabular-nums">{Math.round(peak)}°C</tspan>
+              </>
+            ) : (
+              'Run the procedure to read the temperatures'
+            )}
           </text>
         </svg>
       </div>

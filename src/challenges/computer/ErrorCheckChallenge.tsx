@@ -10,7 +10,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -19,7 +19,16 @@ const DATA_BITS = 8
 const PACKETS = 240 // sample size for the link test
 const MAX_CHECK = 8 // slots the packet format leaves for check bits
 
-/** Deterministic noise, so the same settings always give the same result. */
+/**
+ * Every commissioning run books a night of traffic, and each change to the
+ * protocol books a fresh one: SEED + night * NIGHT_STEP. Within a night the
+ * noise is deterministic, so what the meters show is exactly what the verdict
+ * just judged, but the same protocol never gets handed the same lucky night
+ * twice in a row.
+ */
+const SEED = 12345
+const NIGHT_STEP = 7919
+
 function rng(seed: number) {
   let s = seed >>> 0
   return () => {
@@ -45,7 +54,7 @@ interface LinkResult {
  * One check bit can tell you something broke. Three or more can work out
  * WHICH bit broke, so the receiver repairs it instead of asking again.
  */
-function testLink(checkBits: number, noise: number, seed = 12345): LinkResult {
+function testLink(checkBits: number, noise: number, seed: number): LinkResult {
   const rand = rng(seed)
   const total = DATA_BITS + checkBits
   const counts: Record<Outcome, number> = { clean: 0, corrected: 0, resent: 0, silent: 0 }
@@ -137,10 +146,15 @@ const LEVELS: ChallengeLevel<LinkSetup>[] = [
     concept: 'Safety against speed',
     teach: 'More check bits mean fewer silent errors but less room for real data, and resends eat the link too. Find the protection that keeps the data honest without strangling the channel.',
     setup: { noise: 0.03, checkBits: null, maxSilent: 0.05, canResend: true, budget: null, stream: true, brief: 'Choose the error protection this whole mission will run on.' },
+    // Par is pulled three ways on purpose. One check bit is cheap and fast but
+    // lets about 3% through unnoticed; two catches nearly everything and pays
+    // for it in resends, dropping throughput to roughly 63%; three repairs the
+    // damage in place and runs near 70%, and blows the overhead target. On a
+    // typical night no setting takes all three.
     metrics: [
       { id: 'silent', label: 'Silent errors', goal: 'min', target: 1, unit: '%' },
-      { id: 'through', label: 'Useful throughput', goal: 'max', target: 62, unit: '%' },
-      { id: 'check', label: 'Check bits', goal: 'min', target: 4 },
+      { id: 'through', label: 'Useful throughput', goal: 'max', target: 68, unit: '%' },
+      { id: 'check', label: 'Check bits', goal: 'min', target: 2 },
     ],
   },
 ]
@@ -163,19 +177,24 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
   const setup = lv.level.setup
 
   const [checkBits, setCheckBits] = useState(0)
+  const [night, setNight] = useState(0)
+  /** True only while the numbers on screen describe a night this protocol actually ran. */
+  const [ran, setRan] = useState(false)
   const [won, setWon] = useState(false)
   const [showStream, setShowStream] = useState(true)
   const completedRef = useRef(false)
 
   useEffect(() => {
     setCheckBits(setup.checkBits ?? 0)
+    setNight((n) => n + 1)
+    setRan(false)
     setWon(false)
     setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
   const bits = setup.checkBits ?? checkBits
-  const r = testLink(bits, setup.noise)
+  const r = testLink(bits, setup.noise, SEED + night * NIGHT_STEP)
   const packetSize = DATA_BITS + bits
   const overBudget = setup.budget !== null && packetSize > setup.budget
   // Where nobody can ask for a resend, a caught error is lost data too.
@@ -184,17 +203,20 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
     : r.silentRate + r.counts.resent / PACKETS
   const solved = lostRate <= setup.maxSilent && !overBudget
 
-  /** Three commissioning runs per level, then the protocol is wiped. */
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  /** A limited number of commissioning runs per level, then the protocol is wiped. */
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
-  // Levels 2, 3 and 5 do not preview the loss rate or throughput: the numbers
-  // only exist once a night of traffic has actually run. Level 1 shows them to
-  // teach the dials, level 4's packet stream is the readout by design.
-  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
+  // Levels 2, 3 and 5 do not preview the loss rate, the throughput or the packet
+  // stream: those numbers only exist once a night of traffic has actually run
+  // under THIS protocol. Level 1 shows them to teach the dials, level 4's packet
+  // stream is the readout by design.
+  const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || ran || won
 
   const reset = () => {
     setCheckBits(setup.checkBits ?? 0)
+    setNight((n) => n + 1)
+    setRan(false)
     setWon(false)
     setVerdict(null)
   }
@@ -202,6 +224,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
   /** Commission the link and let a night of traffic judge the protocol. */
   const commission = () => {
     if (won) return
+    setRan(true)
     if (solved) {
       setWon(true)
       setVerdict({
@@ -227,9 +250,11 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
         ? `${r.counts.silent} packets arrived corrupted and nothing flagged a single one.`
         : !setup.canResend && r.counts.corrected === 0
           ? `${(lostRate * 100).toFixed(0)}% of the data is gone. The receiver can tell those packets broke, but out here it cannot ask again, so spotting the error is not enough.`
-          : bits < 3
-            ? `Still ${(lostRate * 100).toFixed(1)}% slipping through: two flips in one packet cancel out and sneak past. The target is ${(setup.maxSilent * 100).toFixed(1)}%.`
-            : `Still ${(lostRate * 100).toFixed(1)}% getting lost against a target of ${(setup.maxSilent * 100).toFixed(1)}%.`
+          : bits === 1
+            ? `Still ${(lostRate * 100).toFixed(1)}% slipping through: a single check bit only notices an ODD number of flips, so two flips in the same packet cancel out and sneak past. The target is ${(setup.maxSilent * 100).toFixed(1)}%.`
+            : bits === 2
+              ? `Still ${(lostRate * 100).toFixed(1)}% slipping through: two check bits catch one or two flips but cannot repair them, and a packet hit three times sails past unnoticed. The target is ${(setup.maxSilent * 100).toFixed(1)}%.`
+              : `Still ${(lostRate * 100).toFixed(1)}% getting lost against a target of ${(setup.maxSilent * 100).toFixed(1)}%.`
     if (att.spend()) {
       reset()
       att.refill()
@@ -290,7 +315,7 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
                 key={`c${i}`}
                 type="button"
                 disabled={setup.checkBits !== null}
-                onClick={() => { setVerdict(null); setCheckBits(filled ? i : i + 1) }}
+                onClick={() => { setVerdict(null); setRan(false); setCheckBits(filled ? i : i + 1); setNight((n) => n + 1) }}
                 aria-pressed={filled}
                 aria-label={filled ? `Remove check bit ${i + 1}` : `Add check bit ${i + 1}`}
                 className={cn(
@@ -311,7 +336,19 @@ export function ErrorCheckChallenge({ onComplete }: ChallengeProps) {
           </p>
         )}
 
-        {setup.stream && showStream && (
+        {/* The stream is a record of traffic that has run. Before the link is
+            commissioned there is none, and printing it would hand over the
+            answer the meters are deliberately withholding. */}
+        {setup.stream && showStream && !outcomeVisible && (
+          <div className="mt-4">
+            <p className="mb-2 font-display text-sm font-semibold">Packet stream</p>
+            <p className="text-xs text-ink-soft dark:text-stone-400">
+              Nothing has gone down the wire yet. Commission the link and every packet lands here as
+              clean, repaired, sent again, or silently wrong.
+            </p>
+          </div>
+        )}
+        {setup.stream && showStream && outcomeVisible && (
           <div className="mt-4">
             <p className="mb-2 font-display text-sm font-semibold">Last {r.outcomes.length} packets</p>
             <svg viewBox={`0 0 ${COLS * 16} ${Math.ceil(r.outcomes.length / COLS) * 16}`} className="w-full max-w-md" role="img" aria-label="Packet outcomes">

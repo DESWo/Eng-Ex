@@ -11,7 +11,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -106,8 +106,17 @@ const LEVELS: ChallengeLevel<RideSetup>[] = [
     teach: 'The production van must carry its load, smooth this road, and not carry shock absorbers it does not need. The comfy setup has thin load margin, the load-proof one needs every damper. Choose.',
     setup: { label: 'The production spec', mass: 1200, cargoNote: '500 kg of cargo', maxHarsh: null, roadHz: 2.6, maxAmp: 0.9, sagMatters: true, curve: true, brief: 'One suspension for the whole fleet. Pick the compromise you can defend.' },
     metrics: [
-      { id: 'amp', label: 'Body shake', goal: 'min', target: 0.5 },
-      { id: 'margin', label: 'Load margin', goal: 'max', target: 40, unit: ' mm' },
+      // Shake is scored in percent so the scorecard's integer tickers can
+      // show it (the old ratio id `amp` is retired; a stale saved best in
+      // ratio units would render as a rounded lie). Grid sim over every
+      // spring and damper count: only the firm spring (shake 41 to 45%,
+      // margin 42 mm, any dampers) and stiff with all three dampers (shake
+      // 85%, margin 86 mm) pass this road. These pars give each metric its
+      // own corner of that space: quietest needs two or more dampers,
+      // margin needs the stiff spring, cheap needs at most one damper. No
+      // setup collects more than one, so the sign-off is a real choice.
+      { id: 'shake', label: 'Body shake', goal: 'min', target: 44, unit: '%' },
+      { id: 'margin', label: 'Load margin', goal: 'max', target: 60, unit: ' mm' },
       { id: 'dampers', label: 'Shock absorbers', goal: 'min', target: 1 },
     ],
   },
@@ -121,16 +130,23 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
   const [springId, setSpringId] = useState<SpringId>('stiff')
   const [dampers, setDampers] = useState(0)
   const [phase, setPhase] = useState<'garage' | 'driving' | 'passed' | 'failed'>('garage')
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [showCurve, setShowCurve] = useState(true)
   const completedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Pending bench-clear after the attempt pool ran dry, see drive(). */
+  const refillTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current)
+    if (refillTimerRef.current) clearTimeout(refillTimerRef.current)
   }, [])
 
   useEffect(() => {
+    if (refillTimerRef.current) {
+      clearTimeout(refillTimerRef.current)
+      refillTimerRef.current = null
+    }
     setSpringId('stiff')
     setDampers(0)
     setPhase('garage')
@@ -146,29 +162,51 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
   const marginMm = Math.max(0, (TRAVEL - sag) * 1000)
   const passes = !bottomsOut && !tooHarsh && !shaken
 
+  /**
+   * The empty-pool hold ends the moment the student acts: refill the pool
+   * without stomping whatever they are touching back to stock.
+   */
+  const settleRefill = () => {
+    if (refillTimerRef.current === null) return
+    clearTimeout(refillTimerRef.current)
+    refillTimerRef.current = null
+    att.refill()
+  }
+
   const drive = () => {
     if (phase === 'driving') return
+    settleRefill()
     setPhase('driving')
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       if (passes) {
         setPhase('passed')
-        lv.clearLevel(lv.level.metrics ? { amp, margin: marginMm, dampers } : undefined)
+        lv.clearLevel(lv.level.metrics ? { shake: amp * 100, margin: marginMm, dampers } : undefined)
         if (!completedRef.current) {
           completedRef.current = true
           onComplete()
         }
       } else {
-        if (att.spend()) {
-          reset()
-          att.refill()
-        }
+        // The verdict banner and the SHAKING APART overlay read live state,
+        // so the stock reset has to wait even when this was the last
+        // attempt: clearing the bench first would diagnose a setup the
+        // student never drove. Hold the wreck on screen, then clear and
+        // refill.
+        const emptied = att.spend()
         setPhase('failed')
+        if (emptied) {
+          refillTimerRef.current = setTimeout(() => {
+            refillTimerRef.current = null
+            reset()
+            att.refill()
+          }, 3200)
+        }
       }
     }, 2200)
   }
 
   const reset = () => {
+    settleRefill()
     setSpringId('stiff')
     setDampers(0)
     setPhase('garage')
@@ -176,6 +214,8 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
 
   const retune = <T,>(fn: (v: T) => void) => (v: T) => {
     if (phase === 'driving') return
+    // Rebuilding during the hold is itself the fresh start: keep the change.
+    settleRefill()
     fn(v)
     setPhase('garage')
   }
@@ -459,7 +499,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ amp, margin: marginMm, dampers }}
+            values={{ shake: amp * 100, margin: marginMm, dampers }}
             best={lv.best}
             scored={phase === 'passed'}
           />
@@ -471,7 +511,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Shake ${amp.toFixed(2)} with ${marginMm.toFixed(0)} mm in hand on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
+              ? `Shake ${(amp * 100).toFixed(0)}% with ${marginMm.toFixed(0)} mm in hand on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
               : 'That van rides beautifully.'
           }
           onReplay={reset}

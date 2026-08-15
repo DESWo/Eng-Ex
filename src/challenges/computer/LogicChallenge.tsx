@@ -9,7 +9,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +39,15 @@ const ROWS: [boolean, boolean][] = [
   [true, false],
   [true, true],
 ]
+
+/**
+ * The slip worth naming out loud: "not A and not B" is NOR, while "not (A and
+ * B)" is NAND. Both read as a sentence with two nots in it, and they agree on
+ * only two of the four rows.
+ */
+const NAND: boolean[] = [true, true, true, false]
+const NOR: boolean[] = [true, false, false, false]
+const sameTruth = (x: readonly boolean[], y: readonly boolean[]) => x.every((v, i) => v === y[i])
 
 interface LogicSetup {
   label: string
@@ -87,7 +96,7 @@ const LEVELS: ChallengeLevel<LogicSetup>[] = [
     phase: 'analyze',
     concept: 'The truth table',
     teach: 'Turn on the table. Every row you actually test fills in, and four rows is the WHOLE story: a circuit and its truth table are the same thing written two ways.',
-    setup: { label: 'Greenhouse vent', goal: 'The vent opens when the day is NOT hot and NOT humid together, in other words unless both sensors trip.', truth: [true, true, true, false], options: ['AND', 'OR', 'XOR'], inverter: true, table: true, verify: false, brief: 'Same kind of rule, now with the table filling in as you test.' },
+    setup: { label: 'Greenhouse vent', goal: 'The vent stays open UNLESS both sensors trip at once. Hot on its own is fine, humid on its own is fine, hot AND humid together shuts it.', truth: [true, true, true, false], options: ['AND', 'OR', 'XOR'], inverter: true, table: true, verify: false, brief: 'Same kind of rule, now with the table filling in as you test.' },
   },
   {
     n: 5,
@@ -148,8 +157,8 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
   const proven = !round.verify || visited.size === 4
   const correct = circuitBuilt && matches && proven
 
-  /** Three submissions per level; a guessed gate costs real bench time. */
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  /** Limited submissions per level; a guessed gate costs real bench time. */
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
   /** Declare the circuit finished and let the rule book check it. */
@@ -169,11 +178,14 @@ export function LogicChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
+    const built = ROWS.map(([ra, rb]) => evalChain(gate, invert, ra, rb))
     const text = !circuitBuilt
       ? 'There is no circuit on the bench yet.'
       : matches && !proven
         ? `You have only proven ${visited.size} of 4 switch combinations. Flip the switches through every row before declaring it.`
-        : 'Rejected: the light disagrees with the rule on at least one switch combination. Work through the rows.'
+        : sameTruth(built, NOR) && sameTruth(round.truth, NAND)
+          ? 'That is NOR: the light only comes on when both switches are off. The rule wants the opposite of AND, which stays on until both switches are on together. Put the bubble on an AND instead.'
+          : 'Rejected: the light disagrees with the rule on at least one switch combination. Work through the rows.'
     if (att.spend()) {
       reset()
       att.refill()

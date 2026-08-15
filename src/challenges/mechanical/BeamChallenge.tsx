@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils'
 /* ------------------- tuning knobs (edit freely) ------------------- */
 const ALL_MARKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 const EVEN_MARKS = [2, 4, 6, 8, 10]
+/** How far the movable pivot slides from centre, in marks either way. */
+const PIVOT_RANGE = 4
 
 /** Cargo sits at a negative mark (left of centre), the counterweight at a positive one. */
 interface Crate {
@@ -125,9 +127,15 @@ const LEVELS: ChallengeLevel<BeamSetup>[] = [
       moments: true,
     },
     metrics: [
+      // Brute force over every weight, mark, and pivot: exactly ten designs
+      // balance this cargo. With these pars any pair of targets is
+      // reachable (30 kg at +3 pivot -4 makes mass and reach, 30 kg at +9
+      // pivot -2 makes mass and shift, 50 kg at +5 pivot -2 makes reach
+      // and shift) but no single design makes all three, so cheap, short,
+      // and lazy genuinely compete.
       { id: 'mass', label: 'Counterweight', goal: 'min', target: 30, unit: ' kg' },
-      { id: 'reach', label: 'Arm length', goal: 'min', target: 9, unit: ' marks' },
-      { id: 'shift', label: 'Pivot moved', goal: 'min', target: 3, unit: ' marks' },
+      { id: 'reach', label: 'Arm length', goal: 'min', target: 7, unit: ' marks' },
+      { id: 'shift', label: 'Pivot moved', goal: 'min', target: 2, unit: ' marks' },
     ],
   },
 ]
@@ -203,14 +211,14 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
   /** Slide the fulcrum itself rather than pushing a number. */
   const { bind } = useSvgDrag((x, _y, done) => {
     if (!round.movablePivot || !grabbedPivot.current) return
-    setPivot(Math.max(-4, Math.min(4, Math.round((x - CENTER_X) / PX_PER_MARK))))
+    setPivot(Math.max(-PIVOT_RANGE, Math.min(PIVOT_RANGE, Math.round((x - CENTER_X) / PX_PER_MARK))))
     if (done) grabbedPivot.current = false
   })
 
   const nudgePivot = (e: React.KeyboardEvent) => {
     if (!round.movablePivot) return
-    if (e.key === 'ArrowLeft') setPivot((v) => Math.max(-4, v - 1))
-    else if (e.key === 'ArrowRight') setPivot((v) => Math.min(4, v + 1))
+    if (e.key === 'ArrowLeft') setPivot((v) => Math.max(-PIVOT_RANGE, v - 1))
+    else if (e.key === 'ArrowRight') setPivot((v) => Math.min(PIVOT_RANGE, v + 1))
     else return
     e.preventDefault()
   }
@@ -281,12 +289,19 @@ export function BeamChallenge({ onComplete }: ChallengeProps) {
             role={round.movablePivot ? 'slider' : undefined}
             aria-label={round.movablePivot ? 'Fulcrum position' : undefined}
             aria-valuenow={round.movablePivot ? pivot : undefined}
-            aria-valuemin={round.movablePivot ? -4 : undefined}
-            aria-valuemax={round.movablePivot ? 4 : undefined}
+            aria-valuemin={round.movablePivot ? -PIVOT_RANGE : undefined}
+            aria-valuemax={round.movablePivot ? PIVOT_RANGE : undefined}
+            aria-valuetext={
+              round.movablePivot
+                ? `pivot at ${pivot > 0 ? `+${pivot}` : pivot}, moves up to ${PIVOT_RANGE} marks either way`
+                : undefined
+            }
           />
           {round.movablePivot && (
+            /* The clamp is stated here so bumping into it reads as a rule,
+               not a broken control. */
             <text x={pivotPx} y={GROUND_Y + 26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-ink-soft font-display dark:fill-stone-400">
-              drag the pivot
+              drag the pivot, up to {PIVOT_RANGE} marks either way
             </text>
           )}
 

@@ -19,6 +19,15 @@ import { cn } from '@/lib/utils'
 const BLOCK = 5 // kilograms per block
 const MAX_BLOCKS = 14
 
+/** What the review board calls each check when it fails a design. */
+const CHECK_LABELS: Record<string, string> = {
+  science: 'Science instruments',
+  comms: 'Comms antenna',
+  power: 'Power supply',
+  thermal: 'Thermal control',
+  mass: 'Mass budget',
+}
+
 interface MissionSetup {
   label: string
   brief: string
@@ -65,7 +74,9 @@ const LEVELS: ChallengeLevel<MissionSetup>[] = [
     phase: 'analyze',
     concept: 'Supply against demand',
     teach: 'Turn on the flow readout. Power flows from the panels to the instruments and heat flows out through the radiators, and you can see exactly which pipe is about to starve.',
-    setup: { label: 'Survey probe', brief: 'A heavier survey mission, fully instrumented.', massBudget: 135, powerPerScience: 1.6, goals: { science: 35, comms: 28 }, powerCheck: true, thermalCheck: true, flows: true },
+    // 140 kg, not 135: the leanest passing build weighs 135, so a 135 kg budget
+    // leaves a single exact answer and no room to try anything on the way there.
+    setup: { label: 'Survey probe', brief: 'A heavier survey mission, fully instrumented.', massBudget: 140, powerPerScience: 1.6, goals: { science: 35, comms: 28 }, powerCheck: true, thermalCheck: true, flows: true },
   },
   {
     n: 5,
@@ -148,12 +159,12 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
+    // The blocks stop handing out mass at the budget, so a design can only ever
+    // come back failed on a subsystem check.
     const failing = Object.entries(checks)
       .filter(([, ok]) => !ok)
-      .map(([k]) => k)
-    const text = overMass
-      ? `Too heavy to launch: ${usedMass} kg against a budget of ${round.massBudget}. Take mass from a subsystem that already meets its goal.`
-      : `The review board failed the design on: ${failing.join(', ')}. Notice which subsystems lean on the others.`
+      .map(([k]) => CHECK_LABELS[k] ?? k)
+    const text = `The review board failed the design on: ${failing.join(', ')}. Notice which subsystems lean on the others.`
     if (att.spend()) {
       reset()
       att.refill()

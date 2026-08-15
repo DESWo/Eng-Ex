@@ -70,9 +70,14 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     concept: 'One line will fail',
     teach: 'A tree is the cheapest network and the worst one: cut any line and everything behind it goes dark. Build loops so every home has a second way back to the plant, and spend as little extra as you can.',
     setup: { label: 'Storm season', budget: 850, closed: [], threshold: 55, flow: true, n1: true, brief: 'The storm will take one line, and nobody knows which. The town must stay lit anyway.' },
+    // Pars come from enumerating all 2^17 line sets against the formulas above:
+    // 257 designs survive the storm on budget. The lean loops (705 to 720 m,
+    // 11 lines) all leave the weakest house at exactly 65%, and pushing any
+    // house to 66% or better costs over 730 m and a twelfth line. No design
+    // beats all three.
     metrics: [
       { id: 'wire', label: 'Wire used', goal: 'min', target: 720, unit: ' m' },
-      { id: 'weakest', label: 'Weakest house gets', goal: 'max', target: 58, unit: '%' },
+      { id: 'weakest', label: 'Weakest house gets', goal: 'max', target: 66, unit: '%' },
       { id: 'lines', label: 'Lines built', goal: 'min', target: 11 },
     ],
   },
@@ -80,21 +85,23 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
 
 interface GridNode {
   id: string
+  /** Lowercase place name; copy says "the old mill", the map caps it. */
+  name: string
   x: number
   y: number
   kind: 'plant' | 'house'
 }
 
 const NODES: GridNode[] = [
-  { id: 'plant', x: 100, y: 250, kind: 'plant' },
-  { id: 'a', x: 250, y: 110, kind: 'house' },
-  { id: 'b', x: 240, y: 385, kind: 'house' },
-  { id: 'c', x: 400, y: 205, kind: 'house' },
-  { id: 'd', x: 410, y: 420, kind: 'house' },
-  { id: 'e', x: 560, y: 120, kind: 'house' },
-  { id: 'f', x: 570, y: 320, kind: 'house' },
-  { id: 'g', x: 700, y: 210, kind: 'house' },
-  { id: 'h', x: 710, y: 405, kind: 'house' },
+  { id: 'plant', name: 'power plant', x: 100, y: 250, kind: 'plant' },
+  { id: 'a', name: 'orchard house', x: 250, y: 110, kind: 'house' },
+  { id: 'b', name: 'old mill', x: 240, y: 385, kind: 'house' },
+  { id: 'c', name: 'crossroads house', x: 400, y: 205, kind: 'house' },
+  { id: 'd', name: 'south meadow', x: 410, y: 420, kind: 'house' },
+  { id: 'e', name: 'north ridge', x: 560, y: 120, kind: 'house' },
+  { id: 'f', name: 'east barn', x: 570, y: 320, kind: 'house' },
+  { id: 'g', name: 'hilltop house', x: 700, y: 210, kind: 'house' },
+  { id: 'h', name: 'ferry cottage', x: 710, y: 405, kind: 'house' },
 ]
 
 /** Possible wire routes. Cost is the wire length in meters. */
@@ -120,6 +127,7 @@ const EDGES: { a: string; b: string; cost: number }[] = [
 
 const edgeId = (e: { a: string; b: string }) => `${e.a}|${e.b}`
 const nodeById = (id: string) => NODES.find((n) => n.id === id)!
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /** Shortest wire-distance from the plant to every reachable node. */
 function distances(built: string[]): Record<string, number> {
@@ -254,9 +262,22 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
+    // Replay the storm against every built line and name the cut that hurts
+    // most, so the fix points somewhere instead of just saying "somewhere".
+    let worstCut: { a: string; b: string; dark: number } | null = null
+    if (round.n1 && !survivesAnyCut) {
+      for (const cut of built) {
+        const rest = built.filter((e) => e !== cut)
+        const dark = houses.filter((h) => deliveredTo(rest, h.id) < threshold).length
+        if (dark > (worstCut?.dark ?? 0)) {
+          const [a, b] = cut.split('|')
+          worstCut = { a, b, dark }
+        }
+      }
+    }
     const text =
-      allLit && !overBudget && round.n1 && !survivesAnyCut
-        ? 'Everyone is lit today, but the storm test cut one line and part of the town went dark. Every home needs a second route.'
+      allLit && !overBudget && round.n1 && !survivesAnyCut && worstCut
+        ? `Everyone is lit today, but the storm test cut the line from the ${nodeById(worstCut.a).name} to the ${nodeById(worstCut.b).name} and ${worstCut.dark === 1 ? 'one home' : `${worstCut.dark} homes`} dropped below ${threshold}%. Every home needs a second route.`
         : !allLit && round.threshold !== null && houses.every((h) => lit.has(h.id))
           ? 'Every home is connected, but the far ones got a brown-out. Power fades with every metre, so give the far end a shorter route.'
           : allLit && overBudget
@@ -358,7 +379,7 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isBuilt}
-                aria-label={`Power line, ${e.cost} meters of wire`}
+                aria-label={`Power line from the ${nodeById(e.a).name} to the ${nodeById(e.b).name}, ${e.cost} meters of wire`}
                 className="cursor-pointer outline-none"
               >
                 {/* wide invisible hit area */}
@@ -459,6 +480,17 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
           {houses.map((h) => (
             <g key={h.id} opacity={lit.has(h.id) && !served(h.id) ? 0.75 : 1}>
               <House node={h} lit={served(h.id)} />
+              {/* Place name above the roof: the storm verdict points here. */}
+              <text
+                x={h.x}
+                y={h.y - 38}
+                textAnchor="middle"
+                fontSize="11"
+                fontWeight="600"
+                fill="#8884b8"
+              >
+                {cap(h.name)}
+              </text>
               {round.threshold !== null && lit.has(h.id) && (
                 <text
                   x={h.x}

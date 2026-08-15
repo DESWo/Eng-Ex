@@ -31,11 +31,16 @@ function liftOf(throttle: number, angle: number) {
 }
 
 /**
- * Fuel flow. Throttle burns fuel directly, and a raised nose adds induced
- * drag that grows with the SQUARE of the angle, so both too fast and too
- * steep are expensive. Somewhere in between sits the cruise sweet spot.
+ * Fuel flow. Throttle costs fuel twice over: a linear term for running the
+ * engine, and a speed-squared term for parasite drag, so the last quarter of
+ * the throttle buys far less than the first. A raised nose adds induced drag
+ * that grows with the SQUARE of the angle. Too fast and too steep are both
+ * expensive; the cruise sweet spot sits in between, and firewalling the
+ * throttle can never reach it.
  */
-const burnOf = (throttle: number, angle: number) => 0.7 * throttle + 0.35 * angle * angle
+const throttleBurn = (throttle: number) => 0.25 * throttle + 0.005 * throttle * throttle
+const inducedBurn = (angle: number) => 0.4 * angle * angle
+const burnOf = (throttle: number, angle: number) => throttleBurn(throttle) + inducedBurn(angle)
 
 /** Cargo options for level 5. */
 const CARGO = [0, 20, 40]
@@ -68,8 +73,8 @@ const LEVELS: ChallengeLevel<FlightSetup>[] = [
     title: 'Watch the fuel flow',
     phase: 'understand',
     concept: 'Full throttle is not free',
-    teach: 'The gauge shows fuel flow, and this trip only works below the red line. Firewalling the throttle holds altitude easily and burns far too much, so find a setting the tank can actually sustain.',
-    setup: { label: 'The long leg', weight: 100, gust: 0, fuelCap: 105, chooseCargo: false, forces: false, brief: 'The same plane on a leg long enough that fuel flow decides whether you arrive.' },
+    teach: 'The gauge shows fuel flow, and this trip only works below the red line. Drag grows with the square of your speed, so firewalling the throttle holds altitude easily and burns far too much. Find a trim the tank can actually sustain.',
+    setup: { label: 'The long leg', weight: 100, gust: 0, fuelCap: 103, chooseCargo: false, forces: false, brief: 'The same plane on a leg long enough that fuel flow decides whether you arrive.' },
   },
   {
     n: 3,
@@ -77,15 +82,15 @@ const LEVELS: ChallengeLevel<FlightSetup>[] = [
     phase: 'understand',
     concept: 'Nose-up costs fuel too',
     teach: 'A raised nose buys lift but drags through the air, and that drag grows fast. Flying slow and steep burns MORE than flying faster and flatter, so the cheapest cruise sits in a narrow band between the two.',
-    setup: { label: 'Cargo aboard', weight: 125, gust: 0, fuelCap: 125, chooseCargo: false, forces: false, brief: 'A heavier plane and a tight fuel margin. Both edges of the trim envelope now burn too much.' },
+    setup: { label: 'Cargo aboard', weight: 125, gust: 0, fuelCap: 128, chooseCargo: false, forces: false, brief: 'A heavier plane and a tight fuel margin. Both edges of the trim envelope now burn too much.' },
   },
   {
     n: 4,
     title: 'The four forces',
     phase: 'analyze',
     concept: 'Lift, weight, thrust, drag',
-    teach: 'Turn on the overlay. Every aircraft ever flown balances these four arrows: lift against weight, thrust against drag. Watch how moving either control reshapes all four at once.',
-    setup: { label: 'Gusty ridge line', weight: 115, gust: -15, fuelCap: 125, chooseCargo: false, forces: true, brief: 'A downdraft over the ridge, with the flight forces drawn on the plane.' },
+    teach: 'Turn on the overlay. Every aircraft ever flown balances these four arrows: lift against weight, thrust against drag. The downdraft is stealing part of your lift, and only speed buys it back, so expect to fly this leg with the throttle well open.',
+    setup: { label: 'Gusty ridge line', weight: 115, gust: -15, fuelCap: 138, chooseCargo: false, forces: true, brief: 'A downdraft over the ridge, with the flight forces drawn on the plane. It takes real speed to out-climb sinking air.' },
   },
   {
     n: 5,
@@ -94,10 +99,14 @@ const LEVELS: ChallengeLevel<FlightSetup>[] = [
     concept: 'Every kilo needs fuel',
     teach: 'Load the cargo yourself. More payload needs more lift, more lift needs a steeper, thirstier trim, and the stall is closer than it looks. Carry the most you can while the burn stays sane.',
     setup: { label: 'The freight run', weight: 100, gust: 0, fuelCap: 145, chooseCargo: true, forces: true, brief: 'The customer pays by the kilo delivered. The tank does not care what the customer pays.' },
+    // Full cargo forces the trim to 13° or steeper, which caps the stall
+    // margin at 3 and the burn at 140 or worse, so no single trim beats all
+    // three pars. Full cargo pairs with the burn par, a lighter load with the
+    // stall par. Proven by grid over every integer throttle and angle.
     metrics: [
       { id: 'cargo', label: 'Cargo carried', goal: 'max', target: 40, unit: ' kg' },
-      { id: 'burn', label: 'Fuel flow', goal: 'min', target: 140 },
-      { id: 'stall', label: 'Stall margin', goal: 'max', target: 2, unit: '°' },
+      { id: 'burn', label: 'Fuel flow', goal: 'min', target: 142 },
+      { id: 'stall', label: 'Stall margin', goal: 'max', target: 4, unit: '°' },
     ],
   },
 ]
@@ -187,7 +196,7 @@ export function FlightChallenge({ onComplete }: ChallengeProps) {
 
   // Force arrows for the level 4 overlay, scaled to stay inside the scene.
   const thrustLen = 20 + throttle * 0.5
-  const dragLen = 12 + (burn - 0.7 * throttle) * 0.5 + throttle * 0.15
+  const dragLen = 12 + inducedBurn(angle) * 0.5 + throttle * 0.15
   const liftLen = Math.min(70, lift * 0.4)
   const weightLen = Math.min(70, weight * 0.4)
 

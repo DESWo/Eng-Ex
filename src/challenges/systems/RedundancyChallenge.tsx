@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
  * are the odds of each one multiplied together, so the weakest link drags the
  * whole spacecraft down no matter how good the others are.
  */
+/** Cost is in thousands of dollars, and every readout says so. */
 const PARTS = [
   { name: 'Power', reliability: 0.99, mass: 40, cost: 120 },
   { name: 'Computer', reliability: 0.995, mass: 15, cost: 200 },
@@ -85,7 +86,7 @@ const LEVELS: ChallengeLevel<RedundancySetup>[] = [
     metrics: [
       { id: 'rel', label: 'Mission survives', goal: 'max', target: 97, unit: '%' },
       { id: 'mass', label: 'Launch mass', goal: 'min', target: 170, unit: ' kg' },
-      { id: 'cost', label: 'Build cost', goal: 'min', target: 650 },
+      { id: 'cost', label: 'Build cost ($k)', goal: 'min', target: 650, unit: 'k' },
     ],
   },
 ]
@@ -136,9 +137,10 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
       }
       return
     }
+    // One frame across win and fail: this is launch day, not a paper review.
     const text = overMass
       ? `Scrubbed on the pad: that build is ${mass} kg and the rocket lifts ${setup.maxMass}.`
-      : `The review board scored it ${reliability.toFixed(2)}% against a required ${setup.minReliability}%. The post-mortem points at ${weakest.name}: it alone carries ${((weakest.risk / totalRisk) * 100).toFixed(0)}% of the risk.`
+      : `Mission lost. Those were ${reliability.toFixed(2)}% odds against the ${setup.minReliability}% this flight needed, and ${weakest.name} is what gave out: it alone carries ${((weakest.risk / totalRisk) * 100).toFixed(0)}% of the risk.`
     if (att.spend()) {
       reset()
       att.refill()
@@ -195,7 +197,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
             <div className="min-w-[9rem]">
               <p className="font-display text-sm font-bold">{p.name}</p>
               <p className="text-xs text-ink-soft dark:text-stone-400">
-                {(PARTS[i].reliability * 100).toFixed(1)}% each · {p.mass} kg · {p.cost}
+                {(PARTS[i].reliability * 100).toFixed(1)}% each · {p.mass} kg · ${p.cost}k
               </p>
             </div>
 
@@ -288,7 +290,7 @@ export function RedundancyChallenge({ onComplete }: ChallengeProps) {
           Reset
         </Button>
         <Badge className="ml-auto">
-          {mass} kg · {cost}
+          {mass} kg · ${cost}k
         </Badge>
       </div>
 

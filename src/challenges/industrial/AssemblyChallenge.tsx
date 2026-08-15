@@ -72,7 +72,7 @@ const LEVELS: ChallengeLevel<AssemblySetup>[] = [
     phase: 'understand',
     concept: 'The slowest station rules',
     teach: 'The line moves exactly as fast as its slowest station and not one item faster. Add people anywhere else and the rate does not move at all, which is the most important sentence in factory design.',
-    setup: { label: 'Phone assembly', stations: PHONE, workers: 9, targetRate: 5, wip: false, brief: 'A five-station line with barely enough people. Only one placement pattern works.' },
+    setup: { label: 'Phone assembly', stations: PHONE, workers: 9, targetRate: 5, wip: false, brief: 'A five-station line with barely enough people. Nothing moves until the slowest station does.' },
   },
   {
     n: 4,
@@ -90,9 +90,14 @@ const LEVELS: ChallengeLevel<AssemblySetup>[] = [
     teach: 'A fast line where three stations sit half-idle wastes wages. The best line is BALANCED: every station almost equally busy, nobody waiting. That beats raw speed.',
     setup: { label: 'Phone assembly', stations: PHONE, workers: 12, targetRate: 6, wip: true, brief: 'Hit the contract rate with a line the accountants will also love.' },
     metrics: [
+      // Pars checked by enumerating all twenty winning staffings. The wage par
+      // is hit only by 2,3,2,2,1 (87% busy, 6.7/min); the busyness and speed
+      // pars only by 3,3,2,2,1 (11 workers, 90%, 7.5/min, the line's ceiling).
+      // No staffing beats all three: 7.5/min needs an eleventh worker, so the
+      // wage par and the speed par can never share a line.
       { id: 'workers', label: 'Workers used', goal: 'min', target: 10 },
-      { id: 'util', label: 'Average busyness', goal: 'max', target: 80, unit: '%' },
-      { id: 'rate', label: 'Output rate', goal: 'max', target: 6.5, unit: '/min' },
+      { id: 'util', label: 'Average busyness', goal: 'max', target: 87, unit: '%' },
+      { id: 'rate', label: 'Output rate', goal: 'max', target: 7.5, unit: '/min' },
     ],
   },
 ]
@@ -105,8 +110,25 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   const [wonRound, setWonRound] = useState(false)
   const [showWip, setShowWip] = useState(true)
   const completedRef = useRef(false)
+  // The shift resolves on a delay, and a shift must never outlive its level or
+  // the component: a verdict landing after sign-out would write the win into
+  // whichever storage scope is active by then.
+  const shiftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const cancelShift = () => {
+    if (shiftTimer.current !== null) {
+      clearTimeout(shiftTimer.current)
+      shiftTimer.current = null
+    }
+    setRunning(false)
+  }
+
+  useEffect(() => () => {
+    if (shiftTimer.current !== null) clearTimeout(shiftTimer.current)
+  }, [])
 
   useEffect(() => {
+    cancelShift()
     setAssigned({})
     setWonRound(false)
     setVerdict(null)
@@ -139,7 +161,8 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
     if (wonRound || running) return
     setVerdict(null)
     setRunning(true)
-    setTimeout(() => {
+    shiftTimer.current = setTimeout(() => {
+      shiftTimer.current = null
       setRunning(false)
       if (win) {
         setWonRound(true)
@@ -151,9 +174,9 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
         }
         return
       }
-      const text = spare < 0
-        ? `You have assigned ${used} workers and the roster is ${round.workers}.`
-        : `The shift managed ${rate}/min against a promised ${round.targetRate}/min. ${bottleneck.name} set the pace: watch where the pile formed.`
+      // The steppers stop handing out workers at the roster limit, so a lost
+      // shift is always a pacing problem, never over-assignment.
+      const text = `The shift managed ${rate}/min against a promised ${round.targetRate}/min. ${bottleneck.name} set the pace: watch where the pile formed.`
       if (att.spend()) {
         reset()
         att.refill()
@@ -176,6 +199,7 @@ export function AssemblyChallenge({ onComplete }: ChallengeProps) {
   }
 
   const reset = () => {
+    cancelShift()
     setAssigned({})
     setWonRound(false)
     setVerdict(null)

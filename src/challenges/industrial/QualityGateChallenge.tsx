@@ -22,7 +22,8 @@ const WARRANTY = 60 // what one escaped defect costs once a customer finds it
 
 /** Each station adds value, and each one can spoil a unit. */
 const STATIONS = [
-  { name: 'Mould', defect: 0.1, value: 8 },
+  // US spelling to match the assembly line's Mold body station.
+  { name: 'Mold', defect: 0.1, value: 8 },
   { name: 'Paint', defect: 0.12, value: 12 },
   { name: 'Electronics', defect: 0.04, value: 40 },
   { name: 'Pack', defect: 0.01, value: 6 },
@@ -180,8 +181,25 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
   const [won, setWon] = useState(false)
   const [showReadout, setShowReadout] = useState(true)
   const completedRef = useRef(false)
+  // Same timer hygiene as the assembly line: the shift resolves on a delay,
+  // and a verdict landing after the level or the component is gone would
+  // write into whichever storage scope is active by then.
+  const shiftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const cancelShift = () => {
+    if (shiftTimer.current !== null) {
+      clearTimeout(shiftTimer.current)
+      shiftTimer.current = null
+    }
+    setRunning(false)
+  }
+
+  useEffect(() => () => {
+    if (shiftTimer.current !== null) clearTimeout(shiftTimer.current)
+  }, [])
 
   useEffect(() => {
+    cancelShift()
     setGates([false, false, false, false])
     setWon(false)
     setVerdict(null)
@@ -193,48 +211,57 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
   const solved = r.escaped <= setup.maxEscaped && !overBudget && !overTotal
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
+  const [running, setRunning] = useState(false)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   // Levels 2, 3 and 5 keep the counts secret until the shift has actually run.
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
-  /** Run the shift with the quality plan as it stands. */
+  /** Run the shift: the belt gets a moment to play out, THEN the verdict lands. */
   const runShift = () => {
-    if (won) return
-    if (solved) {
-      setWon(true)
-      setVerdict({ ok: true, text: `Good plan. ${Math.round(r.escaped)} escapes, ${Math.round(r.total)} total cost of quality.` })
-      lv.clearLevel(
-        lv.level.metrics ? { escaped: r.escaped, inspect: r.inspectCost, waste: r.waste } : undefined,
-      )
-      if (!completedRef.current) {
-        completedRef.current = true
-        onComplete()
+    if (won || running) return
+    setVerdict(null)
+    setRunning(true)
+    shiftTimer.current = setTimeout(() => {
+      shiftTimer.current = null
+      setRunning(false)
+      if (solved) {
+        setWon(true)
+        setVerdict({ ok: true, text: `Good plan. ${Math.round(r.escaped)} escapes, ${Math.round(r.total)} total cost of quality.` })
+        lv.clearLevel(
+          lv.level.metrics ? { escaped: r.escaped, inspect: r.inspectCost, waste: r.waste } : undefined,
+        )
+        if (!completedRef.current) {
+          completedRef.current = true
+          onComplete()
+        }
+        return
       }
-      return
-    }
-    const text = r.escaped > setup.maxEscaped
-      ? `${Math.round(r.escaped)} faulty units reached customers. Anything over ${setup.maxEscaped} is too many.`
-      : overBudget
-        ? `Inspection cost ${Math.round(r.inspectCost)} against a budget of ${setup.inspectBudget}. You cannot staff that many desks.`
-        : onlyEndGate
-          ? `Everything was caught, but quality cost ${Math.round(r.total)}: you binned finished units with the electronics already fitted. Check them earlier.`
-          : `Quality cost ${Math.round(r.total)} all in, and the target is ${setup.maxTotal}.`
-    if (att.spend()) {
-      reset()
-      att.refill()
-      setVerdict({ ok: false, text: 'The plant manager suspended testing. Desks removed. Follow one defect down the belt and ask where it gets expensive.' })
-    } else {
-      setVerdict({ ok: false, text })
-    }
+      const text = r.escaped > setup.maxEscaped
+        ? `${Math.round(r.escaped)} faulty units reached customers. Anything over ${setup.maxEscaped} is too many.`
+        : overBudget
+          ? `Inspection cost ${Math.round(r.inspectCost)} against a budget of ${setup.inspectBudget}. You cannot staff that many desks.`
+          : onlyEndGate
+            ? `Everything was caught, but quality cost ${Math.round(r.total)}: you binned finished units with the electronics already fitted. Check them earlier.`
+            : `Quality cost ${Math.round(r.total)} all in, and the target is ${setup.maxTotal}.`
+      if (att.spend()) {
+        reset()
+        att.refill()
+        setVerdict({ ok: false, text: 'The plant manager suspended testing. Desks removed. Follow one defect down the belt and ask where it gets expensive.' })
+      } else {
+        setVerdict({ ok: false, text })
+      }
+    }, 1800)
   }
 
   const reset = () => {
+    cancelShift()
     setGates([false, false, false, false])
     setWon(false)
     setVerdict(null)
   }
 
   const toggle = (i: number) => {
+    if (running) return
     setVerdict(null)
     setGates((g) => g.map((v, j) => (j === i ? !v : v)))
   }
@@ -407,16 +434,20 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
 
           {/* units riding the belt, each ending where the maths says it ends */}
           {SAMPLE.map((u, i) => {
-            const caughtAt = u.defectAt === null ? -1 : gates.findIndex((on, gi) => on && gi >= u.defectAt!)
+            // On the commit-blind levels the belt keeps moving, but which
+            // units go bad and where they get binned IS the outcome, so the
+            // spoil marks and desk pulls only appear once a shift has run.
+            const fateKnown = outcomeVisible && u.defectAt !== null
+            const caughtAt = !fateKnown ? -1 : gates.findIndex((on, gi) => on && gi >= u.defectAt!)
             const rejected = caughtAt !== -1
             const endX = rejected ? boothX(caughtAt) : CUSTOMER_X - 34
             const travel = (endX - UNIT_START) / SPEED
             const duration = travel + (rejected ? 0.5 : 0)
             const travelFrac = travel / duration
             const spoilFrac =
-              u.defectAt === null
+              !fateKnown
                 ? null
-                : Math.min(0.97, (stationX(u.defectAt) + ST_W - UNIT_START) / SPEED / duration)
+                : Math.min(0.97, (stationX(u.defectAt!) + ST_W - UNIT_START) / SPEED / duration)
             const timing = {
               duration,
               delay: i * 0.42,
@@ -494,9 +525,9 @@ export function QualityGateChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button variant="accent" size="lg" onClick={runShift} disabled={won}>
+        <Button variant="accent" size="lg" onClick={runShift} disabled={won || running}>
           <Play className="h-5 w-5" fill="currentColor" />
-          Run the shift
+          {running ? 'Shift running…' : 'Run the shift'}
         </Button>
         <Button variant="ghost" onClick={reset} aria-label="Remove all inspections">
           <RotateCcw className="h-4 w-4" />

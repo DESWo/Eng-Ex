@@ -60,7 +60,10 @@ interface Payload {
 
 const PAYLOADS = {
   can: { label: 'Soup can', mass: 3, crush: 340, w: 54, h: 76, fill: 'fill-stone-400 dark:fill-stone-500' },
-  egg: { label: 'Egg', mass: 0.5, crush: 48, w: 44, h: 56, fill: 'fill-amber-100 dark:fill-amber-200' },
+  // The bench starts at 30 of squeeze, which held the can. Crush sits under
+  // that, so the same squeeze cracks the egg: the ceiling has to be found,
+  // not walked past. The window is still 16 to 26, wide enough to hold.
+  egg: { label: 'Egg', mass: 0.3, crush: 26, w: 44, h: 56, fill: 'fill-amber-100 dark:fill-amber-200' },
   // Crush is set just under the rubber slip force, so rubber is strictly impossible
   // rather than solvable on a single exact value.
   bulb: { label: 'Light bulb', mass: 0.3, crush: 15, w: 42, h: 58, fill: 'fill-yellow-200 dark:fill-yellow-300' },
@@ -121,10 +124,16 @@ const LEVELS: ChallengeLevel<GripSetup>[] = [
     concept: 'Speed eats your margin',
     teach: 'You set the lift speed too. Snatching it up fast means the jar throws its own weight around and needs far more grip, which pushes you towards the crush line. Fast, safe, and gentle pull against each other.',
     setup: { payload: PAYLOADS.jar, pad: null, accel: null, window: false, brief: 'The line wants jars moved quickly, without breakages, on a gripper that is not wearing itself out.' },
+    // Pars proven against the ride physics. Steel cannot hold the jar at any
+    // speed and rubber runs out of window by Brisk, so a real lift means foam.
+    // Foam at Brisk makes the clock, but keeping 25 of margin there costs 86
+    // of squeeze, and holding the squeeze to 80 leaves only 19 of margin.
+    // Backing off to Steady buys margin at 80 and loses the clock. Any two of
+    // the three, never all three.
     metrics: [
-      { id: 'time', label: 'Lift time', goal: 'min', target: 12 },
-      { id: 'margin', label: 'Safety margin', goal: 'max', target: 20 },
-      { id: 'grip', label: 'Grip force', goal: 'min', target: 90 },
+      { id: 'time', label: 'Lift time', goal: 'min', target: 10 },
+      { id: 'margin', label: 'Safety margin', goal: 'max', target: 25 },
+      { id: 'grip', label: 'Grip force', goal: 'min', target: 80 },
     ],
   },
 ]
@@ -136,6 +145,17 @@ const slipForce = (p: Payload, pad: PadId, accel: number) =>
 /** Squeeze that breaks it, which softer pads raise by spreading the load. */
 const crushForce = (p: Payload, pad: PadId) => p.crush * PADS[pad].crushMul
 
+/**
+ * The highest the slip line climbs during the ride. That peak, not the resting
+ * slip force, is what a hold has to survive, so it is what the safety margin
+ * and the "no squeeze works" check are both judged on.
+ */
+function peakSlipForce(p: Payload, pad: PadId, accel: number) {
+  let peak = 0
+  for (let t = 0; t <= LIFT_S; t += TICK / 1000) peak = Math.max(peak, slipForce(p, pad, accelAt(t, accel)))
+  return peak
+}
+
 export function GripperChallenge({ onComplete }: ChallengeProps) {
   const lv = useLevels('gripper', LEVELS)
   const setup = lv.level.setup
@@ -145,6 +165,14 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const [accel, setAccel] = useState(3)
   const [won, setWon] = useState(false)
   const [showWindow, setShowWindow] = useState(true)
+  /**
+   * Broken stays broken. A slipping item is still in the jaws and recovers the
+   * moment you squeeze harder, but a crack does not un-crack, so only the ride
+   * can break something and it stays cracked until the next lift or a reset.
+   */
+  const [cracked, setCracked] = useState(false)
+  /** What the finished ride scored, so the card reads the lift and not the bench. */
+  const [score, setScore] = useState<{ time: number; margin: number; grip: number } | null>(null)
   const completedRef = useRef(false)
   /** The live ride: t is seconds into the lift, slipNow is today's floor. */
   const [ride, setRide] = useState<{ t: number; slipNow: number } | null>(null)
@@ -157,6 +185,8 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
     setPadId(setup.pad ?? 'rubber')
     setAccel(setup.accel ?? 3)
     setWon(false)
+    setCracked(false)
+    setScore(null)
     setVerdict(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
@@ -165,10 +195,11 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const a = setup.accel ?? accel
   const slip = slipForce(setup.payload, pad, a)
   const crush = crushForce(setup.payload, pad)
-  // When slip meets crush there is no safe grip at all, so "impossible" and
-  // "held" must never both be true.
-  const impossible = slip >= crush
-  const margin = Math.min(grip - slip, crush - grip)
+  const peakSlip = peakSlipForce(setup.payload, pad, a)
+  // When the slip line climbs past crush there is no squeeze that survives the
+  // whole lift, so "impossible" and "held" must never both be true.
+  const impossible = peakSlip >= crush
+  const margin = Math.min(grip - peakSlip, crush - grip)
   const liftTime = 60 / (2 + a)
 
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
@@ -192,14 +223,19 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
   const lift = () => {
     if (won || lifting) return
     if (impossible) {
-      failLift(`No squeeze works: it starts breaking at ${Math.round(crush)} before it even stops slipping at ${Math.round(slip)}.`)
+      failLift(`No squeeze works: it starts breaking at ${Math.round(crush)} before the lift stops slipping at ${Math.round(peakSlip)}.`)
       return
     }
     setVerdict(null)
+    setCracked(false)
+    setScore(null)
     gripRef.current = grip
     let slipTime = 0
     let crushTime = 0
     let minMargin = Infinity
+    // The squeeze that counts is the hardest one the jaws had to apply, not
+    // whatever the dial happens to read as the item lands.
+    let peakGrip = grip
     const start = performance.now()
     let last = start
     setRide({ t: 0, slipNow: slipForce(setup.payload, pad, accelAt(0, a)) })
@@ -214,6 +250,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       last = now
       const slipNow = slipForce(setup.payload, pad, accelAt(t, a))
       const g = gripRef.current
+      peakGrip = Math.max(peakGrip, g)
       minMargin = Math.min(minMargin, Math.min(g - slipNow, crush - g))
       if (g > crush) crushTime += dt
       else crushTime = 0
@@ -229,6 +266,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
         fn()
       }
       if (crushTime > CRUSH_GRACE) {
+        setCracked(true)
         end(() => failLift(`BZZZT. Crushed it at ${Math.round(g)} of squeeze: anything over ${Math.round(crush)} is too much here.`))
         return
       }
@@ -238,9 +276,11 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
       }
       if (t >= LIFT_S) {
         end(() => {
+          const run = { time: liftTime, margin: Math.max(0, minMargin), grip: peakGrip }
           setWon(true)
+          setScore(run)
           setVerdict({ ok: true, text: `Held it the whole way up, never closer than ${Math.max(0, Math.round(minMargin))} to a line.` })
-          lv.clearLevel(lv.level.metrics ? { time: liftTime, margin: Math.max(0, minMargin), grip: gripRef.current } : undefined)
+          lv.clearLevel(lv.level.metrics ? run : undefined)
           if (!completedRef.current) {
             completedRef.current = true
             onComplete()
@@ -264,6 +304,8 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
     setPadId(setup.pad ?? 'rubber')
     setAccel(setup.accel ?? 3)
     setWon(false)
+    setCracked(false)
+    setScore(null)
     setVerdict(null)
   }
 
@@ -288,7 +330,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
     e.preventDefault()
   }
 
-  const state: 'slipping' | 'crushed' | 'held' = grip < slip ? 'slipping' : grip > crush ? 'crushed' : 'held'
+  const state: 'slipping' | 'crushed' | 'held' = cracked ? 'crushed' : grip < slip ? 'slipping' : 'held'
   /** During the ride, danger means you are outside the lines right now. */
   const rideDanger = ride !== null && (grip < ride.slipNow || grip > crush)
 
@@ -544,7 +586,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ time: liftTime, margin: Math.max(0, margin), grip }}
+            values={score ?? { time: liftTime, margin: Math.max(0, margin), grip }}
             best={lv.best}
             scored={won}
           />
@@ -556,7 +598,7 @@ export function GripperChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Lifted in ${liftTime.toFixed(1)}s with ${Math.round(margin)} to spare. Try shaving the time.`
+              ? `Lifted in ${liftTime.toFixed(1)}s on ${Math.round(score?.grip ?? grip)} of squeeze, with ${Math.round(score?.margin ?? margin)} to spare. Try shaving the time.`
               : 'Held it. Nothing slipped, nothing broke.'
           }
           onReplay={reset}

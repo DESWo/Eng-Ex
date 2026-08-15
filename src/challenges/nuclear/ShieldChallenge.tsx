@@ -27,7 +27,7 @@ const MATERIALS = {
   lead: { label: 'Lead', gamma: 0.8, neutron: 0.05, kgPerCm: 11.3, costPerCm: 8, fill: 'fill-slate-500', ink: 'stroke-slate-700 dark:stroke-slate-300', hatch: 'stroke-slate-500' },
   concrete: { label: 'Concrete', gamma: 0.15, neutron: 0.1, kgPerCm: 2.4, costPerCm: 1, fill: 'fill-stone-400', ink: 'stroke-stone-600 dark:stroke-stone-300', hatch: 'stroke-stone-400' },
   water: { label: 'Water', gamma: 0.07, neutron: 0.35, kgPerCm: 1.0, costPerCm: 0.3, fill: 'fill-sky-400', ink: 'stroke-sky-600 dark:stroke-sky-300', hatch: 'stroke-sky-400' },
-  poly: { label: 'Polythene', gamma: 0.06, neutron: 0.45, kgPerCm: 0.95, costPerCm: 2, fill: 'fill-emerald-400', ink: 'stroke-emerald-600 dark:stroke-emerald-300', hatch: 'stroke-emerald-400' },
+  poly: { label: 'Polyethylene', gamma: 0.06, neutron: 0.45, kgPerCm: 0.95, costPerCm: 2, fill: 'fill-emerald-400', ink: 'stroke-emerald-600 dark:stroke-emerald-300', hatch: 'stroke-emerald-400' },
 } as const
 type MatId = keyof typeof MATERIALS
 const MAT_IDS = Object.keys(MATERIALS) as MatId[]
@@ -92,11 +92,15 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     teach: 'This shield has to travel, so weight costs fuel and lead costs a fortune. Concrete and water are cheap and light but weak. Find the stack that is safe without being a brick of gold.',
     setup: { gammaIn: 800, neutronIn: 800, safeDose: 5, available: MAT_IDS as unknown as MatId[], massBudget: 100, costBudget: 120, beam: true, brief: 'Design the shipping shield for a medical isotope: safe, light, and affordable.' },
     metrics: [
-      // Tuned by scanning every stack: only a layered shield (a little lead for
-      // gamma, plenty of water and polythene for neutrons) clears all three.
+      // Pars come from scanning all 14,641 stacks: 1,135 are safe and inside
+      // both budgets, and none of them clears all three pars. Any two are
+      // reachable, and each pair wants a different wall: 6 cm of lead with 20
+      // water and 6 poly for dose and mass, 4 cm of lead with 12 concrete for
+      // dose and cost, a thinner neutron stack for mass and cost. The $70 par
+      // was the loose one, since that first wall swept all three at $66.
       { id: 'dose', label: 'Dose outside', goal: 'min', target: 1.2 },
       { id: 'mass', label: 'Shield mass', goal: 'min', target: 95, unit: ' kg' },
-      { id: 'cost', label: 'Cost', goal: 'min', target: 70 },
+      { id: 'cost', label: 'Cost', goal: 'min', target: 60 },
     ],
   },
 ]

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, RotateCcw } from 'lucide-react'
+import { Minus, Send, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
@@ -9,7 +9,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -43,14 +43,18 @@ const LEVELS: ChallengeLevel<BinarySetup>[] = [
     phase: 'understand',
     concept: 'How wide does it need to be?',
     teach: 'Every extra bulb is another wire, another pin, and more power forever. Use the fewest that can still reach this reading, because n bulbs only ever get you to 2 to the n, minus one.',
-    setup: { target: 200, width: null, signed: false, places: false, brief: 'You are choosing how many signal lines this sensor gets. Fewer is cheaper, but it still has to fit the reading.' },
+    // 300, not 200: the row opens 8 bulbs wide and 8 bulbs reach 255, so a
+    // target under that never makes the player touch the width at all.
+    setup: { target: 300, width: null, signed: false, places: false, brief: 'You are choosing how many signal lines this sensor gets. Fewer is cheaper, but it still has to fit the reading.' },
   },
   {
     n: 3,
     title: 'Below freezing',
     phase: 'understand',
     concept: 'A sign costs a bit',
-    teach: 'This sensor has to report negative temperatures, so the leftmost bulb now means "minus" instead of carrying a value. You just gave up half your range to say which way it points.',
+    // Sign-and-magnitude is the model this game runs on. Say so, rather than
+    // letting the copy imply it is what silicon does.
+    teach: 'This sensor has to report negative temperatures, so the leftmost bulb now means "minus" instead of carrying a value. You just gave up half your range to say which way it points. Real machines write negatives with a different code, and it still costs them that bulb.',
     setup: { target: -45, width: null, signed: true, places: false, brief: 'The same sensor, now installed outdoors where it reads below zero.' },
   },
   {
@@ -58,7 +62,7 @@ const LEVELS: ChallengeLevel<BinarySetup>[] = [
     title: 'Show the maths',
     phase: 'analyze',
     concept: 'Where the number comes from',
-    teach: 'Turn on the place values. Each lit bulb contributes its own number and the total is just the sum. This is the whole of binary, and it is how every value in every computer is stored.',
+    teach: 'Turn on the place values. Each lit bulb contributes its own number and the total is just the sum. That sum is how whole numbers are stored in every computer, right down to the one you are reading this on.',
     setup: { target: -105, width: null, signed: true, places: true, brief: 'A cold-store monitor, with the working shown underneath.' },
   },
   {
@@ -70,7 +74,9 @@ const LEVELS: ChallengeLevel<BinarySetup>[] = [
     setup: { target: 148, width: null, signed: false, places: true, brief: 'Sign off the final sensor: cheap to build, room to grow, and easy on the battery.' },
     metrics: [
       { id: 'width', label: 'Bulbs installed', goal: 'min', target: 9 },
-      { id: 'headroom', label: 'Headroom left', goal: 'max', target: 70 },
+      // 75, not 70: at 70 a nine-bulb design takes all three targets at once and
+      // there is nothing left to trade.
+      { id: 'headroom', label: 'Headroom left', goal: 'max', target: 75, unit: '%' },
       { id: 'lit', label: 'Bulbs lit', goal: 'min', target: 4 },
     ],
   },
@@ -115,8 +121,8 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
 
   const solved = value === setup.target
 
-  /** Guessing costs: three sends per level, then the board wipes. */
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  /** Guessing costs: a limited number of sends per level, then the board wipes. */
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Levels 2, 3 and 5 hide the running total until a send: summing the place
@@ -245,14 +251,17 @@ export function BinaryChallenge({ onComplete }: ChallengeProps) {
                 <span className="text-xs font-semibold font-mono tabular-nums text-ink-soft dark:text-stone-400">
                   {isSign ? '±' : Math.pow(2, place)}
                 </span>
+                {/* Only the top bulb can be pulled: every bulb below it is holding
+                    up the place values of the ones above. */}
                 {setup.width === null && place === signPlace && w > 2 && (
                   <button
                     type="button"
                     onClick={() => setWidthTo(w - 1)}
-                    aria-label="Pull out the top bulb"
-                    className="font-display text-[10px] font-bold text-ink-soft underline decoration-dotted hover:text-ink dark:text-stone-500 dark:hover:text-stone-300"
+                    aria-label={isSign ? 'Pull out the sign bulb' : `Pull out the top bulb, worth ${Math.pow(2, place)}`}
+                    className="flex items-center gap-1 rounded-full border-2 border-stone-300 px-2 py-1 font-display text-[11px] font-bold text-ink-soft transition-colors hover:border-stone-400 hover:text-ink dark:border-white/20 dark:text-stone-400 dark:hover:border-white/40 dark:hover:text-stone-200"
                   >
-                    remove
+                    <Minus className="h-3 w-3" />
+                    Remove
                   </button>
                 )}
               </div>

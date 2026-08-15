@@ -109,6 +109,16 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
   const statsRef = useRef({ inBand: 0, total: 0, peak: BASE_TEMP, pumps: 0 })
   const traceRef = useRef<{ p: number; t: number }[]>([])
   const completedRef = useRef(false)
+  /**
+   * The loop reads the controls through refs and keeps the plant in one, so the
+   * interval can stay mounted. Rebuilding it on every render restarted the
+   * 300 ms timer, and a continuous drag on the rod bank stalled sim time.
+   */
+  const plantRef = useRef({ power: 0, temp: BASE_TEMP, day: 0 })
+  const rodsRef = useRef(100)
+  const coolantRef = useRef(50)
+  /** Latched the instant the run ends, so no tick lands after the verdict. */
+  const overRef = useRef(false)
 
   useEffect(() => {
     setRods(100)
@@ -120,9 +130,17 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
     setHeldTicks(0)
     setDayTick(0)
     setDayDone(false)
+    plantRef.current = { power: 0, temp: BASE_TEMP, day: 0 }
+    overRef.current = false
     statsRef.current = { inBand: 0, total: 0, peak: BASE_TEMP, pumps: 0 }
     traceRef.current = []
   }, [lv.level.n])
+
+  // The controls are React state for the scene and refs for the loop.
+  useEffect(() => {
+    rodsRef.current = rods
+    coolantRef.current = coolant
+  }, [rods, coolant])
 
   /** Haul the whole rod bank in or out of the core. */
   const { bind: rodBind } = useSvgDrag((_x, y) => {
@@ -140,44 +158,61 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
   const phaseIndex = round.phases ? Math.min(round.phases.length - 1, Math.floor(dayTick / round.phaseTicks)) : 0
   const [bandLow, bandHigh] = round.phases ? round.phases[phaseIndex] : round.band
 
-  const setPower = ((100 - rods) / 100) * MAX_POWER
   const pumpCount = coolant / 25
   const netPower = Math.round(effPower - (round.pumpsDraw ? pumpCount * PUMP_DRAW : 0))
   const inBand = netPower >= bandLow && netPower <= bandHigh
-  const safe = temp < SAFE_TEMP
   const dayFinished = round.phases !== null && dayDone
 
   /* ---------- the plant, ticking ---------- */
+  // A won, melted or finished run is over: the loop stops, which freezes the
+  // stats, the trace and the verdict. Reset is the only way back to a live core.
+  const running = !wonRound && !meltdown && !dayFinished
   useEffect(() => {
-    if (wonRound || meltdown) return
+    if (!running) return
     const id = setInterval(() => {
-      setEffPower((p) => (round.lag ? p + (setPower - p) * POWER_LAG : setPower))
-      setTemp((t) => {
-        const gross = round.lag ? effPower : setPower
-        const eq = BASE_TEMP + Math.max(0, gross - coolant * COOLANT_PULL) * HEAT_FACTOR
-        const next = round.lag ? t + (eq - t) * TEMP_LAG : eq
-        if (next >= MELTDOWN_TEMP) setMeltdown(true)
-        statsRef.current.peak = Math.max(statsRef.current.peak, next)
-        return next
-      })
-      if (round.chart) {
-        traceRef.current = [...traceRef.current.slice(-79), { p: netPower, t: temp }]
+      if (overRef.current) return
+      const plant = plantRef.current
+      const coolantNow = coolantRef.current
+      const demand = ((100 - rodsRef.current) / 100) * MAX_POWER
+      const power = round.lag ? plant.power + (demand - plant.power) * POWER_LAG : demand
+      // Heat follows the power the core was already making, so under lag the
+      // temperature trails the rods rather than tracking them.
+      const gross = round.lag ? plant.power : demand
+      const eq = BASE_TEMP + Math.max(0, gross - coolantNow * COOLANT_PULL) * HEAT_FACTOR
+      const nextTemp = round.lag ? plant.temp + (eq - plant.temp) * TEMP_LAG : eq
+      const pumps = coolantNow / 25
+      const net = Math.round(power - (round.pumpsDraw ? pumps * PUMP_DRAW : 0))
+      const [low, high] = round.phases
+        ? round.phases[Math.min(round.phases.length - 1, Math.floor(plant.day / round.phaseTicks))]
+        : round.band
+      const onTarget = net >= low && net <= high && nextTemp < SAFE_TEMP
+
+      plantRef.current = { power, temp: nextTemp, day: plant.day + 1 }
+      statsRef.current.peak = Math.max(statsRef.current.peak, nextTemp)
+      if (round.chart) traceRef.current = [...traceRef.current.slice(-79), { p: net, t: nextTemp }]
+      setEffPower(power)
+      setTemp(nextTemp)
+
+      if (nextTemp >= MELTDOWN_TEMP) {
+        overRef.current = true
+        setMeltdown(true)
+        return
       }
       if (round.phases) {
         statsRef.current.total += 1
-        if (inBand && safe) statsRef.current.inBand += 1
-        statsRef.current.pumps += pumpCount
-        setDayTick((d) => {
-          const next = d + 1
-          if (next >= round.phases!.length * round.phaseTicks) setDayDone(true)
-          return next
-        })
+        if (onTarget) statsRef.current.inBand += 1
+        statsRef.current.pumps += pumps
+        setDayTick(plantRef.current.day)
+        if (plantRef.current.day >= round.phases.length * round.phaseTicks) {
+          overRef.current = true
+          setDayDone(true)
+        }
       } else {
-        setHeldTicks((h) => (inBand && safe ? h + 1 : 0))
+        setHeldTicks((h) => (onTarget ? h + 1 : 0))
       }
     }, TICK_MS)
     return () => clearInterval(id)
-  }, [round, setPower, coolant, effPower, temp, netPower, inBand, safe, wonRound, meltdown, pumpCount])
+  }, [round, running])
 
   /* ---------- winning ---------- */
   const holdNeeded = round.lag ? HOLD_TICKS : 3
@@ -188,6 +223,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
       const s = statsRef.current
       const pct = Math.round((s.inBand / Math.max(1, s.total)) * 100)
       if (pct < 65) return
+      overRef.current = true
       setWonRound(true)
       lv.clearLevel({ inband: pct, peak: Math.round(s.peak), pumps: Math.round(s.pumps) })
       if (!completedRef.current) {
@@ -195,6 +231,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
         onComplete()
       }
     } else if (heldTicks >= holdNeeded) {
+      overRef.current = true
       setWonRound(true)
       lv.clearLevel()
       if (!completedRef.current) {
@@ -205,6 +242,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heldTicks, dayFinished, wonRound, meltdown])
 
+  /** The scram: rods all the way in, and a fresh run from a cold core. */
   const reset = () => {
     setRods(100)
     setCoolant(50)
@@ -215,6 +253,8 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
     setHeldTicks(0)
     setDayTick(0)
     setDayDone(false)
+    plantRef.current = { power: 0, temp: BASE_TEMP, day: 0 }
+    overRef.current = false
     statsRef.current = { inBand: 0, total: 0, peak: BASE_TEMP, pumps: 0 }
     traceRef.current = []
   }
@@ -379,11 +419,11 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
           </motion.p>
         ) : meltdown ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Meltdown! The core ran away and overheated. Hit reset to bring it back online.
+            Meltdown! The core ran away and overheated. The plant is stopped, so scram to bring it back online.
           </p>
         ) : failedDay ? (
           <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-            Day over: only on target {dayPct}% of the time, and the grid wants 65%. Reset and ride the band more closely.
+            Day over: on target {dayPct}% of the time, and the grid wants 65%. The plant is stopped there. Scram to run the day again and ride the band more closely.
           </p>
         ) : (
           <p className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm font-semibold text-ink-soft dark:bg-white/5 dark:text-stone-300">
@@ -471,9 +511,9 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Button variant="ghost" onClick={reset} aria-label="Scram the reactor">
+        <Button variant="ghost" onClick={reset} aria-label="Scram: drop all rods now and start the run over">
           <RotateCcw className="h-4 w-4" />
-          Reset
+          Scram: drop all rods now
         </Button>
       </div>
 

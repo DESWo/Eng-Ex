@@ -53,11 +53,12 @@ const LEVELS: ChallengeLevel<SlotSetup>[] = [
     phase: 'play',
     concept: 'Trips times distance',
     teach: 'It is a tidying game scored in footsteps. A product picked forty times a day is walked to forty times a day. Move the busiest products to the front aisle and watch the walking fall.',
-    // 290, not 280: of the twelve moves available from the starting layout only
-    // one improves it at all (Tape to Middle, 286). At 280 that best-possible
-    // first move still failed, so level 1 opened on a puzzle where the correct
-    // idea looked wrong. 290 makes it a one-move lesson and leaves level 2's
-    // 260 to demand the tight layout.
+    // 290, not 280: with quietest-first eviction, three of the twelve moves
+    // from the starting layout improve the walk (Tape to Front 282, Screws to
+    // Front 286, Tape to Middle 286) and all three clear 290. At 280 every
+    // first move failed, so level 1 opened on a puzzle where the correct idea
+    // looked wrong. 290 keeps it a one-move lesson and leaves level 2's 260
+    // to demand the tight layout.
     setup: { maxWalk: 290, maxEffort: null, weighted: false, readout: false, brief: 'Pickers are walking miles in this warehouse. Rearrange the aisles.' },
   },
   {
@@ -90,15 +91,18 @@ const LEVELS: ChallengeLevel<SlotSetup>[] = [
     phase: 'optimize',
     concept: 'Backs, feet, and traffic',
     teach: 'Heavy things want the front to save backs, busy things want the front to save time, and a busy front aisle jams up with pickers. All three cannot have it.',
-    setup: { maxWalk: null, maxEffort: null, weighted: true, readout: true, brief: 'Sign off the layout the warehouse will actually be built to.' },
+    // The 300 walking floor is the sign-off itself: the untouched starting
+    // layout walks 322, so doing nothing fails, while ten of the ninety
+    // possible layouts still clear it.
+    setup: { maxWalk: 300, maxEffort: null, weighted: true, readout: true, brief: 'Sign off the layout the warehouse will actually be built to.' },
     metrics: [
-      // Walking wants the busy items forward, carrying wants the heavy ones
-      // forward, and they are different items. The walk par is set to 440
-      // deliberately: the lightest-carrying layout still walks 470, so no
-      // single arrangement can beat both at once. You have to pick two.
-      { id: 'effort', label: 'Carrying work', goal: 'min', target: 1250 },
-      { id: 'walk', label: 'Walking', goal: 'min', target: 440 },
-      { id: 'front', label: 'Front aisle traffic', goal: 'min', target: 32, unit: ' trips' },
+      // Pick-two pars, checked by enumerating every layout under the 300
+      // walking floor. Each pair of pars is beatable by exactly one layout
+      // (2626/268, 2646/60, 270/60) and no layout beats all three at once,
+      // so the scorecard is a genuine trade and not a checklist.
+      { id: 'effort', label: 'Carrying work', goal: 'min', target: 2650 },
+      { id: 'walk', label: 'Walking', goal: 'min', target: 270 },
+      { id: 'front', label: 'Front aisle traffic', goal: 'min', target: 60, unit: ' trips' },
     ],
   },
 ]
@@ -196,6 +200,15 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
 
   const maxEffortBar = Math.max(...ITEMS.map((it, i) => it.picks * ZONES[zoneOf[i]].distance * it.weight), 1)
 
+  // Every level carries at least one floor, so the goal line never renders
+  // empty; level 5 adds the scorecard trade on top of its walking floor.
+  const floors = [
+    setup.maxWalk !== null && `walking under ${setup.maxWalk}`,
+    setup.maxEffort !== null && `carrying work under ${setup.maxEffort}`,
+  ].filter(Boolean).join(' and ')
+  const goal = floors.charAt(0).toUpperCase() + floors.slice(1)
+    + (lv.level.metrics ? ', then trade the three scorecard numbers' : '')
+
   return (
     <Card className="relative overflow-hidden p-4 sm:p-6">
       {won && <Confetti />}
@@ -206,7 +219,7 @@ export function WarehouseChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`${setup.maxWalk !== null ? `Walking under ${setup.maxWalk}` : ''}${setup.maxWalk !== null && setup.maxEffort !== null ? ' and ' : ''}${setup.maxEffort !== null ? `carrying work under ${setup.maxEffort}` : ''}`}
+        goal={goal}
         status={outcomeVisible
           ? `this layout: ${walk} walking${setup.weighted ? ` · ${effort} carrying` : ''}`
           : 'run a picking day to count the cost'}

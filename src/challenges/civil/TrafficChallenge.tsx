@@ -10,7 +10,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -72,11 +72,14 @@ const LEVELS: ChallengeLevel<TrafficSetup>[] = [
     title: 'Keep the town moving',
     phase: 'optimize',
     concept: 'Efficient or fair',
-    teach: 'Delay grows with the square of the red time, so favouring the busy road cuts the total wait but leaves the quiet road stuck for ages. Balance it and the totals rise but nobody is stranded. There is no split that wins both.',
-    setup: { label: 'Rush hour', ns: 12, ew: 6, ped: 4, lostTime: true, queues: true, brief: 'Sign off the timing plan. Keep the average wait down without leaving one road stranded.' },
+    teach: 'Delay grows with the square of the red time, so favouring the busy road cuts the total wait but leaves the quiet road stuck for ages. Balance it and the totals rise but nobody is stranded. There is no split that wins both. Waiting is counted in car-seconds: ten cars held for one second each is ten car-seconds, and so is one car held for ten.',
+    setup: { label: 'Rush hour', ns: 12, ew: 6, ped: 4, lostTime: true, queues: true, brief: 'Sign off the timing plan. Keep the total wait down without leaving one road stranded.' },
+    // Five splits clear both roads (NS 24s through 32s). Par on the total wants
+    // NS 30 or 32, par on the worst road wants NS 28 or 30, and NS 30 misses the
+    // worst-road par by 2 car-seconds, so no split takes both.
     metrics: [
-      { id: 'total', label: 'Total delay', goal: 'min', target: 197 },
-      { id: 'worst', label: 'Worst-road delay', goal: 'min', target: 108 },
+      { id: 'total', label: 'Total delay', goal: 'min', target: 196, unit: ' car-seconds' },
+      { id: 'worst', label: 'Worst-road delay', goal: 'min', target: 104, unit: ' car-seconds' },
     ],
   },
 ]
@@ -143,9 +146,15 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   /** Where we are inside the running cycle, in cycle seconds (0..CYCLE). */
   const [simT, setSimT] = useState(0)
+  /**
+   * Cars still at each stop line when the cycle ended. A passing plan does not
+   * empty the junction: cars that arrive after their green wait for the next
+   * one, and the scene has to keep showing them or the banner is lying.
+   */
+  const [settled, setSettled] = useState<{ ns: number; ew: number } | null>(null)
   const simQ = useRef({ ns: 0, ew: 0 })
   const simInterval = useRef<ReturnType<typeof setInterval> | null>(null)
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [showQueues, setShowQueues] = useState(true)
   const barRef = useRef<HTMLDivElement | null>(null)
   const draggingSplit = useRef(false)
@@ -157,6 +166,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   useEffect(() => {
     setGreenNS(6)
     setPhase('idle')
+    setSettled(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
 
@@ -168,6 +178,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     const snapped = Math.round(seconds / 2) * 2
     setGreenNS(Math.max(6, Math.min(available - 6, snapped)))
     setPhase('idle')
+    setSettled(null)
   }
   const startSplit = (e: React.PointerEvent<HTMLDivElement>) => {
     if (phase === 'running') return
@@ -189,6 +200,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     else return
     e.preventDefault()
     setPhase('idle')
+    setSettled(null)
   }
 
   const capNS = greenNS * CARS_PER_GREEN_SECOND
@@ -199,6 +211,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const queueEW = Math.max(0, round.ew - capEW)
 
   // Delay grows with the square of a road's red time (a standard result).
+  // Arrivals are steady, so a road piles up (arrivals per second) x red, half of
+  // them wait the full red: (cars/min / CYCLE) x red^2 / 2 car-seconds per cycle.
   const redNS = CYCLE - greenNS
   const redEW = CYCLE - greenEW
   const delayNS = (round.ns * redNS * redNS) / (2 * CYCLE)
@@ -214,6 +228,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     if (phase === 'running') return
     setPhase('running')
     setSimT(0)
+    setSettled(null)
     simQ.current = { ns: 0, ew: 0 }
     if (simInterval.current) clearInterval(simInterval.current)
     let t = 0
@@ -235,6 +250,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       setSimT(Math.min(CYCLE, t))
       if (t >= CYCLE) {
         if (simInterval.current) clearInterval(simInterval.current)
+        setSettled({ ns: q.ns, ew: q.ew })
         if (okNS && okEW) {
           setPhase('passed')
           lv.clearLevel(lv.level.metrics ? { total: totalDelay, worst: worstDelay } : undefined)
@@ -258,6 +274,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     setGreenNS(6)
     setPhase('idle')
     setSimT(0)
+    setSettled(null)
   }
 
   useEffect(() => () => {
@@ -271,6 +288,12 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const walkNow = running && simT >= greenNS + greenEW && round.ped > 0
   const qNS = running ? simQ.current.ns : 0
   const qEW = running ? simQ.current.ew : 0
+  // What each approach looks like on screen: a preview stack before the first
+  // run, the live queue while the lights cycle, and the cars left at the stop
+  // line once it ends. Snapping back to the preview after a run made the scene
+  // contradict the banner.
+  const shownQNS = running ? qNS : settled ? settled.ns : round.ns / 3
+  const shownQEW = running ? qEW : settled ? settled.ew : round.ew / 3
 
   const won = phase === 'passed'
 
@@ -351,10 +374,10 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           </g>
 
           {/* queued cars: one rect per waiting car, stacked back from the stop line */}
-          {Array.from({ length: Math.min(9, Math.round(running ? qNS : round.ns / 3)) }, (_, i) => (
+          {Array.from({ length: Math.min(9, Math.round(shownQNS)) }, (_, i) => (
             <rect key={`qns-${i}`} x="366" y={168 - i * 32} width="14" height="24" rx="4" className={i % 2 === 0 ? 'fill-rose-400' : 'fill-sky-400'} />
           ))}
-          {Array.from({ length: Math.min(9, Math.round(running ? qEW : round.ew / 3)) }, (_, i) => (
+          {Array.from({ length: Math.min(9, Math.round(shownQEW)) }, (_, i) => (
             <rect key={`qew-${i}`} x={330 - i * 38} y="236" width="24" height="14" rx="4" className={i % 2 === 0 ? 'fill-amber-400' : 'fill-violet-400'} />
           ))}
 
@@ -413,7 +436,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       <div aria-live="polite" className="mt-3 min-h-[2.5rem]">
         {phase === 'passed' && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Green wave! Both queues melt away{lv.level.metrics ? `, total delay ${totalDelay}.` : '. Nobody honks today.'}
+            Green wave! Neither queue grows: each road clears a full minute of traffic inside its own green. The cars still at the line arrived after it went red and go first next cycle.
+            {lv.level.metrics ? ` Total delay ${totalDelay} car-seconds.` : ' Nobody honks today.'}
           </motion.p>
         )}
         {phase === 'failed' && (
@@ -497,7 +521,7 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Total delay ${totalDelay}, worst road ${worstDelay}. Try trading one against the other.`
+              ? `Total delay ${totalDelay} car-seconds, worst road ${worstDelay}. Try trading one against the other.`
               : 'Traffic flows. Nicely timed.'
           }
           onReplay={reset}

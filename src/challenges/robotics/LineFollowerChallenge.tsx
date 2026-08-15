@@ -11,7 +11,7 @@ import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -137,9 +137,15 @@ const LEVELS: ChallengeLevel<LineSetup>[] = [
       trace: true,
       brief: 'The warehouse wants the round trip quick, accurate, and cheap. Find your compromise.',
     },
+    // Pars proven against a full sweep of the sim (speed x gain x damping).
+    // 170 ticks means the Quick speed, nothing slower gets close. At Quick,
+    // holding the drift under 10 px costs at least 934 of battery, while
+    // staying under 900 of battery leaves the drift above 10 px; both
+    // together only happen at Careful or Normal, which blows the run time.
+    // So two of the three, never all three.
     metrics: [
-      { id: 'time', label: 'Run time', goal: 'min', target: 190, unit: ' ticks' },
-      { id: 'wobble', label: 'Average drift', goal: 'min', target: 12, unit: ' px' },
+      { id: 'time', label: 'Run time', goal: 'min', target: 170, unit: ' ticks' },
+      { id: 'wobble', label: 'Average drift', goal: 'min', target: 10, unit: ' px' },
       { id: 'battery', label: 'Battery used', goal: 'min', target: 900 },
     ],
   },
@@ -237,15 +243,24 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
   const [speed, setSpeed] = useState(4)
   const [result, setResult] = useState<RunResult | null>(null)
   const [running, setRunning] = useState(false)
-  const att = useAttempts(lv.level.n === 1 ? null : 4, lv.level.n)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [runId, setRunId] = useState(0)
   const [won, setWon] = useState(false)
   const [showTrace, setShowTrace] = useState(true)
+  /**
+   * How much of the driven path has been laid down so far. The whole run is
+   * simulated the instant you press Run, so drawing the polyline (and the dot
+   * where it lost the line) straight away would give the ending away seconds
+   * before the bot gets there. The trail is revealed behind the bot instead.
+   */
+  const [shown, setShown] = useState(0)
   const completedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const revealRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current)
+    if (revealRef.current) clearInterval(revealRef.current)
   }, [])
 
   useEffect(() => {
@@ -254,6 +269,7 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
     setSpeed(4)
     setResult(null)
     setRunning(false)
+    setShown(0)
     setWon(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
@@ -283,10 +299,22 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
     setResult(run)
     setRunId((i) => i + 1)
     setRunning(true)
+    setShown(0)
     // The bot animates along the path; settle the verdict when it arrives.
     const duration = Math.min(3.2, Math.max(1.2, run.ticks / 90))
+    // Pay out the trail on the same clock the bot rides, so it appears under
+    // the bot rather than ahead of it.
+    const startedAt = performance.now()
+    if (revealRef.current) clearInterval(revealRef.current)
+    revealRef.current = setInterval(() => {
+      const part = (performance.now() - startedAt) / (duration * 1000)
+      setShown(Math.min(run.xs.length, Math.round(part * run.xs.length)))
+      if (part >= 1 && revealRef.current) clearInterval(revealRef.current)
+    }, 40)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
+      if (revealRef.current) clearInterval(revealRef.current)
+      setShown(run.xs.length)
       setRunning(false)
       if (!run.ok) {
         if (att.spend()) {
@@ -307,7 +335,9 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
   }
 
   const reset = () => {
+    if (revealRef.current) clearInterval(revealRef.current)
     setResult(null)
+    setShown(0)
     setWon(false)
     setRunning(false)
   }
@@ -355,10 +385,13 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
             Finish
           </text>
 
-          {/* the path the bot actually drove */}
-          {result && (
+          {/* the path the bot actually drove, laid down behind it */}
+          {result && shown > 1 && (
             <polyline
-              points={result.xs.map((x, i) => `${x},${result.ys[i]}`).join(' ')}
+              points={result.xs
+                .slice(0, shown)
+                .map((x, i) => `${x},${result.ys[i]}`)
+                .join(' ')}
               fill="none"
               strokeWidth="2.5"
               style={{ stroke: 'var(--accent)' }}
@@ -366,8 +399,8 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
             />
           )}
 
-          {/* where it lost the line */}
-          {result && !result.ok && result.xs.length > 0 && (
+          {/* where it lost the line, once the run has actually got there */}
+          {result && !result.ok && !running && result.xs.length > 0 && (
             <circle
               cx={result.xs[result.xs.length - 1]}
               cy={result.ys[result.ys.length - 1]}
@@ -411,6 +444,7 @@ export function LineFollowerChallenge({ onComplete }: ChallengeProps) {
               />
               <polyline
                 points={result.errs
+                  .slice(0, shown)
                   .map((e, i) => {
                     const px = 40 + (i / Math.max(1, result.errs.length - 1)) * (X1 - X0)
                     const py = TRACE_TOP + TRACE_H / 2 - Math.max(-1, Math.min(1, e / setup.lane)) * (TRACE_H / 2 - 4)

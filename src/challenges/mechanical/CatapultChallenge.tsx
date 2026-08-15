@@ -36,7 +36,11 @@ interface CatapultSetup {
   wind: number
   /** A wall the boulder must clear, or null. */
   wall: { distance: number; height: number } | null
-  /** Shots allowed before the level resets, or null for unlimited. */
+  /**
+   * Shots allowed before the level resets, or null for unlimited. This game's
+   * themed stand-in for the shared attempts pool: the fiction is a boulder
+   * supply, and the reset button restocks it.
+   */
   shotLimit: number | null
   /** Level 3 on: the player picks how heavy the boulder is. */
   chooseAmmo: boolean
@@ -66,8 +70,11 @@ const LEVELS: ChallengeLevel<CatapultSetup>[] = [
     title: 'Pick your ammo',
     phase: 'understand',
     concept: 'Mass changes everything',
-    teach: 'A light boulder launches faster but the wind shoves it around. A heavy one barely notices the wind but needs far more power to go the same distance.',
-    setup: { target: 62, tolerance: 4, wind: 3, wall: null, shotLimit: 4, chooseAmmo: true, vectors: false },
+    teach: 'A light boulder launches faster but the wind shoves it around. A heavy one barely notices the wind but needs far more power to go the same distance, and this camp is a long way out.',
+    // Headwind plus a longer throw: grid sim shows every setting that won
+    // level 2 lands short here, heavy ammo cannot reach at any power, light
+    // wins from 91% power and medium only at 99+. Mass choice IS the level.
+    setup: { target: 70, tolerance: 4, wind: -3, wall: null, shotLimit: 4, chooseAmmo: true, vectors: false },
   },
   {
     n: 4,
@@ -102,7 +109,10 @@ const LEVELS: ChallengeLevel<CatapultSetup>[] = [
     },
     metrics: [
       { id: 'shots', label: 'Shots fired', goal: 'min', target: 3 },
-      { id: 'power', label: 'Launch power', goal: 'min', target: 70, unit: '%' },
+      // Grid sim against this wind and wall puts the cheapest possible win
+      // at 76% power (light ammo, about 33 degrees). Par sits just above
+      // that floor: green is earnable, barely.
+      { id: 'power', label: 'Launch power', goal: 'min', target: 78, unit: '%' },
       { id: 'mass', label: 'Ammo mass', goal: 'min', target: 12, unit: ' kg' },
     ],
   },
@@ -412,7 +422,12 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
   const reset = () => {
     setAngle(45)
     setPower(50)
-    setAttempts(0)
+    // On the scored level the shot counter is a metric, and it counts
+    // boulders fired, not tries since the last reset: zeroing it here would
+    // let ten practice shots launder into a recorded 1-shot win. It clears
+    // only when a run honestly starts over, replaying after a scored win.
+    // Earlier levels keep the old behaviour: reset is their boulder refill.
+    if (!lv.level.metrics || beat) setAttempts(0)
     setResult(null)
     setShot(null)
     setImpact(null)

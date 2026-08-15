@@ -20,9 +20,11 @@ import { Confetti } from '@/components/ui/Confetti'
 import { Badge } from '@/components/ui/Badge'
 import { Meter } from '@/components/ui/Meter'
 import { InsightToggle } from '@/components/level/InsightToggle'
+import { Objective } from '@/components/level/Objective'
 import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { playSound } from '@/lib/sound'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -114,7 +116,7 @@ const LEVELS: ChallengeLevel<OverloadSetup>[] = [
     title: 'The startup kick',
     phase: 'understand',
     concept: 'Motors surge',
-    teach: 'Anything with a motor pulls about half as much AGAIN for the instant it starts. A circuit that looks comfortable on steady watts can still snap the moment the fridge kicks in.',
+    teach: 'Anything with a motor pulls about half as much AGAIN for the instant it starts. A circuit that looks comfortable on steady watts can still snap the moment the fridge kicks in. Real breakers will ride out a spike that brief; the breakers on this panel are strict and judge the raw peak.',
     setup: {
       label: 'Hot afternoon',
       circuits: [
@@ -166,26 +168,35 @@ const LEVELS: ChallengeLevel<OverloadSetup>[] = [
     title: 'Wire it to code',
     phase: 'optimize',
     concept: 'The 80 percent rule',
-    teach: 'Real electrical code says a circuit running for hours should sit under 80 percent of its rating, because breakers and wiring heat up. Passing the peak test is no longer enough: every circuit has to run COOL.',
+    teach: 'Real electrical code says a circuit running for hours should sit under 80 percent of its rating, because breakers and wiring heat up. Passing the peak test is no longer enough: every circuit has to run COOL. And breakers cost money, so an unused one counts in your favor.',
     setup: {
       label: 'Sign-off inspection',
       circuits: [
-        { id: 'A', label: 'Circuit A', rating: 2000 },
-        { id: 'B', label: 'Circuit B', rating: 2000 },
-        { id: 'C', label: 'Circuit C', rating: 1800 },
+        { id: 'A', label: 'Circuit A', rating: 2400 },
+        { id: 'B', label: 'Circuit B', rating: 2400 },
+        { id: 'C', label: 'Circuit C', rating: 1600 },
       ],
       appliances: [
-        { id: 'dryer', label: 'Dryer', watts: 1200, icon: WashingMachine },
-        { id: 'ac', label: 'AC unit', watts: 800, icon: Snowflake, motor: true },
-        { id: 'oven', label: 'Oven', watts: 1000, icon: Flame },
-        { id: 'fridge', label: 'Fridge', watts: 350, icon: Refrigerator, motor: true },
-        { id: 'airfryer', label: 'Air fryer', watts: 700, icon: Utensils },
-        { id: 'lamp', label: 'Lamp', watts: 250, icon: Lamp },
+        { id: 'dryer', label: 'Dryer', watts: 1150, icon: WashingMachine },
+        { id: 'ac', label: 'AC unit', watts: 750, icon: Snowflake, motor: true },
+        { id: 'oven', label: 'Oven', watts: 850, icon: Flame },
+        { id: 'fridge', label: 'Fridge', watts: 300, icon: Refrigerator, motor: true },
+        { id: 'airfryer', label: 'Air fryer', watts: 500, icon: Utensils },
+        { id: 'lamp', label: 'Lamp', watts: 150, icon: Lamp },
       ],
       eightyRule: true,
       surgeBars: true,
       brief: 'The inspector wants every circuit under 80 percent, spikes included in the peak test.',
     },
+    // Pars come from enumerating all 3^6 layouts against the formulas above:
+    // a balanced three-circuit spread runs cool AND calm (60% steady, 625 W of
+    // margin), while exactly two layouts squeeze onto two breakers, and those
+    // run hot with almost no margin (79%, 125 W). No layout beats all three.
+    metrics: [
+      { id: 'worst', label: 'Worst steady load', goal: 'min', target: 60, unit: '%' },
+      { id: 'margin', label: 'Surge margin', goal: 'max', target: 500, unit: ' W' },
+      { id: 'circuits', label: 'Circuits used', goal: 'min', target: 2 },
+    ],
   },
 ]
 
@@ -235,6 +246,9 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
   const [showSurge, setShowSurge] = useState(true)
+  /** Set only when the attempt pool ran dry and the house got unplugged. */
+  const [notice, setNotice] = useState<string | null>(null)
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -242,6 +256,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     setAssignment({})
     setSelectedId(null)
     setPhase('idle')
+    setNotice(null)
   }, [lv.level.n])
 
   const hasMotors = round.appliances.some((a) => a.motor)
@@ -267,6 +282,8 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     ...round.circuits.map((c) => (steadyOf(c.id) / c.rating) * 100),
   )
   const minSurgeMargin = Math.min(...round.circuits.map((c) => c.rating - peakOf(c.id)))
+  // Breakers cost money: leaving one empty is the third thing worth chasing.
+  const circuitsUsed = round.circuits.filter((c) => onCircuit(c.id).length > 0).length
 
   // Levels 2, 3 and 5 keep the meters a neutral colour until the power has
   // gone on: the wattages and sums are all on screen, so whether a circuit
@@ -277,12 +294,14 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   const clickAppliance = (applianceId: string) => {
     if (phase === 'testing') return
     setPhase('idle')
+    setNotice(null)
     setSelectedId((current) => (current === applianceId ? null : applianceId))
   }
 
   const placeSelected = (circuitId: string | null) => {
     if (phase === 'testing' || selectedId === null) return
     setPhase('idle')
+    setNotice(null)
     setAssignment((prev) => ({ ...prev, [selectedId]: circuitId }))
     setSelectedId(null)
   }
@@ -292,22 +311,28 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   const powerOn = () => {
     if (phase === 'testing' || unassigned.length > 0) return
     setPhase('testing')
+    setNotice(null)
     timerRef.current = setTimeout(() => {
       if (tripped.length === 0 && overheated.length === 0) {
         setPhase('passed')
         playSound('success')
         lv.clearLevel(
           lv.level.metrics
-            ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin }
+            ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin, circuits: circuitsUsed }
             : undefined,
         )
         if (!completedRef.current) {
           completedRef.current = true
           onComplete()
         }
+      } else if (att.spend()) {
+        // Out of tests: the house gets unplugged and the pool refills.
+        reset()
+        att.refill()
+        setNotice('The inspector pulled the meter. Everything is back on the shelf. Add up each circuit before the next try: the watts are all printed on the chips.')
       } else {
         setPhase('failed')
-        // A breaker snapping open, rather than the generic fail buzz.
+        // A breaker snapping open, layered over the attempt buzz from spend().
         playSound('zap')
       }
     }, 900)
@@ -328,6 +353,13 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
       <LevelHeader
         lv={lv}
         insight={round.surgeBars ? <InsightToggle label="surge markers" on={showSurge} onChange={setShowSurge} /> : undefined}
+      />
+
+      <Objective
+        goal={`Get everything running with no breaker tripped${round.eightyRule ? ', every circuit at 80 percent or less steady' : ''}`}
+        status={unassigned.length > 0 ? `${unassigned.length} still on the shelf` : 'all plugged in'}
+        attemptsLeft={att.left}
+        met={phase === 'passed'}
       />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -461,6 +493,15 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
 
       {/* Feedback (observational: what happened, not what to do) */}
       <div aria-live="polite" className="mt-4 min-h-[2.5rem]">
+        {phase === 'idle' && notice && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
+          >
+            {notice}
+          </motion.p>
+        )}
         {phase === 'passed' && (
           <motion.p
             initial={{ opacity: 0, y: 8 }}
@@ -508,7 +549,11 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={outcomeVisible ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin } : {}}
+            values={
+              outcomeVisible
+                ? { worst: Math.round(worstSteadyPct), margin: minSurgeMargin, circuits: circuitsUsed }
+                : {}
+            }
             best={lv.best}
             scored={phase === 'passed'}
           />
@@ -520,7 +565,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Every circuit under code, worst at ${Math.round(worstSteadyPct)}%. Try evening them out.`
+              ? `Every circuit under code, worst at ${Math.round(worstSteadyPct)}%. Balance them cooler, or try squeezing onto two breakers.`
               : 'Every breaker held.'
           }
           onReplay={reset}

@@ -62,7 +62,9 @@ const LEVELS: ChallengeLevel<ReactionSetup>[] = [
     phase: 'understand',
     concept: 'Hot reactors are thirsty',
     teach: 'Holding a reactor hot burns fuel every minute, and this plant has a gas bill. Reach the target without simply pinning the dial to maximum, because the hottest run is also the most expensive.',
-    setup: { target: 0.4, fixedTime: 6, energyBudget: 90, curves: false, brief: 'The same reaction, now with the gas meter running.' },
+    // The budget has to bite below the top of the dial or the lesson is a lie:
+    // a 700° run burns 66 units, so 35 forces the win into 420-480°C.
+    setup: { target: 0.4, fixedTime: 6, energyBudget: 35, curves: false, brief: 'The same reaction, now with the gas meter running.' },
   },
   {
     n: 3,
@@ -77,7 +79,7 @@ const LEVELS: ChallengeLevel<ReactionSetup>[] = [
     title: 'Read the two curves',
     phase: 'analyze',
     concept: 'Rate against ceiling',
-    teach: 'Turn on the readout. One line is how fast the reaction reaches its limit (climbs with heat), the other is that limit itself (falls with heat). Your yield is the two multiplied, and it peaks where they cross over.',
+    teach: 'Turn on the readout. The dashed line is the ceiling equilibrium sets, sliding down as the reactor heats. The solid line is your actual yield: it climbs while extra heat speeds the reaction up, then bends back down under the falling ceiling. Run the batch at the hump of the solid line.',
     setup: { target: 0.66, fixedTime: 6, energyBudget: null, curves: true, brief: 'The same trade, with the rate and equilibrium curves drawn out.' },
   },
   {
@@ -87,10 +89,13 @@ const LEVELS: ChallengeLevel<ReactionSetup>[] = [
     concept: 'Yield, fuel, and time',
     teach: 'You set the residence time too now. A long slow bake reaches the ceiling on less heat but ties up the reactor; a fast hot run frees it sooner but costs fuel and yield. Find the recipe the plant will run for years.',
     setup: { target: 0.6, fixedTime: null, energyBudget: 140, curves: true, brief: 'Design the operating point: high yield, cheap fuel, quick turnaround.' },
+    // Pars are set so no single recipe beats all three: 72% conversion needs a
+    // long warm bake (8+ min, 52+ fuel), while fuel and time par together only
+    // on a short hot flash that tops out at 67%. Chasing one always costs another.
     metrics: [
-      { id: 'yield', label: 'Conversion', goal: 'max', target: 68, unit: '%' },
-      { id: 'energy', label: 'Fuel burned', goal: 'min', target: 90 },
-      { id: 'time', label: 'Batch time', goal: 'min', target: 6, unit: ' min' },
+      { id: 'yield', label: 'Conversion', goal: 'max', target: 72, unit: '%' },
+      { id: 'energy', label: 'Fuel burned', goal: 'min', target: 30, unit: ' units' },
+      { id: 'time', label: 'Batch time', goal: 'min', target: 4, unit: ' min' },
     ],
   },
 ]
@@ -134,7 +139,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
     if (won) return
     if (solved) {
       setWon(true)
-      setVerdict({ ok: true, text: `Good batch. ${Math.round(conv * 100)}% converted, on ${energy} of fuel.` })
+      setVerdict({ ok: true, text: `Good batch. ${Math.round(conv * 100)}% converted, on ${energy} units of fuel.` })
       lv.clearLevel(lv.level.metrics ? { yield: Math.round(conv * 100), energy, time } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
@@ -143,7 +148,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
       return
     }
     const text = overEnergy
-      ? `That run burned ${energy} of fuel and the budget is ${setup.energyBudget}.`
+      ? `That run burned ${energy} units of fuel and the budget is ${setup.energyBudget}.`
       : `Only ${Math.round(conv * 100)}% converted, and the target is ${Math.round(setup.target * 100)}%.`
     if (att.spend()) {
       reset()
@@ -190,10 +195,10 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`Convert at least ${Math.round(setup.target * 100)}% of the batch${setup.energyBudget !== null ? ` on ${setup.energyBudget} of fuel` : ''}`}
+        goal={`Convert at least ${Math.round(setup.target * 100)}% of the batch${setup.energyBudget !== null ? ` on ${setup.energyBudget} units of fuel` : ''}`}
         status={outcomeVisible
-          ? `this run: ${Math.round(conv * 100)}% converted · ${energy} fuel`
-          : `set ${temp}°C for ${time} min · ${energy} fuel`}
+          ? `this run: ${Math.round(conv * 100)}% converted · ${energy} fuel units`
+          : `set ${temp}°C for ${time} min · ${energy} fuel units`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -321,7 +326,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
           <div className="mt-2">
             <Meter
               label="Fuel"
-              display={`${energy} of ${setup.energyBudget}`}
+              display={`${energy} of ${setup.energyBudget} units`}
               fraction={energy / setup.energyBudget}
               barClass={overEnergy ? 'bg-rose-500' : 'bg-emerald-500'}
             />
@@ -351,7 +356,7 @@ export function ReactionChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `${Math.round(conv * 100)}% at ${energy} fuel in ${time} min. Try a leaner recipe.`
+              ? `${Math.round(conv * 100)}% at ${energy} units of fuel in ${time} min. Try a leaner recipe.`
               : 'Good chemistry. That batch is on spec.'
           }
           onReplay={reset}

@@ -27,6 +27,20 @@ const MAX_X = 720
 const MIN_Y = 80
 const MAX_Y = 320
 const MAX_LEN = 130 // a single beam cannot be longer than this
+/**
+ * The drawing scale. The 480 px between the two banks is a 24 m river crossing,
+ * so 20 px is a metre and the longest legal beam is 6.5 m. Deck sag comes out of
+ * the solver in these same px, which is how it becomes centimetres.
+ */
+const PX_PER_M = 20
+/**
+ * Deflection is drawn this much larger than life. A dozen centimetres of dip is
+ * two px at true scale and nobody would see it, so the sag-limit line and the
+ * drawn sag both use this exaggeration and stay comparable to each other.
+ */
+const SAG_DRAW = 8
+/** A sag in centimetres, as px below the road on the drawing. */
+const sagLinePx = (cm: number) => (cm / 100) * PX_PER_M * SAG_DRAW
 
 /** Build materials. Steel is far stronger but more than twice the price. */
 const MATERIALS = {
@@ -44,7 +58,7 @@ interface BridgeSetup {
   materials: MaterialId[]
   /** Level 4 on: colour beams by push versus pull instead of by how hard they work. */
   forces: boolean
-  /** Level 5: the deck may only sag this far under the truck (px), or null. */
+  /** Level 5: the deck may only dip this far under the truck (cm), or null. */
   maxDeflection: number | null
   brief: string
   /**
@@ -79,7 +93,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     concept: 'Shapes that keep their shape',
     teach: 'A square frame folds flat under load, but a triangle cannot change shape without changing the length of a beam, so triangles are what hold bridges up. This span is finished except for one diagonal. Find the gap, close it, and the truck gets across.',
     setup: {
-      label: 'The delivery van', load: 6, budget: null, materials: ['wood'],
+      label: 'Delivery van', load: 6, budget: null, materials: ['wood'],
       forces: false, maxDeflection: null,
       brief: 'One diagonal is missing near the left bank. Click the two joints either side of the gap to bridge it.',
       starter: { nodes: STARTER_NODES, links: STARTER_LINKS },
@@ -91,7 +105,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Every beam costs',
     teach: 'Timber is billed by the length now. The sprawling bridge that worked when it was free suddenly prices itself out, so every beam has to earn its place.',
-    setup: { label: 'The loaded semi', load: 10, budget: 10000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
+    setup: { label: 'Loaded semi', load: 10, budget: 10000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
   },
   {
     n: 3,
@@ -99,7 +113,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Spend strength where it goes',
     teach: 'Steel is more than twice the price but far stronger. No all-wood bridge can carry this load on budget, so the trick is steel only on the few beams doing the hardest work and wood everywhere else.',
-    setup: { label: 'The tank convoy', load: 16, budget: 14000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
+    setup: { label: 'Gravel truck convoy', load: 16, budget: 14000, materials: ['wood', 'steel'], forces: false, maxDeflection: null, brief: 'A load too heavy for timber alone, on a budget too tight for all steel.' },
   },
   {
     n: 4,
@@ -107,19 +121,25 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'analyze',
     concept: 'Tension and compression',
     teach: 'Turn on the force view. Every beam is either being stretched or squashed as the truck rolls over, and the solver knows which. Stretched beams are pulled apart, squashed ones can buckle, and buckling gives out sooner, which is why the two are drawn apart.',
-    setup: { label: 'The loaded semi', load: 14, budget: 13800, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
+    setup: { label: 'Loaded semi', load: 14, budget: 13800, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'The same kind of load, with the forces inside every beam drawn out.' },
   },
   {
     n: 5,
     title: 'Strength per dollar',
     phase: 'optimize',
     concept: 'Strong, stiff, and cheap',
-    teach: 'The heaviest truck yet, on a budget all-steel cannot meet. A cheap bridge wobbles and a stiff one overspends, so the scorecard tracks how far the deck sags: carry the load, keep it lean, and stiffen it if you can.',
-    setup: { label: 'The heavy hauler', load: 20, budget: 21000, materials: ['wood', 'steel'], forces: true, maxDeflection: null, brief: 'Sign off the bridge that goes out to tender: strong, stiff, and no more expensive than it has to be.' },
+    teach: 'The heaviest truck yet, on a budget all-steel cannot meet. Strength and stiffness are not the same thing: a bridge can hold the load and still bounce like a diving board, so this one has to keep the deck within 15 cm as well. Depth is what buys stiffness, steel is what buys strength, and both are billed by the metre.',
+    setup: { label: 'Heavy hauler', load: 20, budget: 21000, materials: ['wood', 'steel'], forces: true, maxDeflection: 15, brief: 'Sign off the bridge that goes out to tender: strong, stiff, and no more expensive than it has to be.' },
+    // Pars checked offline against the solver itself, across Warren, Pratt and
+    // X-braced spans at every legal panel and depth: 18 designs carry the load
+    // inside the budget and the sag rule, 7 meet the cost par, 13 keep a fifth
+    // of their strength in hand, and only the 6 m deep truss gets to 10 cm. No
+    // design takes more than two of the three. The sag metric is a new id
+    // because the old 'sag' best was stored in px.
     metrics: [
       { id: 'cost', label: 'Build cost', goal: 'min', target: 16000 },
-      { id: 'sag', label: 'Deck sag', goal: 'min', target: 18, unit: ' px' },
-      { id: 'load', label: 'Load carried', goal: 'max', target: 20, unit: ' t' },
+      { id: 'sagcm', label: 'Deck sag', goal: 'min', target: 10, unit: ' cm' },
+      { id: 'spare', label: 'Spare strength', goal: 'max', target: 20, unit: ' %' },
     ],
   },
 ]
@@ -135,8 +155,10 @@ interface TestResult {
   outcome: SolveOutcome | null
   utilization: Record<string, number>
   force: Record<string, number>
-  /** Largest joint movement seen during the crossing, in px. */
+  /** Largest joint movement seen during the crossing, in cm of real deck. */
   peakSag: number
+  /** The bent shape at that worst truck position, for drawing a sag failure. */
+  sagShape: Record<string, [number, number]> | null
 }
 
 export function BridgeChallenge({ onComplete }: ChallengeProps) {
@@ -378,7 +400,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     return { tension: m.tension, compression: m.compression }
   }
 
-  const finishTest = (id: number, failedAt: string | null, peakSag: number) => {
+  const finishTest = (id: number, failedAt: string | null, peakSag: number, spareNow: number) => {
     if (handledRunRef.current === id) return
     handledRunRef.current = id
     const sagOk = round.maxDeflection === null || peakSag <= round.maxDeflection
@@ -386,7 +408,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
       setPhase('passed')
       setWon(true)
       lv.clearLevel(
-        lv.level.metrics ? { cost, sag: peakSag, load: round.load } : undefined,
+        lv.level.metrics ? { cost, sagcm: peakSag, spare: spareNow } : undefined,
       )
       if (!completedRef.current) {
         completedRef.current = true
@@ -403,7 +425,8 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     const force: Record<string, number> = {}
     let failedAt: string | null = null
     let outcome: SolveOutcome | null = null
-    let peakSag = 0
+    let peakMove = 0
+    let sagShape: Record<string, [number, number]> | null = null
 
     for (const id of roadPath) {
       if (id === ANCHOR_L.id || id === ANCHOR_R.id) continue
@@ -414,29 +437,50 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           force[key] = result.forces[key]
         }
       }
+      let move = 0
       for (const [dx, dy] of Object.values(result.deflection)) {
-        peakSag = Math.max(peakSag, Math.hypot(dx, dy))
+        move = Math.max(move, Math.hypot(dx, dy))
+      }
+      // Keep the shape from the truck position that bends the span hardest, so
+      // a sag failure has something to draw.
+      if (move > peakMove) {
+        peakMove = move
+        sagShape = result.deflection
       }
       if (result.status !== 'ok' && failedAt === null) {
         failedAt = id
         outcome = result
       }
     }
-    // The solver reports deflection in its own units; scale to something readable.
-    peakSag = Math.round(peakSag * 2)
+    // The solver moves joints in drawing px, and 20 px is a metre of real river.
+    const peakSag = Math.round((peakMove / PX_PER_M) * 100)
+
+    const spareNow = Math.round((1 - Math.max(0, ...Object.values(utilization))) * 100)
 
     const id = runId + 1
-    setTest({ failedAt, outcome, utilization, force, peakSag })
+    setTest({ failedAt, outcome, utilization, force, peakSag, sagShape })
     setRunId(id)
     setPhase('testing')
     const crossTime = failedAt ? 1.6 : 2.8
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => finishTest(id, failedAt, peakSag), crossTime * 1000 + 400)
+    timerRef.current = setTimeout(() => finishTest(id, failedAt, peakSag, spareNow), crossTime * 1000 + 400)
   }
 
   /* ---------- drawing ---------- */
   const displaced = useMemo(() => {
-    if (phase !== 'failed' || !test?.outcome) return null
+    if (phase !== 'failed') return null
+    // Nothing snapped on a sag failure, so there is no collapse to draw: bend
+    // the span at the same exaggeration the sag-limit line uses, and the deck
+    // visibly hangs below it.
+    if (!test?.outcome) {
+      if (!test?.sagShape) return null
+      const map: Record<string, { x: number; y: number }> = {}
+      for (const j of joints) {
+        const [dx, dy] = test.sagShape[j.id] ?? [0, 0]
+        map[j.id] = { x: j.x + dx * SAG_DRAW, y: j.y + dy * SAG_DRAW }
+      }
+      return map
+    }
     const deflection = test.outcome.deflection
     let maxMove = 0
     for (const [dx, dy] of Object.values(deflection)) {
@@ -480,6 +524,12 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     return isRoad ? 9 : 6
   }
 
+  /**
+   * How much of the hardest-worked beam's strength is still in hand, as a
+   * percentage. Only meaningful once the truck has run: a bridge that never
+   * carried anything has nothing spare.
+   */
+  const spare = test ? Math.round((1 - Math.max(0, ...Object.values(test.utilization))) * 100) : 0
   const failMode = test?.outcome?.status === 'unstable' ? 'unstable' : test?.outcome?.worst?.mode
   const sagFailed =
     phase === 'failed' && test?.failedAt === null && round.maxDeflection !== null && (test?.peakSag ?? 0) > round.maxDeflection
@@ -500,7 +550,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`Carry the ${round.load} t ${round.label.toLowerCase()} across${round.budget !== null ? ` for $${round.budget.toLocaleString()} or less` : ''}`}
+        goal={`Carry the ${round.load} t ${round.label.toLowerCase()} across${round.budget !== null ? ` for $${round.budget.toLocaleString()} or less` : ''}${round.maxDeflection !== null ? `, with the deck dipping under ${round.maxDeflection} cm` : ''}`}
         status={`the road ${deckComplete ? 'reaches across' : 'does not reach across yet'}`}
         met={won}
       />
@@ -578,9 +628,14 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           {gridDots.map(({ x, y }) => (
             <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" className="pointer-events-none fill-stone-400/40 dark:fill-white/15" />
           ))}
-          {/* the sag limit line for level 5 */}
+          {/* the sag limit for level 5, drawn at the same exaggeration as the sag */}
           {round.maxDeflection !== null && (
-            <line x1={MIN_X} y1={ROAD_Y + round.maxDeflection} x2={MAX_X} y2={ROAD_Y + round.maxDeflection} strokeDasharray="6 6" strokeWidth="2" className="pointer-events-none stroke-rose-400/70" />
+            <g className="pointer-events-none">
+              <line x1={MIN_X} y1={ROAD_Y + sagLinePx(round.maxDeflection)} x2={MAX_X} y2={ROAD_Y + sagLinePx(round.maxDeflection)} strokeDasharray="6 6" strokeWidth="2" className="stroke-rose-400/70" />
+              <text x={MAX_X} y={ROAD_Y + sagLinePx(round.maxDeflection) + 15} textAnchor="end" fontSize="12" fontWeight="700" className="fill-rose-500/90 font-display">
+                sag limit {round.maxDeflection} cm
+              </text>
+            </g>
           )}
           <line x1={MIN_X} y1={ROAD_Y} x2={MAX_X} y2={ROAD_Y} strokeDasharray="2 10" strokeWidth="2" className="pointer-events-none stroke-stone-400/60 dark:stroke-stone-500/50" />
 
@@ -717,7 +772,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         )}
         {sagFailed && (
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-            It held, but the deck sagged {test?.peakSag} px past the {round.maxDeflection} px line. Stiffen it with more triangles or a deeper truss.
+            It held, but the deck dipped {test?.peakSag} cm and the limit is {round.maxDeflection} cm. Nothing broke, it is just too floppy. A deeper truss buys stiffness; more steel on its own does not.
           </motion.p>
         )}
         {phase === 'failed' && !sagFailed && failMode === 'unstable' && (
@@ -847,7 +902,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ cost, sag: test?.peakSag ?? round.maxDeflection ?? 0, load: round.load }}
+            values={test ? { cost, sagcm: test.peakSag, spare } : { cost }}
             best={lv.best}
             scored={won}
           />
@@ -859,7 +914,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Carried ${round.load} t for $${cost.toLocaleString('en-US')}, sagging ${test?.peakSag} px. Try it leaner.`
+              ? `Carried ${round.load} t for $${cost.toLocaleString('en-US')}, dipping ${test?.peakSag} cm with ${spare} % strength to spare. Try it leaner, or deeper.`
               : 'Solid bridge. On you go.'
           }
           onReplay={reset}

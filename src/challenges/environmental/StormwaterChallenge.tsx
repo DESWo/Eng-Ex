@@ -18,7 +18,10 @@ import { cn } from '@/lib/utils'
 const SITE = 10000 // square metres of car park
 const STEP_SECONDS = 600 // each bar of the storm is ten minutes
 const RELEASE = 0.05 // m³ per second the downstream pipe will take
-const MIN_PAVING = 3000 // the site still has to work as a car park
+// The site still has to work as a car park. Cars park on permeable paving as
+// happily as on tarmac (that is its whole selling point), so parkable ground
+// is tarmac plus permeable, and only grass eats into it.
+const MIN_PARKING = 3000
 const POND_COST = 60 // per cubic metre of storage dug
 
 /** Rain in millimetres per ten minutes. A short, sharp summer storm. */
@@ -121,12 +124,15 @@ const LEVELS: ChallengeLevel<StormSetup>[] = [
     title: 'Get it approved',
     phase: 'optimize',
     concept: 'Dry, cheap, and still a car park',
-    teach: 'Planting soaks up the most and parks the fewest cars, tarmac is the opposite, and the pond costs whatever is left over. The scheme has to stay dry, stay affordable, and still be somewhere people can park.',
+    teach: 'Planting soaks up the most but parks nothing, tarmac parks cars for free and sheds every drop, and permeable paving does both jobs at the dearest price per square metre. The scheme has to stay dry, stay affordable, and still be somewhere people can park.',
     setup: { surfaces: true, maxOverflow: 0.5, budget: null, chart: true, brief: 'Submit the drainage scheme for planning approval.' },
+    // Pars pull three ways: the cheapest dry scheme (2 tarmac, 4 permeable,
+    // 14 grass, no pond) lands at 1,850 but parks only 3,000 m², while keeping
+    // 8,500 m² parkable costs at least 4,425. No scheme takes all three.
     metrics: [
-      { id: 'cost', label: 'Scheme cost', goal: 'min', target: 5500 },
-      { id: 'overflow', label: 'Water on the road', goal: 'min', target: 0.5, unit: ' m³' },
-      { id: 'paving', label: 'Parking kept', goal: 'max', target: 4000, unit: ' m²' },
+      { id: 'cost', label: 'Scheme cost', goal: 'min', target: 2000 },
+      { id: 'overflow', label: 'Water on the road', goal: 'min', target: 0, unit: ' m³' },
+      { id: 'parking', label: 'Parking kept', goal: 'max', target: 8500, unit: ' m²' },
     ],
   },
 ]
@@ -158,6 +164,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
   const perm = setup.surfaces ? count('permeable') : 0
   const grassArea = setup.surfaces ? count('grass') : 0
   const paving = SITE - perm - grassArea
+  const parking = paving + perm
 
   /** Paint a plot, but the site still has to work as a car park. */
   const paint = (i: number) => {
@@ -166,7 +173,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       if (prev[i] === brush) return prev
       const next = [...prev]
       next[i] = brush
-      if (next.filter((c) => c === 'paving').length * CELL < MIN_PAVING) return prev
+      if (next.filter((c) => c !== 'grass').length * CELL < MIN_PARKING) return prev
       return next
     })
   }
@@ -190,9 +197,9 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
     if (won) return
     if (solved) {
       setWon(true)
-      setVerdict({ ok: true, text: `Approved. Nothing on the road, ${Math.round(r.cost).toLocaleString()} all in, ${Math.round(paving).toLocaleString()} m² still parkable.` })
+      setVerdict({ ok: true, text: `Approved. Nothing on the road, ${Math.round(r.cost).toLocaleString()} all in, ${Math.round(parking).toLocaleString()} m² still parkable.` })
       lv.clearLevel(
-        lv.level.metrics ? { cost: r.cost, overflow: r.overflow, paving } : undefined,
+        lv.level.metrics ? { cost: r.cost, overflow: r.overflow, parking } : undefined,
       )
       if (!completedRef.current) {
         completedRef.current = true
@@ -203,12 +210,14 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
     const text = overBudget
       ? `Rejected: the scheme costs ${Math.round(r.cost).toLocaleString()} and the council's budget is ${setup.budget?.toLocaleString()}.`
       : setup.surfaces && perm + grassArea === 0
-        ? `The storm put ${r.overflow.toFixed(0)} m³ on the road. Everything that lands on tarmac becomes runoff, and no affordable pond can swallow all of it. Change what the ground is made of.`
-        : `The storm still put ${r.overflow.toFixed(0)} m³ on the road, and planning allows ${setup.maxOverflow}.`
+        ? `The storm put ${r.overflow.toFixed(1)} m³ on the road. Everything that lands on tarmac becomes runoff, and no affordable pond can swallow all of it. Change what the ground is made of.`
+        : `The storm still put ${r.overflow.toFixed(1)} m³ on the road, and planning allows ${setup.maxOverflow}.`
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'Planning refused to look at another draft. The site is back to bare tarmac. Follow one storm bar through the chart before resubmitting.' })
+      // Running dry keeps the diagnostic: the student who just spent their
+      // last attempt is the one who needs to know why the scheme failed.
+      setVerdict({ ok: false, text: `${text} That was the last draft planning would look at, so the site is back to bare tarmac with fresh attempts. Fix that number before resubmitting.` })
     } else {
       setVerdict({ ok: false, text })
     }
@@ -234,8 +243,8 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
         goal={`Keep road overflow to ${setup.maxOverflow} m³${setup.budget !== null ? ` on a ${setup.budget.toLocaleString()} budget` : ''}`}
         status={
           outcomeVisible
-            ? `this storm: ${r.overflow.toFixed(0)} m³ on the road · ${Math.round(r.cost).toLocaleString()} spent`
-            : `pond ${pond} m³ · ${Math.round(paving).toLocaleString()} m² tarmac · ${Math.round(r.cost).toLocaleString()} spent`
+            ? `this storm: ${r.overflow.toFixed(1)} m³ on the road · ${Math.round(r.cost).toLocaleString()} spent`
+            : `pond ${pond} m³ · ${Math.round(parking).toLocaleString()} m² parkable · ${Math.round(r.cost).toLocaleString()} spent`
         }
         attemptsLeft={att.left}
         met={won}
@@ -289,7 +298,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
           )}
           {outcomeVisible && r.overflow > 0.05 && (
             <text x={X0 + W} y={14} textAnchor="end" fontSize="12" fontWeight="700" className="fill-rose-600 font-display dark:fill-rose-300">
-              {r.overflow.toFixed(0)} m³ onto the road
+              {r.overflow.toFixed(1)} m³ onto the road
             </text>
           )}
         </svg>
@@ -318,7 +327,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Meter
           label="Water on the road"
-          display={outcomeVisible ? `${r.overflow.toFixed(0)} m³` : 'submit to find out'}
+          display={outcomeVisible ? `${r.overflow.toFixed(1)} m³` : 'submit to find out'}
           fraction={outcomeVisible ? Math.min(1, r.overflow / 150) : 0}
           barClass={r.overflow <= setup.maxOverflow ? 'bg-emerald-500' : 'bg-rose-500'}
         />
@@ -374,7 +383,7 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
               ))}
             </div>
             <p className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
-              Pick a surface, then paint over the car park. At least {MIN_PAVING / 500} plots must stay tarmac.
+              Pick a surface, then paint over the car park. At least {MIN_PARKING / 500} plots must stay parkable: tarmac or permeable.
             </p>
           </div>
         )}
@@ -418,14 +427,14 @@ export function StormwaterChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">{Math.round(paving).toLocaleString()} m² tarmac left</Badge>
+        <Badge className="ml-auto">{Math.round(parking).toLocaleString()} m² parkable</Badge>
       </div>
 
       {lv.level.metrics && (
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={outcomeVisible ? { cost: r.cost, overflow: r.overflow, paving } : {}}
+            values={outcomeVisible ? { cost: r.cost, overflow: r.overflow, parking } : {}}
             best={lv.best}
             scored={won}
           />

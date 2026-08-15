@@ -12,7 +12,7 @@ import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { Meter } from '@/components/ui/Meter'
 import { useLevels } from '@/hooks/useLevels'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -73,7 +73,7 @@ const LEVELS: ChallengeLevel<CircuitSetup>[] = [
     title: 'Copper is money',
     phase: 'understand',
     concept: 'Wire has a length',
-    teach: 'A switch is a drawbridge in the loop, and from now on wire is metered. A tidy, direct run passes; a sprawling one costs more copper than the job allows.',
+    teach: 'A switch is a drawbridge in the loop, and from now on every centimeter of wire is metered. A tidy, direct run passes; a sprawling one costs more copper than the job allows.',
     setup: {
       label: 'On a switch',
       brief: 'The bulb should light, but only while the switch is closed. Mind the wire budget.',
@@ -161,7 +161,7 @@ const LEVELS: ChallengeLevel<CircuitSetup>[] = [
       flow: true,
     },
     metrics: [
-      { id: 'wire', label: 'Wire used', goal: 'min', target: 1600 },
+      { id: 'wire', label: 'Wire used', goal: 'min', target: 1600, unit: ' cm' },
       { id: 'runs', label: 'Wire runs', goal: 'min', target: 8 },
     ],
   },
@@ -236,7 +236,8 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const p = sim.power[req.id] ?? 0
     return req.want === 'full' ? p >= FULL : p < LIT
   }
-  // Total copper on the board, measured wire by wire.
+  // Total copper on the board, measured wire by wire. One board unit is one
+  // centimeter of copper, which puts a workshop run in honest hundreds of cm.
   const wireLength = Math.round(
     wires.reduce((sum, [a, b]) => {
       const pa = terminalPos(a)
@@ -247,8 +248,8 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
   const overWire = round.wireBudget !== null && wireLength > round.wireBudget
   const allMet = round.requirements.every(met) && !simClosed.short && !overWire
 
-  /** Three power-ups per level: melted wiring has consequences. */
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  /** Melted wiring has consequences: the house allowance, via attemptsFor. */
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
 
   /** Close the case and power the board for real. */
@@ -268,7 +269,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const text = simClosed.short
       ? 'Short circuit! A wire runs straight from + back to − with nothing in between. The bench fuse blew.'
       : overWire
-        ? `The wiring works but uses ${wireLength} of copper against a budget of ${round.wireBudget}. Route it more directly.`
+        ? `The wiring works but uses ${wireLength} cm of copper against a budget of ${round.wireBudget} cm. Route it more directly.`
         : `${unmet} of the ${round.requirements.length} requirements ${unmet === 1 ? 'is' : 'are'} not met. Test with the switch before powering up.`
     if (att.spend()) {
       reset()
@@ -334,8 +335,8 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
       <Objective
-        goal={`Meet all ${round.requirements.length} requirement${round.requirements.length === 1 ? '' : 's'}${round.wireBudget !== null ? ` within ${round.wireBudget} of copper` : ''}, no shorts`}
-        status={`copper used: ${wireLength}`}
+        goal={`Meet all ${round.requirements.length} requirement${round.requirements.length === 1 ? '' : 's'}${round.wireBudget !== null ? ` within ${round.wireBudget} cm of copper` : ''}, no shorts`}
+        status={`copper used: ${wireLength} cm`}
         attemptsLeft={att.left}
         met={wonRound}
       />
@@ -520,7 +521,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-3">
           <Meter
             label="Copper used"
-            display={`${wireLength} of ${round.wireBudget}`}
+            display={`${wireLength} of ${round.wireBudget} cm`}
             fraction={wireLength / round.wireBudget}
             barClass={overWire ? 'bg-rose-500' : 'bg-emerald-500'}
           />
@@ -540,7 +541,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Badge className="ml-auto">{wires.length} runs · {wireLength} copper</Badge>
+        <Badge className="ml-auto">{wires.length} runs · {wireLength} cm copper</Badge>
       </div>
 
       {lv.level.metrics && (
@@ -559,7 +560,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Spec met on ${wireLength} of copper in ${wires.length} runs. There is a leaner layout.`
+              ? `Spec met on ${wireLength} cm of copper in ${wires.length} runs. There is a leaner layout.`
               : 'That circuit does exactly what was asked.'
           }
           onReplay={reset}

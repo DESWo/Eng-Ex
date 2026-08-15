@@ -124,8 +124,11 @@ const LEVELS: ChallengeLevel<WaterSetup>[] = [
     title: 'Order is everything',
     phase: 'understand',
     concept: 'Wrong order, dead stages',
-    teach: 'The exact same stages now clog if the water reaches them in the wrong state. Trash shreds a sand filter, and UV light cannot reach germs through murky water. Coarse to fine is the rule in every real plant.',
-    setup: { label: 'Storm runoff', pollutants: ['trash', 'dirt', 'germs'], shelf: ['screen', 'sand', 'chlorine', 'carbon', 'uv'], budget: 13, clogging: true, readout: false, brief: 'Same water, same budget, but now the plumbing order actually matters.' },
+    // The mix swaps germs for chemicals so level 2's winning line (screen, sand,
+    // UV) fails here in every order: the inspector names the chemicals that got
+    // through, and the student has to read the water, not replay the answer.
+    teach: 'New water, and the stages now clog if it reaches them in the wrong state. Trash shreds a sand filter, and dirt blinds a carbon filter\'s fine pores. Coarse to fine is the rule in every real plant.',
+    setup: { label: 'Factory runoff', pollutants: ['trash', 'dirt', 'chemicals'], shelf: ['screen', 'sand', 'chlorine', 'carbon', 'uv'], budget: 13, clogging: true, readout: false, brief: 'A factory upstream now, same budget, and the plumbing order actually matters.' },
   },
   {
     n: 4,
@@ -142,9 +145,12 @@ const LEVELS: ChallengeLevel<WaterSetup>[] = [
     concept: 'Cheap to build, cheap to run',
     teach: 'Energy is the bill that never stops. The settling pond costs nothing to run but only works first in line, chlorine is cheap but pollutes, and UV is clean but hungry. The best plant here is not the obvious one.',
     setup: { label: 'The town supply', pollutants: ['trash', 'dirt', 'germs'], shelf: ['settling', 'screen', 'sand', 'carbon', 'chlorine', 'uv'], budget: null, clogging: true, readout: true, brief: 'Design the plant the town will pay to run for the next ten years.' },
+    // Pars sit on the true optima: settling+screen+UV wins cost (11) and stages
+    // (3) but burns 7 energy, while settling+screen+chlorine+carbon wins energy
+    // (6) at $13 and four stages. No pipeline takes all three.
     metrics: [
-      { id: 'cost', label: 'Build cost', goal: 'min', target: 12 },
-      { id: 'energy', label: 'Energy per day', goal: 'min', target: 7 },
+      { id: 'cost', label: 'Build cost', goal: 'min', target: 11 },
+      { id: 'energy', label: 'Energy per day', goal: 'min', target: 6 },
       { id: 'stages', label: 'Stages used', goal: 'min', target: 3 },
     ],
   },
@@ -198,7 +204,9 @@ export function WaterChallenge({ onComplete }: ChallengeProps) {
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'The health inspector shut the taps off. Empty pipeline. Match each stage to a pollutant before rebuilding.' })
+      // Running dry keeps the diagnostic: the student who just spent their
+      // last attempt is the one who needs to know what got through.
+      setVerdict({ ok: false, text: `${text} That was the last test: the inspector shut the taps off and cleared the pipeline. Fresh attempts, rebuild knowing that.` })
     } else {
       setVerdict({ ok: false, text })
     }

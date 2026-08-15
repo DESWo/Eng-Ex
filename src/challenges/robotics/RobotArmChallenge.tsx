@@ -11,7 +11,7 @@ import { LevelComplete, LevelHeader } from '@/components/level/LevelShell'
 import { Scorecard } from '@/components/level/Scorecard'
 import { useLevels } from '@/hooks/useLevels'
 import { playSound } from '@/lib/sound'
-import { useAttempts } from '@/hooks/useAttempts'
+import { attemptsFor, useAttempts } from '@/hooks/useAttempts'
 import { useSvgDrag } from '@/hooks/useSvgDrag'
 import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -112,6 +112,14 @@ interface ArmSetup {
   flip: boolean
   /** Level 4 on: the workspace readout is available. */
   envelope: boolean
+  /**
+   * Proximity pulse on the active prize. It is a training wheel: on for
+   * level 1 (learning the drag) and level 4 (the instruments level, where
+   * readouts are the point). Off on the judged levels, because "judge the
+   * drop by eye, arcade rules" has to mean it: a pulse that fires inside
+   * 3x tolerance is a distance meter wearing a costume.
+   */
+  cue: boolean
   brief: string
 }
 
@@ -122,7 +130,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'play',
     concept: 'The arm follows your hand',
     teach: 'It is the arcade claw machine, wearing its true name: a robot arm. Drag the claw straight onto the prize. You move a point, and the arm works out for itself what angle each joint needs, the calculation real robot controllers run thousands of times a second.',
-    setup: { targets: [{ x: 270, y: 200 }], limits: false, flip: false, envelope: false, brief: 'A plush prize sits on the cabinet floor. Drag the claw onto it.' },
+    setup: { targets: [{ x: 270, y: 200 }], limits: false, flip: false, envelope: false, cue: true, brief: 'A plush prize sits on the cabinet floor. Drag the claw onto it.' },
   },
   {
     n: 2,
@@ -130,7 +138,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'understand',
     concept: 'Limits and reach',
     teach: 'Real joints do not spin freely. This shoulder cannot swing below the bench and the elbow cannot fold flat, so some points the maths says are reachable simply are not.',
-    setup: { targets: [{ x: 450, y: 140 }], limits: true, flip: false, envelope: false, brief: 'A prize right out at the edge of what this claw can do.' },
+    setup: { targets: [{ x: 450, y: 140 }], limits: true, flip: false, envelope: false, cue: false, brief: 'A prize right out at the edge of what this claw can do.' },
   },
   {
     n: 3,
@@ -138,7 +146,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'understand',
     concept: 'Elbow up or elbow down',
     teach: 'Almost every point can be reached two ways, with the elbow bent up or bent down. They put the gripper in exactly the same place while the arm occupies completely different space, and here only one of them misses the shelf.',
-    setup: { targets: [{ x: 298, y: 170 }], shelf: { x: 345, top: 200 }, limits: true, flip: true, envelope: false, brief: 'The prize is behind a stack of boxes. The claw can reach it, but can the arm?' },
+    setup: { targets: [{ x: 298, y: 170 }], shelf: { x: 345, top: 200 }, limits: true, flip: true, envelope: false, cue: false, brief: 'The prize is behind a stack of boxes. The claw can reach it, but can the arm?' },
   },
   {
     n: 4,
@@ -146,7 +154,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     phase: 'analyze',
     concept: 'The workspace',
     teach: 'Turn on the readout. The shaded ring is every point this arm can physically touch, and the ghost shows the other elbow solution for wherever you are now. Notice the hole in the middle: it cannot fold tightly enough to reach its own base.',
-    setup: { targets: [{ x: 470, y: 160 }], shelf: { x: 345, top: 220 }, limits: true, flip: true, envelope: true, brief: 'The same cabinet, with the arm workspace drawn out.' },
+    setup: { targets: [{ x: 470, y: 160 }], shelf: { x: 345, top: 220 }, limits: true, flip: true, envelope: true, cue: true, brief: 'The same cabinet, with the arm workspace drawn out.' },
   },
   {
     n: 5,
@@ -163,11 +171,23 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
       limits: true,
       flip: true,
       envelope: true,
+      cue: false,
       brief: 'Three prizes, one clean run: the pick-and-place cycle a factory arm repeats all day.',
     },
+    // Floors proven offline. The third prize is only reachable elbow-down
+    // and the start pose is only legal elbow-up, so exactly one flip is
+    // forced: that par is a geometric floor rather than a choice, which is
+    // why these three cannot be put in true opposition. Peak load floors at
+    // 131, the near edge of prize 3. Travel floors at 277 deg with the load
+    // held under 140, and at 261 if you first stretch the claw out past the
+    // workspace ring, where an almost straight arm flips for 25 deg instead
+    // of the 136 it costs folded up over prize 2. Those 16 deg are narrower
+    // than the wobble in a hand drag, so the pars sit above the floors as a
+    // tidiness check: 390 wants the cheap flip and near-straight drags, 140
+    // wants prize 3 grabbed left of centre, judged by eye.
     metrics: [
-      { id: 'travel', label: 'Joint travel', goal: 'min', target: 420, unit: '°' },
-      { id: 'torque', label: 'Peak shoulder load', goal: 'min', target: 150 },
+      { id: 'travel', label: 'Joint travel', goal: 'min', target: 390, unit: '°' },
+      { id: 'torque', label: 'Peak shoulder load', goal: 'min', target: 140 },
       { id: 'flips', label: 'Elbow flips', goal: 'min', target: 1 },
     ],
   },
@@ -187,8 +207,9 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
   const [won, setWon] = useState(false)
   const [showEnvelope, setShowEnvelope] = useState(true)
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null)
-  /** Coins in the slot: each failed grab eats one, arcade rules. */
-  const att = useAttempts(lv.level.n === 1 ? null : 3, lv.level.n)
+  /** Coins in the slot: each failed grab eats one, arcade rules. The house
+   * allowance doubles as the coin count, so the level 5 cycle gets 5 coins. */
+  const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const completedRef = useRef(false)
   const lastPose = useRef<{ shoulder: number; elbow: number } | null>(null)
   // A drag gesture only moves the claw if it started ON the claw.
@@ -390,8 +411,8 @@ export function RobotArmChallenge({ onComplete }: ChallengeProps) {
                   <circle cx={t.x} cy={t.y} r={REACH_TOLERANCE + 6} fill="none" strokeDasharray="4 5" strokeWidth="2" style={{ stroke: 'var(--accent)' }} opacity="0.6" />
                 )}
                 <motion.g
-                  animate={{ scale: active && dist <= REACH_TOLERANCE * 3 ? [1, 1.12, 1] : 1 }}
-                  transition={{ duration: 0.5, repeat: active && dist <= REACH_TOLERANCE * 3 ? Infinity : 0 }}
+                  animate={{ scale: setup.cue && active && dist <= REACH_TOLERANCE * 3 ? [1, 1.12, 1] : 1 }}
+                  transition={{ duration: 0.5, repeat: setup.cue && active && dist <= REACH_TOLERANCE * 3 ? Infinity : 0 }}
                   style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                   opacity={done ? 0.55 : 1}
                 >
