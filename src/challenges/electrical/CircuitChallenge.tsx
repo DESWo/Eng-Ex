@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { RotateCcw, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -35,7 +35,6 @@ import {
   stepNode,
   type BenchNode,
   type BreakerState,
-  type Hop,
   type MeterReading,
   type Pt,
 } from '@/components/instruments/bench'
@@ -435,11 +434,9 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     }
     const path = new Set<string>()
     let step = from[BAT_N]
-    let at = BAT_N
     while (step) {
       if (step.key) path.add(step.key)
-      at = step.prev
-      step = from[at]
+      step = from[step.prev]
     }
     return path
     // eslint-disable-next-line react-hooks/exhaustive-deps

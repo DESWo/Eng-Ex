@@ -69,8 +69,9 @@ export function DatumLine({ x1, x2, y, label }: { x1: number; x2: number; y: num
     <g className="pointer-events-none" aria-hidden>
       <line x1={x1} y1={y} x2={x2} y2={y} stroke={INK.soft} strokeWidth={PEN.thin} strokeDasharray="14 3 2 3" />
       <text
-        x={x2 + 4}
-        y={y - 4}
+        x={x2}
+        y={y - 5}
+        textAnchor="end"
         className={LETTER}
         style={{ letterSpacing: TRACK.normal }}
         fontSize="9"
