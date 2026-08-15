@@ -100,16 +100,17 @@ export function SourceSymbol({
         stroke={ink}
         strokeWidth={STROKE}
       />
-      <text x={x - 30} y={top + 6} textAnchor="middle" fontSize="15" className="font-mono" fill={ink}>
+      {/* polarity beside the plates, clear of both leads */}
+      <text x={x + 26} y={y - 14} textAnchor="middle" fontSize="16" className="font-mono" fill={ink}>
         +
       </text>
-      <text x={x - 30} y={bottom + 2} textAnchor="middle" fontSize="17" className="font-mono" fill={ink}>
+      <text x={x + 26} y={y + 26} textAnchor="middle" fontSize="18" className="font-mono" fill={ink}>
         −
       </text>
-      <text x={x} y={y - 34} textAnchor="middle" fontSize="12" letterSpacing="1.2" className="font-mono" fill={ink}>
+      <text x={x - 42} y={y + 4} textAnchor="middle" fontSize="12" letterSpacing="1.2" className="font-mono" fill={ink}>
         {designator}
       </text>
-      <text x={x} y={y + 48} textAnchor="middle" fontSize="12" className="font-mono" fill={inkDim}>
+      <text x={x} y={y + 62} textAnchor="middle" fontSize="12" className="font-mono" fill={inkDim}>
         {volts} V dc
       </text>
     </g>
@@ -364,4 +365,32 @@ export function TestPoint({
 /** Two or more conductors land here. Filled dot, the only "these are joined" mark. */
 export function JunctionDot({ x, y, live = false }: { x: number; y: number; live?: boolean }) {
   return <circle cx={x} cy={y} r="4.6" fill={live ? 'var(--bench-live, #f6bf4a)' : ink} />
+}
+
+/**
+ * The sheet cursor: four corner ticks around the pin the keyboard is on. Drawn
+ * without pointer events so it never eats a click meant for the pin.
+ */
+export function Crosshair({ x, y, size = 13 }: { x: number; y: number; size?: number }) {
+  const tick = 5
+  const corners = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ]
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      {corners.map(([sx, sy]) => (
+        <path
+          key={`${sx}${sy}`}
+          d={`M ${x + sx * size} ${y + sy * size - sy * tick} V ${y + sy * size} H ${x + sx * size - sx * tick}`}
+          fill="none"
+          stroke="var(--accent, #7163dd)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        />
+      ))}
+    </g>
+  )
 }

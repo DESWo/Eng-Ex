@@ -65,6 +65,7 @@ export { BenchVerdict, SpecList, StatusLamp, ToolSelector } from './Readouts'
 export {
   BreakerSymbol,
   BusSymbol,
+  Crosshair,
   GroundSymbol,
   JunctionDot,
   LampSymbol,

@@ -120,7 +120,7 @@ export function ProbeMeter({
 /** The probe itself, drawn on the sheet with its tip on the node. */
 export function ProbeTip({ x, y }: { x: number; y: number }) {
   return (
-    <g aria-hidden transform={`translate(${x}, ${y})`}>
+    <g aria-hidden transform={`translate(${x}, ${y})`} style={{ pointerEvents: 'none' }}>
       <path d="M 0 0 L 9 -9 L 15 -3 L 6 6 Z" fill="var(--bench-ink, #eae7e3)" opacity="0.9" />
       <rect
         x="11"

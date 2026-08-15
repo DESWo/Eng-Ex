@@ -125,7 +125,7 @@ export function SchematicSheet({
         {children}
 
         {titleBlock && titleBlock.length > 0 && (
-          <g transform={`translate(${width - 178}, ${height - 14 - titleBlock.length * 16})`}>
+          <g transform={`translate(14, ${height - 14 - titleBlock.length * 16})`}>
             <rect
               x="0"
               y="0"
@@ -163,7 +163,7 @@ export function SchematicSheet({
         )}
 
         {stamp && (
-          <g transform={`translate(${width / 2}, 46) rotate(-8)`} opacity="0.9">
+          <g transform={`translate(${width - 104}, 40) rotate(-8)`} opacity="0.9">
             <rect
               x="-86"
               y="-20"

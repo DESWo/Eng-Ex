@@ -387,6 +387,7 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
                 width="88"
                 height="58"
                 rx="6"
+                initial={false}
                 animate={{ opacity: 0.25 + glow * 0.75 }}
                 transition={{ duration: reduced ? 0 : 0.3 }}
                 style={{ fill: meltdown ? '#e0574a' : 'var(--accent)' }}
@@ -413,6 +414,8 @@ export function ReactorChallenge({ onComplete }: ChallengeProps) {
                     width="6"
                     rx="2"
                     fill="#9aa6b0"
+                    // Without a seeded baseline framer animates the shaft up from zero height.
+                    initial={false}
                     animate={{ height: 60 + (rods / 100) * 58 }}
                     transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 26 }}
                   />
