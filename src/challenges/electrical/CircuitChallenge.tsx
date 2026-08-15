@@ -666,7 +666,14 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
                 label={`Wire from ${designator[run.a] ?? run.a} to ${designator[run.b] ?? run.b}. ${
                   tool === 'probe' ? 'Press enter to probe this net.' : 'Press enter to cut it.'
                 }`}
-                onActivate={() => (tool === 'probe' ? (setCursor(run.a), setProbeAt(run.a)) : removeWire(run.id))}
+                onActivate={() => {
+                  if (tool !== 'probe') {
+                    removeWire(run.id)
+                    return
+                  }
+                  setCursor(run.a)
+                  setProbeAt(run.a)
+                }}
               />
             )
           })}
@@ -726,12 +733,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
 
           {/* pins: every one is a test point, and a filled dot means joined */}
           {nodes.map((n) => (
-            <g
-              key={n.id}
-              onClick={() => act(n.id)}
-              className="cursor-pointer"
-              aria-hidden
-            >
+            <g key={n.id} onClick={() => act(n.id)} className="cursor-pointer">
               <circle cx={n.x} cy={n.y} r="15" fill="transparent" />
               <TestPoint
                 x={n.x}
