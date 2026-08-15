@@ -36,6 +36,20 @@ export function saveJson(key: string, value: unknown) {
   }
 }
 
+/**
+ * Drop a scoped key entirely. Restoring a save file clears the four progress
+ * keys first, so a restore is a true overwrite rather than a merge with
+ * whatever the browser happened to be holding.
+ */
+export function removeJson(key: string) {
+  try {
+    localStorage.removeItem(scoped(key))
+    window.dispatchEvent(new CustomEvent(SAVE_EVENT, { detail: key }))
+  } catch {
+    // ignored, same as saveJson
+  }
+}
+
 /** Fired on window after every scoped save; detail is the unscoped key. */
 export const SAVE_EVENT = 'ee:save'
 
@@ -77,6 +91,19 @@ export function removeGlobal(key: string) {
 }
 
 /**
+ * Does a scope already hold saved work? Pass '' for the guest slot.
+ * Sign-in uses this twice: to decide whether guest work moves into an account,
+ * and to tell the student, before they commit, which of the two it will be.
+ */
+export function scopeHasData(targetScope: string, keys: string[]): boolean {
+  try {
+    return keys.some((k) => localStorage.getItem(PREFIX + targetScope + k) !== null)
+  } catch {
+    return false
+  }
+}
+
+/**
  * Move work done while signed out into a brand new account, so signing in for
  * the first time never looks like it wiped everything.
  *
@@ -87,8 +114,7 @@ export function removeGlobal(key: string) {
  */
 export function moveGuestDataInto(targetScope: string, keys: string[]): boolean {
   try {
-    const alreadyHasData = keys.some((k) => localStorage.getItem(PREFIX + targetScope + k) !== null)
-    if (alreadyHasData) return false
+    if (scopeHasData(targetScope, keys)) return false
 
     const moved: string[] = []
     for (const key of keys) {

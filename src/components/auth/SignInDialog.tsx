@@ -1,47 +1,43 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Info, LogIn, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { useDialogChrome } from '@/components/auth/useDialogChrome'
 import { useProfile } from '@/hooks/useProfile'
-import { isValidEmail, loadProfile, normalizeEmail } from '@/lib/profile'
+import { accountHasWork, guestHasWork, isValidEmail, loadProfile, normalizeEmail } from '@/lib/profile'
 import { cn } from '@/lib/utils'
-
-/** Is there already work saved on this browser that has not been claimed yet? */
-function hasUnclaimedProgress() {
-  try {
-    return ['ee:progress', 'ee:challenges', 'ee:levels'].some((k) => localStorage.getItem(k) !== null)
-  } catch {
-    return false
-  }
-}
 
 export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { signIn } = useProfile()
   const [email, setEmail] = useState('')
   const [touched, setTouched] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const valid = isValidEmail(email)
   // Explain the problem as soon as there is enough typed to judge. Waiting for
   // a blur leaves the Continue button greyed out with no reason given.
   const showError = !valid && (touched ? email.trim().length > 0 : email.trim().length > 3)
-  // Only worth mentioning the carry-over when it will actually happen.
-  const willCarry = open && !loadProfile() && hasUnclaimedProgress()
+  // Guest work only ever moves into an EMPTY account, so what to promise
+  // depends on the address being typed. Saying "it will be moved" to somebody
+  // signing back into an account that already has progress is a lie that looks
+  // like data loss from the other side.
+  const guestWork = open && !loadProfile() && guestHasWork()
+  // Which of the two it will be is only knowable once there is an address to
+  // check, so the banner waits for a valid one rather than guessing.
+  const carryDecided = guestWork && valid
+  const accountKeepsItsOwn = carryDecided && accountHasWork(email)
+
+  useDialogChrome(open, panelRef, onClose)
 
   useEffect(() => {
     if (!open) return
     setEmail('')
     setTouched(false)
     const t = setTimeout(() => inputRef.current?.focus(), 60)
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open, onClose])
+    return () => clearTimeout(t)
+  }, [open])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,7 +47,8 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
     onClose()
   }
 
-  return (
+  // Portalled to <body> so the dialog sits outside the app it makes inert.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -65,6 +62,8 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
           }}
         >
           <motion.div
+            ref={panelRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="signin-title"
@@ -123,11 +122,18 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
                 </p>
               )}
 
-              {willCarry && (
-                <p className="mt-3 rounded-xl bg-emerald-100 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-                  The progress already on this browser will be moved into your account.
-                </p>
-              )}
+              {carryDecided &&
+                (accountKeepsItsOwn ? (
+                  <p className="mt-3 rounded-xl bg-amber-100 px-3.5 py-2.5 text-sm font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                    That account already has progress here, so it keeps its own work. What you played
+                    as a guest stays on this browser under the guest profile, and sign out brings you
+                    back to it.
+                  </p>
+                ) : (
+                  <p className="mt-3 rounded-xl bg-emerald-100 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    The progress already on this browser will be moved into your account.
+                  </p>
+                ))}
 
               <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-stone-100 px-3.5 py-2.5 dark:bg-white/5">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-ink-soft dark:text-stone-400" />
@@ -151,6 +157,7 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

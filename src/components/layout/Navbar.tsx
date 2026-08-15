@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { LogIn, LogOut, Save } from 'lucide-react'
 import { SoundToggle } from '@/components/ui/SoundToggle'
@@ -6,6 +6,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SignInDialog } from '@/components/auth/SignInDialog'
 import { SaveDialog } from '@/components/auth/SaveDialog'
 import { useProfile } from '@/hooks/useProfile'
+import { confirmSession, isSessionConfirmed } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 
 function LogoMark() {
@@ -29,6 +30,25 @@ export function Navbar() {
   const { profile, signOut } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
+  // A name tag in localStorage outlives whoever typed it, so a stored profile
+  // this browser session has not vouched for is worth one question. A guest has
+  // no name tag to question, and typing an email is itself the answer.
+  const [unconfirmed, setUnconfirmed] = useState(() => !isSessionConfirmed())
+  const askWhoIsHere = profile !== null && unconfirmed
+
+  useEffect(() => {
+    if (isSessionConfirmed()) setUnconfirmed(false)
+  }, [profile])
+
+  const thatIsMe = () => {
+    confirmSession()
+    setUnconfirmed(false)
+  }
+
+  const notMe = () => {
+    signOut()
+    setUnconfirmed(false)
+  }
 
   return (
     <>
@@ -89,6 +109,32 @@ export function Navbar() {
             <ThemeToggle />
           </div>
         </div>
+
+        {askWhoIsHere && profile && (
+          <div className="border-t border-amber-900/10 bg-amber-100 dark:border-amber-200/15 dark:bg-amber-500/15 print:hidden">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-3 gap-y-1.5 px-4 py-2 sm:px-6">
+              <p className="font-display text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Signed in as <span className="break-all">{profile.email}</span>. You?
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={thatIsMe}
+                  className="rounded-full bg-amber-900/10 px-3 py-1 font-display text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-900/20 dark:bg-amber-200/15 dark:text-amber-200 dark:hover:bg-amber-200/25"
+                >
+                  {"That's me"}
+                </button>
+                <button
+                  type="button"
+                  onClick={notMe}
+                  className="rounded-full border border-amber-900/30 px-3 py-1 font-display text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-900/10 dark:border-amber-200/40 dark:text-amber-200 dark:hover:bg-amber-200/10"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <SignInDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />

@@ -1,21 +1,85 @@
-import { loadJson, saveJson } from '@/lib/storage'
-import { loadProfile } from '@/lib/profile'
+import { loadJson, removeJson, saveJson } from '@/lib/storage'
+import { loadProfile, normalizeEmail } from '@/lib/profile'
+import { disciplines } from '@/data/disciplines'
+import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 
 /**
  * Progress lives only in the browser, and browsers lose data: cleared
  * history, a different computer, a school machine that wipes itself. A save
  * file is the escape hatch: download your progress, load it anywhere.
+ *
+ * The transfer code below is the same payload as text, for the case a save
+ * file cannot make the trip (a locked-down Chromebook, a phone, a school
+ * account with no downloads). Both are stopgaps: the real fix is the Firebase
+ * seam behind src/lib/profile.ts, where an account would hold this server side
+ * instead of asking a student to carry their own progress around.
  */
 
 /** Everything a person's progress lives in. Mirrors CARRIED_KEYS in profile.ts. */
 const SAVE_KEYS = ['progress', 'challenges', 'levels', 'reflections'] as const
+
+/** Best stars on one level, so a full field is 3 games x 5 levels x 3 stars. */
+const MAX_STARS = 3
 
 export interface SaveFile {
   app: 'engineering-explorer'
   version: 1
   savedAt: string
   account: string | null
+  /** Plain-language progress, so a teacher opening the file reads it, not JSON. */
+  summary: Record<string, string>
   data: Record<string, unknown>
+}
+
+/** The slice of the levels store the summary reads. */
+type LevelStore = Record<string, { cleared?: number[]; stars?: Record<string, number> }>
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** What a bad value actually is, so the error message can name it. */
+const describe = (value: unknown) =>
+  value === null ? 'empty' : Array.isArray(value) ? 'a list' : `a ${typeof value}`
+
+/**
+ * Levels cleared and stars earned, per field, in sentences.
+ * Machine keys stay in `data`; this exists so the first screen of the file
+ * means something to a person.
+ */
+function summarize(levels: unknown): Record<string, string> {
+  const store = (isPlainObject(levels) ? levels : {}) as LevelStore
+  const summary: Record<string, string> = {}
+  let allCleared = 0
+  let allStars = 0
+  let allTotal = 0
+
+  for (const discipline of disciplines) {
+    const total = discipline.challenges.length * LEVELS_PER_CHALLENGE
+    let cleared = 0
+    let stars = 0
+    for (const challenge of discipline.challenges) {
+      const entry = store[challenge.id]
+      const done = Array.isArray(entry?.cleared) ? entry.cleared : []
+      cleared += new Set(done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE)).size
+      for (const value of Object.values(entry?.stars ?? {})) {
+        if (typeof value === 'number') stars += Math.min(value, MAX_STARS)
+      }
+    }
+    allCleared += cleared
+    allStars += stars
+    allTotal += total
+    // Untouched fields would be twelve lines of zeroes; only report real work.
+    if (cleared > 0 || stars > 0) {
+      summary[discipline.name] =
+        `${cleared} of ${total} levels cleared, ${stars} of ${total * MAX_STARS} stars`
+    }
+  }
+
+  summary['All fields'] =
+    allCleared === 0
+      ? 'Nothing cleared yet'
+      : `${allCleared} of ${allTotal} levels cleared, ${allStars} of ${allTotal * MAX_STARS} stars`
+  return summary
 }
 
 export function buildSave(): SaveFile {
@@ -26,6 +90,7 @@ export function buildSave(): SaveFile {
     version: 1,
     savedAt: new Date().toISOString(),
     account: loadProfile()?.email ?? null,
+    summary: summarize(data.levels),
     data,
   }
 }
@@ -41,25 +106,92 @@ export function downloadSave() {
   URL.revokeObjectURL(url)
 }
 
+export type ParsedSave = { ok: true; save: SaveFile } | { ok: false; error: string }
+
 /**
- * Write a save file's contents into the CURRENT account (or guest slot).
- * Returns an error message, or null on success. The caller should reload the
- * page afterwards so every hook re-reads the restored state.
+ * Read a save file WITHOUT touching storage.
+ *
+ * Everything here is hand-editable text that has been round-tripped through a
+ * downloads folder or an email, so none of it is trusted. A file that says
+ * `"levels": "oops"` used to be written straight through and only fell apart
+ * later, inside the games. Checking the shape up front means a bad file is a
+ * sentence on screen instead of wrecked progress.
  */
-export function applySave(raw: string): string | null {
+export function parseSave(raw: string): ParsedSave {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return 'That file could not be read as a save file.'
+    return { ok: false, error: 'That file could not be read as a save file.' }
   }
-  const save = parsed as Partial<SaveFile>
-  if (save?.app !== 'engineering-explorer' || typeof save.data !== 'object' || save.data === null) {
-    return 'That file is not an Engineering Explorer save.'
+  if (!isPlainObject(parsed) || parsed.app !== 'engineering-explorer') {
+    return { ok: false, error: 'That file is not an Engineering Explorer save.' }
+  }
+  if (parsed.version !== 1) {
+    return {
+      ok: false,
+      error: `That save is version ${JSON.stringify(parsed.version)}, and this app reads version 1.`,
+    }
+  }
+  if (!isPlainObject(parsed.data)) {
+    return { ok: false, error: 'That save file has no progress inside it.' }
   }
   for (const k of SAVE_KEYS) {
-    const v = (save.data as Record<string, unknown>)[k]
-    if (v !== null && v !== undefined) saveJson(k, v)
+    const value = parsed.data[k]
+    if (value === null || value === undefined) continue
+    if (!isPlainObject(value)) {
+      return {
+        ok: false,
+        error: `That save file is damaged: "${k}" should be a set of entries and is ${describe(value)}.`,
+      }
+    }
   }
-  return null
+  // `summary` is for humans, so it is never read back. Anything else extra in
+  // the file is ignored the same way.
+  return { ok: true, save: parsed as unknown as SaveFile }
+}
+
+/** Is this save from the account (or guest slot) that is signed in right now? */
+export function saveMatchesCurrentAccount(save: SaveFile): boolean {
+  const mine = loadProfile()?.email ?? null
+  const theirs = typeof save.account === 'string' ? normalizeEmail(save.account) : null
+  return mine === theirs
+}
+
+/**
+ * Write a parsed save into the CURRENT account (or guest slot), replacing what
+ * is there. A key missing from the file is cleared rather than left behind, so
+ * loading a save gives you that save and nothing else, which is what the dialog
+ * promises. Pass only a save from parseSave. The caller should reload the page
+ * afterwards so every hook re-reads the restored state.
+ */
+export function applySave(save: SaveFile) {
+  for (const k of SAVE_KEYS) {
+    const value = save.data[k]
+    if (isPlainObject(value)) saveJson(k, value)
+    else removeJson(k)
+  }
+}
+
+/* ---- Transfer code: the same save as one line of text ---- */
+
+/** base64url, so the code survives a URL bar, an email, or a chat message. */
+export function buildTransferCode(): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(buildSave()))
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** Back to JSON text, or null if the code was cut short or mangled in transit. */
+export function decodeTransferCode(code: string): string | null {
+  try {
+    const b64 = code.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
+    if (!b64) return null
+    const binary = atob(b64)
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return null
+  }
 }

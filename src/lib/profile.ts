@@ -3,6 +3,7 @@ import {
   loadGlobalJson,
   removeGlobal,
   saveGlobalJson,
+  scopeHasData,
   setStorageScope,
 } from '@/lib/storage'
 
@@ -47,6 +48,13 @@ export function applyStoredScope() {
   setStorageScope(profile ? scopeFor(profile.email) : '')
 }
 
+/** Does this account already hold work on this browser? */
+export const accountHasWork = (rawEmail: string) =>
+  scopeHasData(scopeFor(rawEmail), CARRIED_KEYS)
+
+/** Is there work saved on the guest slot, waiting to be claimed? */
+export const guestHasWork = () => scopeHasData('', CARRIED_KEYS)
+
 export function signIn(rawEmail: string): Profile {
   const email = normalizeEmail(rawEmail)
   const scope = scopeFor(email)
@@ -55,10 +63,39 @@ export function signIn(rawEmail: string): Profile {
   const profile: Profile = { email, since: new Date().toISOString().slice(0, 10) }
   saveGlobalJson(KEY, profile)
   setStorageScope(scope)
+  // Signing in by hand is itself proof of who is here, so the stale sign-in
+  // check below should not then ask.
+  confirmSession()
   return profile
 }
 
 export function signOut() {
   removeGlobal(KEY)
   setStorageScope('')
+}
+
+/* ---- Stale sign-in ----
+   A name tag written into localStorage outlives the person who typed it: the
+   next student sits down at a shared computer and quietly plays into someone
+   else's progress. sessionStorage dies with the browser tab, so a stored
+   profile that this session has not confirmed is worth one question. ---- */
+
+const SESSION_KEY = 'ee:session-confirmed'
+
+export function isSessionConfirmed(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_KEY) === '1'
+  } catch {
+    // No sessionStorage (private mode, blocked storage): asking every load
+    // would be worse than not asking, so treat it as confirmed.
+    return true
+  }
+}
+
+export function confirmSession() {
+  try {
+    sessionStorage.setItem(SESSION_KEY, '1')
+  } catch {
+    // ignored, same as above
+  }
 }
