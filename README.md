@@ -29,9 +29,11 @@ npm run preview  # preview the production build
 ## How the app works
 
 Three core disciplines (Mechanical, Civil, Electrical) are open from the
-start. Eight branch fields (Aerospace, Industrial, Robotics, Environmental,
-Structural, Nuclear, Systems, Computer) unlock once all three core fields are
-fully explored. Every field follows the same five step flow:
+start. Nine branch fields (Aerospace, Industrial, Robotics, Environmental,
+Structural, Nuclear, Systems, Computer, Chemical) unlock once all three core
+fields are fully explored. Teachers can open every field without playing
+through them: add `?preview=1` to any URL, or use the toggle on `/teacher`.
+Every field follows the same five step flow:
 
 1. **Learn**: a plain language intro plus a video placeholder.
 2. **Play**: three games. Beating level 1 of any game unlocks the next step.
@@ -77,6 +79,7 @@ field is past level 3).
 | Nuclear | Reactor Control (live tick sim), Shield Stack, Decay Heat |
 | Systems | Mission Budget, Backup Plan, Critical Path |
 | Computer | Logic Lab, Binary Bulbs, Error Check |
+| Chemical | Sweet Spot (rate vs equilibrium), Counterflow, The Right Dose |
 
 Several games run genuine simulations: Bridge Builder solves K u = f over a
 2D truss stiffness matrix per truck position (`src/challenges/civil/truss.ts`),
@@ -100,6 +103,22 @@ theatre, and the dialog says so. Signed-in saves live under
 `ee:u:<email>:<key>`, guests under bare `ee:<key>`, and guest work moves into
 a brand-new account on first sign-in. Theme stays per browser.
 
+Nothing syncs, because there is no server. To move progress to another
+computer, the Backup dialog exports a save file or a **transfer code**: the
+same save as one line of text you can paste anywhere and paste back later.
+Restores are validated key by key and write nothing at all if the file is
+damaged, so a half-copied code can never overwrite good progress.
+
+### For teachers
+
+- `/teacher` prints a progress report for whoever is saved on the device:
+  levels and stars per field, a per-game breakdown, and the reflection
+  answers. It has its own print stylesheet.
+- `?preview=1` on any URL unlocks every field for evaluation without touching
+  a student's saved work.
+- `/privacy` states the posture: no server, no analytics, no third-party
+  requests at all (the fonts are self-hosted from `public/fonts`).
+
 ## Project structure
 
 ```
@@ -109,7 +128,7 @@ src/
   challenges/
     registry.ts           <- challenge id -> lazy component + preload
     mechanical/ civil/ electrical/ aerospace/ industrial/ robotics/
-    environmental/ structural/ nuclear/ systems/ computer/
+    environmental/ structural/ nuclear/ systems/ computer/ chemical/
   components/
     ui/                   <- Button, Card, Badge, Meter, Confetti, etc.
     level/                <- LevelRail, ConceptCard, InsightToggle, Scorecard, LevelShell
@@ -118,10 +137,12 @@ src/
     layout/               <- Navbar, Footer
     landing/              <- Hero, HowItWorks, DisciplineCard, DisciplineGrid
     flow/                 <- FlowStepper + the five step components
-  pages/                  <- LandingPage, DisciplinePage, AboutPage, NotFoundPage
+  pages/                  <- LandingPage, DisciplinePage, AboutPage,
+                             TeacherPage, PrivacyPage, NotFoundPage
   hooks/                  <- useTheme, useProgress, useLevels, useLevelCounts,
-                             useProfile, useSvgDrag
-  lib/                    <- types, storage, mastery, profile, animations, utils
+                             useProfile, useAttempts, useSvgDrag
+  lib/                    <- types, storage, mastery, profile, saveFile, accent,
+                             preview, sound, animations, utils
 ```
 
 Games are code-split: each one loads as its own chunk the first time it is

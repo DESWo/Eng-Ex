@@ -25,8 +25,15 @@ const FOCUSABLE = [
 
 const focusableIn = (panel: HTMLElement) =>
   Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    // offsetParent skips display:none nodes, such as the hidden file input.
-    (el) => el.offsetParent !== null || el === document.activeElement,
+    (el) =>
+      // offsetParent skips display:none nodes, such as the hidden file input.
+      (el.offsetParent !== null || el === document.activeElement) &&
+      // A disabled control carrying tabindex="0" (the Button component sets one
+      // on every button) still matches the tabindex clause above, so it would
+      // land at the end of the ring as a stop nothing can focus. Tab off the
+      // real last control then walked straight out of the dialog.
+      !(el as HTMLButtonElement).disabled &&
+      el.getAttribute('aria-hidden') !== 'true',
   )
 
 export function useDialogChrome(

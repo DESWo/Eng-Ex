@@ -54,8 +54,8 @@ export const aboutRoadmap: { heading: string; items: RoadmapItem[] } = {
   items: [
     {
       icon: Trophy,
-      title: 'Leaderboards and scoring',
-      body: 'Every game gets a real score for efficiency, cost, and clever design, so there is always a better solution to chase.',
+      title: 'Boards to compare designs',
+      body: 'Every optimize level already scores your design against three competing targets. Next: seeing how a class solved the same problem differently.',
       status: 'building',
     },
     {
@@ -66,8 +66,8 @@ export const aboutRoadmap: { heading: string; items: RoadmapItem[] } = {
     },
     {
       icon: Layers,
-      title: 'Level progression',
-      body: 'Each game grows one idea at a time: play, understand, analyze, then optimize, so you gradually think like an engineer.',
+      title: 'More fields',
+      body: 'Biomedical, materials, and software engineering, each with the same three games and five levels as the twelve already here.',
       status: 'planned',
     },
     {
@@ -78,8 +78,8 @@ export const aboutRoadmap: { heading: string; items: RoadmapItem[] } = {
     },
     {
       icon: Users,
-      title: 'Accounts and global boards',
-      body: 'Save progress across devices and compare designs with students everywhere (coming with a real backend).',
+      title: 'Accounts that follow you',
+      body: 'A transfer code already carries your progress to another computer. Real accounts, so it happens by itself, need a server this app does not have yet.',
       status: 'planned',
     },
   ],
