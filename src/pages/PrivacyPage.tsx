@@ -22,14 +22,14 @@ export function PrivacyPage() {
 
         <section>
           <h2 className="font-display text-xl font-bold tracking-tight">
-            No accounts, no passwords
+            Profiles, not accounts
           </h2>
           <p className="mt-2 text-ink-soft dark:text-stone-300">
-            Signing in asks for an email, but it is only a name tag. It tells the app whose saved
-            work to load when a class shares one computer. There is no password because there is no
-            server to check one against, and the sign-in dialog says so. The email never leaves
-            this browser, and anyone using this computer can open the work saved on it, so do not
-            put anything private in here.
+            You can put a profile name on this device, but it is only a name tag. It tells the app
+            whose saved work to load when a class shares one computer. We do not ask for an email,
+            and there is no password, because there is no server to check one against. The name
+            never leaves this browser, and anyone using this computer can open the work saved on
+            it, so do not put anything private in here.
           </p>
         </section>
 

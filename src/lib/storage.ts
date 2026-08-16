@@ -3,8 +3,8 @@
  * Everything the app remembers (theme, progress, reflections) lives under
  * the "ee:" prefix, so it is easy to inspect or clear in DevTools.
  *
- * When somebody is signed in, their saved work also sits under a scope of
- * their own, so two students sharing a computer never overwrite each other.
+ * When a profile is in use, its saved work also sits under a scope of its own,
+ * so two students sharing a computer never overwrite each other.
  */
 const PREFIX = 'ee:'
 
@@ -63,7 +63,7 @@ export function rawSnapshot(key: string): string | null {
 }
 
 /* ---- Unscoped access, for things that belong to the browser rather than to
-       one person: the theme, and the record of who is signed in. ---- */
+       one person: the theme, and the record of which profile is in use. ---- */
 
 export function loadGlobalJson<T>(key: string, fallback: T): T {
   try {
@@ -100,12 +100,12 @@ export function scopeHasData(targetScope: string, keys: string[]): boolean {
 }
 
 /**
- * Move guest work into a brand new account, so a first sign-in does not look
- * like it wiped everything.
+ * Move guest work into a brand new profile, so picking a profile for the first
+ * time does not look like it wiped everything.
  *
  * MOVES, does not copy: a leftover guest slot would be inherited by the next
- * student to sign in on a shared computer. Accounts that already hold data are
- * returning users, so they keep theirs and the guest slot is left alone.
+ * student to pick a profile on a shared computer. Scopes that already hold data
+ * are returning students, so they keep theirs and the guest slot is left alone.
  */
 export function moveGuestDataInto(targetScope: string, keys: string[]): boolean {
   try {

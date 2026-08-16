@@ -24,11 +24,23 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # The verify scripts import .ts sources directly, so Node must strip
+          # types without a flag. That landed in 22.18; 24 is the current LTS
+          # and has it across the whole line.
+          node-version: 24
+          # Keyed on package-lock.json. This only warms the ~/.npm download
+          # cache, it never skips a step: npm ci, lint, build and verify below
+          # all run on every push, cache hit or miss.
           cache: npm
 
       - run: npm ci
+      - run: npm run lint
       - run: npm run build
+
+      # Physics and level guards. `npm run verify` runs every
+      # scripts/verify-*.mjs and exits non-zero if any of them fails, which
+      # fails this job. `deploy` needs `build`, so nothing ships on a red check.
+      - run: npm run verify
 
       # GitHub Pages has no SPA fallback, so serve the app for unknown paths
       # (e.g. /eng-ex/explore/nuclear) by copying index.html to 404.html.

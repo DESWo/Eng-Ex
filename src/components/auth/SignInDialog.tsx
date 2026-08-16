@@ -1,35 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Info, LogIn, X } from 'lucide-react'
+import { Info, User, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useDialogChrome } from '@/components/auth/useDialogChrome'
 import { useProfile } from '@/hooks/useProfile'
-import { accountHasWork, guestHasWork, isValidEmail, loadProfile, normalizeEmail } from '@/lib/profile'
+import {
+  checkProfileName,
+  guestHasWork,
+  loadProfile,
+  MAX_PROFILE_NAME,
+  nameHasWork,
+} from '@/lib/profile'
 import { cn } from '@/lib/utils'
 
-export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { signIn } = useProfile()
-  const [email, setEmail] = useState('')
+/** Pick which local profile this browser saves under. Not a sign-in. */
+export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { switchProfile } = useProfile()
+  const [name, setName] = useState('')
   const [touched, setTouched] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const valid = isValidEmail(email)
-  // Show the error while typing, not on blur, so Continue is never greyed out
-  // without a reason next to it.
-  const showError = !valid && (touched ? email.trim().length > 0 : email.trim().length > 3)
-  // Guest work only moves into an EMPTY account, so the banner cannot promise
-  // anything until there is a valid address to check against.
+  const problem = checkProfileName(name)
+  // An empty box is the starting state, not a mistake, so it only reads as an
+  // error once the person has tried to submit or left the field.
+  const showError = problem === 'long' || (problem === 'empty' && touched)
+  // Guest work only moves into an EMPTY profile, so the banner cannot promise
+  // anything until there is a usable name to check against.
   const guestWork = open && !loadProfile() && guestHasWork()
-  const carryDecided = guestWork && valid
-  const accountKeepsItsOwn = carryDecided && accountHasWork(email)
+  const carryDecided = guestWork && problem === null
+  const profileKeepsItsOwn = carryDecided && nameHasWork(name)
 
   useDialogChrome(open, panelRef, onClose)
 
   useEffect(() => {
     if (!open) return
-    setEmail('')
+    setName('')
     setTouched(false)
     const t = setTimeout(() => inputRef.current?.focus(), 60)
     return () => clearTimeout(t)
@@ -38,8 +45,8 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setTouched(true)
-    if (!valid) return
-    signIn(normalizeEmail(email))
+    if (problem !== null) return
+    switchProfile(name)
     onClose()
   }
 
@@ -62,7 +69,7 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="signin-title"
+            aria-labelledby="profile-title"
             initial={{ opacity: 0, y: 18, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -71,11 +78,11 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 id="signin-title" className="font-display text-xl font-bold tracking-tight">
-                  Save your progress
+                <h2 id="profile-title" className="font-display text-xl font-bold tracking-tight">
+                  Pick a profile on this device
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft dark:text-stone-400">
-                  Enter your email so the app knows whose work to load.
+                  A name tells this browser whose work to load when a class shares a computer.
                 </p>
               </div>
               <button
@@ -89,21 +96,21 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
             </div>
 
             <form onSubmit={submit} noValidate>
-              <label htmlFor="signin-email" className="font-display text-sm font-semibold">
-                Email
+              <label htmlFor="profile-name" className="font-display text-sm font-semibold">
+                Profile name
               </label>
               <input
-                id="signin-email"
+                id="profile-name"
                 ref={inputRef}
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="you@school.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="Alex R"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 onBlur={() => setTouched(true)}
                 aria-invalid={showError}
-                aria-describedby={showError ? 'signin-error' : undefined}
+                aria-describedby={showError ? 'profile-error' : 'profile-hint'}
                 className={cn(
                   'mt-1.5 w-full rounded-2xl border-2 bg-transparent px-4 py-3 font-display text-base outline-none transition-colors',
                   'placeholder:text-stone-400 dark:placeholder:text-stone-600',
@@ -112,31 +119,40 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
                     : 'border-stone-200 focus:border-ink dark:border-white/15 dark:focus:border-stone-300',
                 )}
               />
-              {showError && (
-                <p id="signin-error" className="mt-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400">
-                  That does not look like an email address. Check for a missing @ or a typo.
+              {showError ? (
+                <p
+                  id="profile-error"
+                  className="mt-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400"
+                >
+                  {problem === 'long'
+                    ? `That is longer than ${MAX_PROFILE_NAME} characters. A first name works fine.`
+                    : 'Type a name for this profile. A first name works fine.'}
+                </p>
+              ) : (
+                <p id="profile-hint" className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
+                  Letters, numbers and spaces. Use the same name next time to find your work again.
                 </p>
               )}
 
               {carryDecided &&
-                (accountKeepsItsOwn ? (
+                (profileKeepsItsOwn ? (
                   <p className="mt-3 rounded-xl bg-amber-100 px-3.5 py-2.5 text-sm font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
-                    That account already has progress here, so it keeps its own work. What you played
-                    as a guest stays on this browser under the guest profile, and sign out brings you
+                    That profile already has progress on this device, so it keeps its own work. What
+                    you played as a guest stays here under the guest profile, and leaving brings you
                     back to it.
                   </p>
                 ) : (
                   <p className="mt-3 rounded-xl bg-emerald-100 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    The progress already on this browser will be moved into your account.
+                    The progress already on this browser will be moved into this profile.
                   </p>
                 ))}
 
               <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-stone-100 px-3.5 py-2.5 dark:bg-white/5">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-ink-soft dark:text-stone-400" />
                 <p className="text-xs leading-relaxed text-ink-soft dark:text-stone-400">
-                  There is no password, because there is no server yet. Your work is saved in this
-                  browser only, and anyone using this computer can open it. Do not put anything
-                  private in here.
+                  This is a name tag, not an account. There is no password and no server, your work
+                  is saved in this browser only, and anyone using this computer can open it. Do not
+                  put anything private in here.
                 </p>
               </div>
 
@@ -144,9 +160,9 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
                 <Button type="button" variant="ghost" onClick={onClose}>
                   Not now
                 </Button>
-                <Button type="submit" variant="primary" disabled={!valid}>
-                  <LogIn className="h-4 w-4" />
-                  Continue
+                <Button type="submit" variant="primary" disabled={problem !== null}>
+                  <User className="h-4 w-4" />
+                  Use this device profile
                 </Button>
               </div>
             </form>

@@ -64,8 +64,8 @@ export const aboutRoadmap: { heading: string; items: RoadmapItem[] } = {
     },
     {
       icon: Layers,
-      title: 'More fields',
-      body: 'Biomedical, materials, and software engineering, each with the same three games and five levels as the twelve already here.',
+      title: 'Depth instead of more fields',
+      body: 'Twelve fields is the whole list. What is left is making these 36 games better: a proper intro for every one, the models checked against published numbers, and a teacher read through the copy.',
       status: 'planned',
     },
     {

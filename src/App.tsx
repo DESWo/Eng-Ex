@@ -7,19 +7,48 @@ import { Footer } from '@/components/layout/Footer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { ScrollProgress } from '@/components/ui/ScrollProgress'
 import { LandingPage } from '@/pages/LandingPage'
-import { DisciplinePage } from '@/pages/DisciplinePage'
-import { AboutPage } from '@/pages/AboutPage'
-import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProfileProvider, useProfile } from '@/hooks/useProfile'
 import { setPreview, usePreview } from '@/lib/preview'
 
-// teacher-facing pages get their own chunks
+// Only the landing page ships in the entry chunk. Everything else is a route
+// split, so a first-time visitor downloads the hero and nothing behind it.
+const importDisciplinePage = () => import('@/pages/DisciplinePage')
+const DisciplinePage = lazy(() =>
+  importDisciplinePage().then((m) => ({ default: m.DisciplinePage })),
+)
+const AboutPage = lazy(() =>
+  import('@/pages/AboutPage').then((m) => ({ default: m.AboutPage })),
+)
+const NotFoundPage = lazy(() =>
+  import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+)
+// teacher-facing and reference pages get their own chunks
 const TeacherPage = lazy(() =>
   import('@/pages/TeacherPage').then((m) => ({ default: m.TeacherPage })),
 )
 const PrivacyPage = lazy(() =>
   import('@/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
 )
+const TechnicalNotesPage = lazy(() =>
+  import('@/pages/TechnicalNotesPage').then((m) => ({ default: m.TechnicalNotesPage })),
+)
+
+/**
+ * /explore/:slug is the one route almost every visitor clicks next, so warm its
+ * chunk once the browser is idle. After first paint, so it costs the hero nothing.
+ */
+function usePrefetchDisciplinePage() {
+  useEffect(() => {
+    const idle = window.requestIdleCallback
+    const warm = () => void importDisciplinePage()
+    if (typeof idle !== 'function') {
+      const t = window.setTimeout(warm, 2000)
+      return () => window.clearTimeout(t)
+    }
+    const id = idle(warm, { timeout: 4000 })
+    return () => window.cancelIdleCallback?.(id)
+  }, [])
+}
 
 /** Jump back to the top whenever the route changes. */
 function ScrollToTop() {
@@ -75,6 +104,7 @@ function PreviewBanner() {
 
 function Shell() {
   const { profile } = useProfile()
+  usePrefetchDisciplinePage()
   return (
     <div className="flex min-h-screen flex-col">
       {/* first tab stop: skips keyboard users past the navbar */}
@@ -96,6 +126,7 @@ function Shell() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/teacher" element={<TeacherPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/technical" element={<TechnicalNotesPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>

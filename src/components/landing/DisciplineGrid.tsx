@@ -184,7 +184,8 @@ export function DisciplineGrid() {
 
       <p className="mt-16 text-center text-sm text-ink-soft dark:text-stone-400">
         <Doodle name="star" className="mr-1.5 inline-block h-4 w-4 align-[-2px]" />
-        Even more on the way: biomedical, materials, software, and beyond.
+        Twelve fields and 36 games, and that is the whole list. The work from here goes into
+        making these better, not adding more.
       </p>
     </section>
   )

@@ -17,6 +17,9 @@ export function Footer() {
           <Link to="/teacher" className={quietLink}>
             For teachers
           </Link>
+          <Link to="/technical" className={quietLink}>
+            Technical notes
+          </Link>
           <Link to="/privacy" className={quietLink}>
             Privacy
           </Link>

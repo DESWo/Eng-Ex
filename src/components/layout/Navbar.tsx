@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { LogIn, LogOut, Save } from 'lucide-react'
+import { LogOut, Save, User, UserPlus } from 'lucide-react'
 import { SoundToggle } from '@/components/ui/SoundToggle'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
-import { SignInDialog } from '@/components/auth/SignInDialog'
+import { ProfileDialog } from '@/components/auth/SignInDialog'
 import { SaveDialog } from '@/components/auth/SaveDialog'
 import { useProfile } from '@/hooks/useProfile'
 import { confirmSession, isSessionConfirmed } from '@/lib/profile'
@@ -27,7 +27,7 @@ const tabClass = (isActive: boolean) =>
   )
 
 export function Navbar() {
-  const { profile, signOut } = useProfile()
+  const { profile, leaveProfile } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   // A stored profile outlives the session that created it, so on a shared
@@ -46,7 +46,7 @@ export function Navbar() {
   }
 
   const notMe = () => {
-    signOut()
+    leaveProfile()
     setUnconfirmed(false)
   }
 
@@ -77,31 +77,37 @@ export function Navbar() {
 
             {profile ? (
               <div className="flex items-center gap-1">
-                <span
-                  className="hidden max-w-[11rem] truncate rounded-full bg-stone-900/5 px-3 py-2 font-display text-sm font-semibold text-ink dark:bg-white/10 dark:text-stone-100 sm:block"
-                  title={profile.email}
-                >
-                  {profile.email}
-                </span>
+                {/* The name is also the way to switch, so a shared machine never
+                    has to leave a profile just to hand over. */}
                 <button
                   type="button"
-                  onClick={signOut}
-                  aria-label="Sign out"
+                  onClick={() => setDialogOpen(true)}
+                  aria-label={`Switch profile, using ${profile.name}`}
+                  title={`Using ${profile.name}. Click to switch.`}
+                  className={cn(tabClass(false), 'flex items-center gap-1.5')}
+                >
+                  <User className="h-4 w-4 shrink-0" />
+                  <span className="hidden max-w-[9rem] truncate sm:inline">{profile.name}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={leaveProfile}
+                  aria-label="Leave this profile"
                   className={cn(tabClass(false), 'flex items-center gap-1.5')}
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sign out</span>
+                  <span className="hidden sm:inline">Leave</span>
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setDialogOpen(true)}
-                aria-label="Sign in"
+                aria-label="Pick a profile on this device"
                 className={cn(tabClass(false), 'flex items-center gap-1.5')}
               >
-                <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign in</span>
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Profile</span>
               </button>
             )}
 
@@ -114,7 +120,7 @@ export function Navbar() {
           <div className="border-t border-amber-900/10 bg-amber-100 dark:border-amber-200/15 dark:bg-amber-500/15 print:hidden">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-3 gap-y-1.5 px-4 py-2 sm:px-6">
               <p className="font-display text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Signed in as <span className="break-all">{profile.email}</span>. You?
+                This device is set to <span className="break-all">{profile.name}</span>. You?
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -129,7 +135,7 @@ export function Navbar() {
                   onClick={notMe}
                   className="rounded-full border border-amber-900/30 px-3 py-1 font-display text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-900/10 dark:border-amber-200/40 dark:text-amber-200 dark:hover:bg-amber-200/10"
                 >
-                  Sign out
+                  Not me
                 </button>
               </div>
             </div>
@@ -137,7 +143,7 @@ export function Navbar() {
         )}
       </header>
 
-      <SignInDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <ProfileDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
       <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
     </>
   )

@@ -84,7 +84,7 @@ export const disciplines: Discipline[] = [
         id: 'catapult',
         title: 'Catapult Lab',
         goal: 'Knock the fort down',
-        realJob: 'Launch engineers tune release angle and speed like this, from aircraft-carrier catapults to Mars landers.',
+        realJob: 'Launch engineers work the same angle-and-speed trade, from aircraft-carrier catapults to Mars landers. This flight ignores air drag, which a real one cannot.',
         why: [
           {
             icon: Gauge,
@@ -130,7 +130,7 @@ export const disciplines: Discipline[] = [
         id: 'beam',
         title: 'Balance Act',
         goal: 'Level the beam',
-        realJob: 'Rigging engineers balance crane loads exactly like this before anything heavy leaves the ground.',
+        realJob: 'Rigging engineers use the same moment balance to plan a heavy lift, with load charts and safety factors stacked on top of it.',
         why: [
           {
             icon: Weight,
@@ -213,7 +213,7 @@ export const disciplines: Discipline[] = [
         id: 'bridge',
         title: 'Bridge Builder',
         goal: 'Get the truck across',
-        realJob: 'Structural engineers run this same member-force check on every real truss bridge before a single beam is ordered.',
+        realJob: 'Structural engineers check member forces this same way, from a stiffness matrix like the one solving underneath this game.',
         why: [
           {
             icon: Columns3,
@@ -251,7 +251,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Route,
             title: 'Everyone shares the crossing',
-            body: 'Give walkers their own phase and every changeover burns a few more seconds of green. Real traffic engineers juggle cars, walkers, and lost time on the same one-minute clock.',
+            body: 'Give walkers their own phase and every changeover burns a few more seconds of green. Real traffic engineers juggle cars, walkers, and lost time inside one cycle like this, though a real cycle usually runs longer than a minute.',
           },
         ],
       },
@@ -342,7 +342,7 @@ export const disciplines: Discipline[] = [
         id: 'power-grid',
         title: 'Power Up',
         goal: 'Light every house',
-        realJob: 'Grid planners route transmission lines with exactly this delivery-loss and survive-one-line-down thinking.',
+        realJob: 'Grid planners route transmission lines against the same two questions: what is lost on the way, and what happens when one line goes down.',
         why: [
           {
             icon: Cable,
@@ -365,7 +365,7 @@ export const disciplines: Discipline[] = [
         id: 'circuit',
         title: 'Circuit Lab',
         goal: 'Wire a working gadget',
-        realJob: 'Electronics engineers breadboard circuits like this before any design gets printed and soldered.',
+        realJob: 'Electronics engineers often breadboard a circuit like this before the design gets printed and soldered.',
         why: [
           {
             icon: Cable,
@@ -388,7 +388,7 @@ export const disciplines: Discipline[] = [
         id: 'overload',
         title: "Don't Trip",
         goal: 'Balance the load',
-        realJob: 'Electricians and building engineers balance circuits on every breaker panel they sign off.',
+        realJob: 'Electricians and building engineers spread loads across circuits when they lay out a breaker panel, on the same limit-per-circuit idea.',
         why: [
           {
             icon: Gauge,
@@ -497,7 +497,7 @@ export const disciplines: Discipline[] = [
         id: 'shield',
         title: 'Shield Stack',
         goal: 'Make it safe to stand there',
-        realJob: 'Radiation-protection engineers layer shielding for hospitals, labs, and shipping flasks with this exact math.',
+        realJob: 'Radiation-protection engineers layer shielding for hospitals, labs, and shipping flasks. This is a simplified version of the attenuation calculation they start from.',
         why: [
           {
             icon: ShieldCheck,
@@ -520,7 +520,7 @@ export const disciplines: Discipline[] = [
         id: 'decay-heat',
         title: 'Decay Heat',
         goal: 'Keep it cool for a day',
-        realJob: 'Nuclear safety engineers plan the cooling that must keep running after shutdown. It is the hardest lesson in the field.',
+        realJob: 'Nuclear safety engineers plan the cooling that has to keep running after shutdown. It is one of the hardest lessons the field has learned.',
         why: [
           {
             icon: Flame,
@@ -623,7 +623,7 @@ export const disciplines: Discipline[] = [
         id: 'orbit',
         title: 'Orbit Insertion',
         goal: 'Park it in a circle',
-        realJob: 'Mission planners at NASA and SpaceX design burn sequences exactly like this for every satellite that flies.',
+        realJob: 'Mission planners at NASA and SpaceX raise orbits with this same two-burn transfer, worked out here without the fuel and timing detail a real plan carries.',
         why: [
           {
             icon: Rocket,
@@ -638,7 +638,7 @@ export const disciplines: Discipline[] = [
           {
             icon: PiggyBank,
             title: 'Every drop is planned years ahead',
-            body: 'Nothing refuels in orbit, so a mission budgets its speed changes before launch. Real transfers use this exact two-burn manoeuvre because it is the cheapest one there is.',
+            body: 'Nothing refuels in orbit, so a mission budgets its speed changes before launch. Real transfers use this same two-burn manoeuvre because for most orbit changes it is the cheapest one there is.',
           },
         ],
       },
@@ -726,7 +726,7 @@ export const disciplines: Discipline[] = [
         id: 'assembly',
         title: 'Assembly Line',
         goal: 'Beat the target rate',
-        realJob: 'Line balancing is the bread and butter of industrial engineers in every factory on earth.',
+        realJob: 'Line balancing is bread-and-butter work for industrial engineers wherever a product moves down a line.',
         why: [
         {
           icon: Timer,
@@ -749,7 +749,7 @@ export const disciplines: Discipline[] = [
         id: 'quality-gate',
         title: 'Quality Gate',
         goal: 'Stop shipping faults',
-        realJob: 'Quality engineers decide where the inspection desks go. Catching defects early is how factories stay profitable.',
+        realJob: 'Quality engineers decide where the inspection desks go. Catching defects early is one of the biggest levers on what a factory wastes.',
         why: [
           {
             icon: Search,
@@ -759,7 +759,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Factory,
             title: 'End-of-line checking can lose money',
-            body: 'Inspecting only at the end catches every fault and still costs more than inspecting nothing, because you are binning finished goods. Real factories check just before the expensive steps instead.',
+            body: 'Inspecting only at the end catches every fault and still costs more than inspecting nothing, because you are binning finished goods. A common answer is to check just before the expensive steps instead.',
           },
           {
             icon: PiggyBank,
@@ -772,7 +772,7 @@ export const disciplines: Discipline[] = [
         id: 'warehouse',
         title: 'Warehouse Layout',
         goal: 'Save the pickers a walk',
-        realJob: 'Logistics engineers slot products by pick frequency in every fulfillment center you have ever ordered from.',
+        realJob: 'Logistics engineers slot products by how often they get picked. This is a simplified version of the slotting problem a fulfillment center solves.',
         why: [
           {
             icon: Route,
@@ -890,7 +890,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Weight,
             title: 'Redundancy is paid in mass and money',
-            body: 'A spare is a whole extra piece of hardware to build, test, and lift. Real spacecraft carry backups only where the sums say the risk is worth the kilograms.',
+            body: 'A spare is a whole extra piece of hardware to build, test, and lift. Real spacecraft carry backups where the sums say the risk is worth the kilograms.',
           },
         ],
       },
@@ -908,7 +908,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Route,
             title: 'Speeding up spare work buys nothing',
-            body: 'Pour money into a task that was already waiting around and the project finishes on exactly the same day. It is the single most common way project budgets get wasted, and it always feels productive at the time.',
+            body: 'Pour money into a task that was already waiting around and the project finishes on exactly the same day. It is one of the most common ways project money gets wasted, and it always feels productive at the time.',
           },
           {
             icon: TrendingUp,
@@ -978,7 +978,7 @@ export const disciplines: Discipline[] = [
         id: 'robot-arm',
         title: 'Claw Machine',
         goal: 'Win every prize',
-        realJob: 'Robotics engineers solve this exact inverse-kinematics problem thousands of times a second in every factory arm.',
+        realJob: 'Robot controllers solve inverse kinematics like this, thousands of times a second. A factory arm runs the same idea with six joints instead of two.',
         why: [
         {
           icon: Move,
@@ -993,7 +993,7 @@ export const disciplines: Discipline[] = [
         {
           icon: Cpu,
           title: 'The arm solves it, not you',
-          body: 'You dragged a point and the arm worked backwards to the angles each joint had to hold. That backwards step is the hard part, and it is running inside every arm that moves.',
+          body: 'You dragged a point and the arm worked backwards to the angles each joint had to hold. That backwards step is the hard part, and a version of it runs inside any arm you can point at a target.',
         },
         ],
       },
@@ -1024,7 +1024,7 @@ export const disciplines: Discipline[] = [
         id: 'gripper',
         title: 'Safe Grip',
         goal: 'Hold it without breaking it',
-        realJob: 'Grasping engineers set force windows so warehouse robots can pick up an egg and an engine block with the same hand.',
+        realJob: 'Grasping engineers set force windows so a warehouse robot can lift an egg and a full jar with the same hand.',
         why: [
           {
             icon: Scale,
@@ -1104,7 +1104,7 @@ export const disciplines: Discipline[] = [
         id: 'water',
         title: 'Clean Stream',
         goal: 'Make the water safe',
-        realJob: 'Treatment-plant engineers order these exact stages, coarse to fine, in every plant that makes water drinkable.',
+        realJob: 'Treatment-plant engineers order stages coarse to fine like this. A real plant has more of them, picked for what is actually in the source water.',
         why: [
         {
           icon: Filter,
@@ -1150,7 +1150,7 @@ export const disciplines: Discipline[] = [
         id: 'stormwater',
         title: 'Stormwater',
         goal: 'Keep it off the road',
-        realJob: 'Drainage engineers submit schemes like this one to planning for every big car park and housing estate.',
+        realJob: 'Drainage engineers submit schemes like this one to planning before a big car park or housing estate gets built.',
         why: [
           {
             icon: Droplets,
@@ -1230,7 +1230,7 @@ export const disciplines: Discipline[] = [
         id: 'reaction',
         title: 'Sweet Spot',
         goal: 'Get the yield up',
-        realJob: 'Process engineers pick the operating temperature of every industrial reactor against exactly this rate-versus-equilibrium trade.',
+        realJob: 'Process engineers pick the operating temperature of a reversible exothermic reactor against this same rate-versus-equilibrium trade.',
         why: [
           {
             icon: Flame,
@@ -1253,7 +1253,7 @@ export const disciplines: Discipline[] = [
         id: 'heat-exchanger',
         title: 'Counterflow',
         goal: 'Recover the heat',
-        realJob: 'Every refinery and power plant recovers waste heat with exchangers like this, and counter-current is the default for exactly this reason.',
+        realJob: 'Refineries and power plants recover waste heat with exchangers like this, and counter-current is the usual arrangement for this reason.',
         why: [
           {
             icon: Thermometer,
@@ -1276,7 +1276,7 @@ export const disciplines: Discipline[] = [
         id: 'titration',
         title: 'The Right Dose',
         goal: 'Land on neutral',
-        realJob: 'Lab and process chemists neutralise batches to a target pH constantly, and the logarithmic cliff is exactly why it takes skill.',
+        realJob: 'Lab and process chemists neutralise batches to a target pH, and the cliff near the end is why it takes care. This is a simplified single weak acid version of that curve.',
         why: [
           {
             icon: Droplets,
@@ -1393,7 +1393,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Feather,
             title: 'That is why beams are I-shaped',
-            body: 'Cut out the lazy middle and put that metal at the top and bottom instead, and you keep nearly all the stiffness for a fraction of the weight. Every steel-framed building you have walked past is built on this one idea.',
+            body: 'Cut out the lazy middle and put that metal at the top and bottom instead, and you keep nearly all the stiffness for a fraction of the weight. Nearly every steel-framed building you have walked past is built on this one idea.',
           },
         ],
       },
@@ -1481,7 +1481,7 @@ export const disciplines: Discipline[] = [
         id: 'logic',
         title: 'Logic Lab',
         goal: 'Match the rule',
-        realJob: 'Chip designers build every processor from exactly these gates. Billions of them.',
+        realJob: 'Chip designers build processors from gates like these, billions of them, mostly the NAND and NOR versions of the same logic.',
         why: [
         {
           icon: ToggleLeft,
@@ -1527,7 +1527,7 @@ export const disciplines: Discipline[] = [
         id: 'error-check',
         title: 'Error Check',
         goal: 'Make the link trustworthy',
-        realJob: 'Coding-theory engineers protect deep-space links, QR codes, and SSDs with these very check bits.',
+        realJob: 'Coding-theory engineers protect deep-space links, QR codes, and SSDs with check bits. The real codes are much stronger than this one, built on the same idea.',
         why: [
           {
             icon: ShieldCheck,
