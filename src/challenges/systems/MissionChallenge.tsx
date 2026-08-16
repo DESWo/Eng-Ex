@@ -362,7 +362,7 @@ export function MissionChallenge({ onComplete }: ChallengeProps) {
         })}
       </div>
       <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
-        Each block is {BLOCK} kg. Blocks grey out when the rocket has nothing left to give.
+        Each block is {BLOCK} kg. Blocks gray out when the rocket has nothing left to give.
       </p>
 
       {/* Feedback */}

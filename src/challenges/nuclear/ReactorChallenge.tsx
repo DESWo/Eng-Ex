@@ -99,7 +99,7 @@ const LEVELS: ChallengeLevel<ReactorSetup>[] = [
     phase: 'understand',
     concept: 'Thermal lag',
     teach: 'A real core does not jump to your setting, it drifts there over many seconds. Chase the needle and you will overshoot, correct, and overshoot again. Make a small move, then wait and watch.',
-    setup: { label: 'Morning ramp', band: [760, 860], phases: null, phaseTicks: 0, pumpsDraw: true, lag: true, chart: false, brief: 'Same job, but now the core responds like the thousand-tonne machine it is.' },
+    setup: { label: 'Morning ramp', band: [760, 860], phases: null, phaseTicks: 0, pumpsDraw: true, lag: true, chart: false, brief: 'Same job, but now the core responds like the thousand-ton machine it is.' },
   },
   {
     n: 4,

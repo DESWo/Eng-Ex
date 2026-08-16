@@ -27,7 +27,7 @@ const SPRING_IDS = Object.keys(SPRINGS) as SpringId[]
 
 const DAMPER_C = 2000 // N·s/m per shock absorber
 const MAX_DAMPERS = 3
-const TRAVEL = 0.16 // metres of suspension travel before it bottoms out
+const TRAVEL = 0.16 // meters of suspension travel before it bottoms out
 const G = 9.81
 
 /** Natural frequency of the body on its springs, in Hz. */
@@ -79,7 +79,7 @@ const LEVELS: ChallengeLevel<RideSetup>[] = [
     title: 'Now load the van',
     phase: 'understand',
     concept: 'Sag eats your travel',
-    teach: 'Half a tonne of cargo squashes the springs before the road does anything. A soft spring squats through all its travel and slams metal on metal, so comfort now competes with carrying.',
+    teach: 'Half a ton of cargo squashes the springs before the road does anything. A soft spring squats through all its travel and slams metal on metal, so comfort now competes with carrying.',
     setup: { label: 'Delivery day', mass: 1200, cargoNote: '500 kg of cargo', maxHarsh: 10, roadHz: null, maxAmp: 99, sagMatters: true, curve: false, brief: 'The same van, loaded. The plush setup from level 1 is about to hit its bump stops.' },
   },
   {

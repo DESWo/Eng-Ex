@@ -59,9 +59,9 @@ interface ShapeProps {
   className?: string
   /** Tailwind stroke class for the hatching, e.g. "stroke-amber-400". */
   fillClassName?: string
-  /** Literal outline colour, for palettes that live in data. Wins over `className`: it lands inline. */
+  /** Literal outline color, for palettes that live in data. Wins over `className`: it lands inline. */
   stroke?: string
-  /** Literal hatching colour. Presence of either fill prop enables hatching. */
+  /** Literal hatching color. Presence of either fill prop enables hatching. */
   hatchStroke?: string
   /** Override the pen. */
   options?: Options

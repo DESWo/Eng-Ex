@@ -19,7 +19,7 @@ stays exactly as the rest of the app has it.
 quantity goes on a `Gauge`. A quantity over time goes on the `ChartRecorder`. A
 fixed number for the run (a budget, a limit, a setpoint) goes on a `Plate`. A
 current number that is not worth a dial goes in a `DigitalWindow`. Do not use
-`Meter`, `ProgressBar` or a coloured pill in a nuclear game.
+`Meter`, `ProgressBar` or a colored pill in a nuclear game.
 
 **Trouble is announced by latching annunciators, never by turning a readout
 red.** A tile that trips stays lit after the condition clears and is cleared
@@ -45,7 +45,7 @@ second person. No em dashes. Exclamation marks only for in-game events, e.g.
 - Failure: the status line turns salmon (`text-[#f08678]`) and the matching
   annunciator latches red. Nothing shakes, nothing flashes full screen.
 - Warning: amber annunciator plus an amber `tone` on the affected digits. The
-  needle itself never changes colour, only the band it sits in.
+  needle itself never changes color, only the band it sits in.
 
 ## Primitives
 
@@ -54,7 +54,7 @@ second person. No em dashes. Exclamation marks only for in-game events, e.g.
 | `PanelSurface` | The board: brushed slate, bezel, screws, engraved nameplate. `header` takes plates. | n/a |
 | `PanelBay` | A recessed group with an engraved legend, `right` for digital repeats. | n/a |
 | `Plate` / `DigitalWindow` / `Engraved` / `Note` | Stamped plate, cut window with mono digits, engraved legend, readable sentence. | n/a |
-| `Gauge` | Needle on a 220° arc, numbered scale, coloured bands, digital repeat. Needle lags and settles; snaps under reduced motion. | `role="meter"` with `aria-valuetext`, not focusable |
+| `Gauge` | Needle on a 220° arc, numbered scale, colored bands, digital repeat. Needle lags and settles; snaps under reduced motion. | `role="meter"` with `aria-valuetext`, not focusable |
 | `useAnnunciators` + `AnnunciatorPanel` | Latching alarm windows plus the ack button. | Ack is a button; each tile carries its state in `sr-only` text; new alarms go through one polite live region |
 | `ChartRecorder` | Pens on ruled paper, newest sample at the right edge. | `role="img"` with a sentence summary |
 | `BankLever` | Dragged handle in a slot with detent marks. | Arrows, shift+arrows, PageUp/Down, Home/End, `role="slider"` |

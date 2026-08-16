@@ -16,7 +16,7 @@ interface WireProps {
 
 /**
  * One conductor. Right angles only, hops at every crossing, and the state is in
- * the colour: dim ink when dead, amber when carrying, red when it is the fault.
+ * the color: dim ink when dead, amber when carrying, red when it is the fault.
  *
  * The flow overlay reuses the app's `.wire-flow` class, which already stops
  * under prefers-reduced-motion.

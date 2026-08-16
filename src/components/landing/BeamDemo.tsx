@@ -228,7 +228,7 @@ export function BeamDemo() {
           aria-valuemin={A_MIN}
           aria-valuemax={A_MAX}
           aria-valuenow={Number(a.toFixed(1))}
-          aria-valuetext={`Load ${a.toFixed(1)} metres from the left support. Deflection under the load ${deflMm.toFixed(1)} millimetres. Left reaction ${r1.toFixed(2)} kilonewtons, right reaction ${r2.toFixed(2)} kilonewtons.`}
+          aria-valuetext={`Load ${a.toFixed(1)} meters from the left support. Deflection under the load ${deflMm.toFixed(1)} millimeters. Left reaction ${r1.toFixed(2)} kilonewtons, right reaction ${r2.toFixed(2)} kilonewtons.`}
           onKeyDown={nudge}
           onFocus={(e) => setFocused(e.currentTarget.matches(':focus-visible'))}
           onBlur={() => setFocused(false)}

@@ -171,7 +171,7 @@ section('Source agreement')
 section('Chemistry')
 {
   // The one number every titration lab writeup contains: at half equivalence the
-  // acid is half neutralised, [A-] = [HA], so the log term vanishes and pH = pKa.
+  // acid is half neutralized, [A-] = [HA], so the log term vanishes and pH = pKa.
   const half = V_EQ / 2
   const err = Math.abs(pHof(half) - PKA)
   check('at half equivalence the pH is exactly the pKa', err < 1e-12, `pH ${pHof(half).toFixed(6)} at ${half} mL against pKa ${PKA}`)
@@ -349,7 +349,7 @@ section('Level 5 pars, three ways to be right')
   check('NO winning play meets all three pars', three === 0, `checked all ${plays.length} winning volumes`)
   const counts = [0, 1, 2].map((i) => plays.filter((p) => met(p)[i]).length)
   check('each par is individually reachable', counts.every((c) => c >= 1), `offset ${counts[0]}, reagent ${counts[1]}, pours ${counts[2]} of ${plays.length} plays`)
-  check('the cheapest and the most centred are different plays', plays[0].reagent < plays[1].reagent && plays[0].offset > plays[1].offset, `${plays[0].v} mL is leanest at ${plays[0].offset} tenths off centre, ${plays[1].v} mL is centred at ${plays[1].offset} but costs ${plays[1].pours} pours`)
+  check('the cheapest and the most centered are different plays', plays[0].reagent < plays[1].reagent && plays[0].offset > plays[1].offset, `${plays[0].v} mL is leanest at ${plays[0].offset} tenths off center, ${plays[1].v} mL is centered at ${plays[1].offset} but costs ${plays[1].pours} pours`)
   for (const p of plays) note(`${p.v} mL: pH ${pHof(p.v).toFixed(3)}, ${p.offset} tenth${p.offset === 1 ? '' : 's'} off ${mid}, ${p.pours} pours`)
 }
 

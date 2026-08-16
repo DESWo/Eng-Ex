@@ -217,7 +217,7 @@ type Phase = 'idle' | 'testing' | 'passed' | 'failed'
 /* ---------------- sheet geometry (drawing only, nothing here is scored) ------ */
 const SHEET = { w: 970, h: 712 }
 const BUS_Y = 48 // service bus across the top
-const CB_Y = 96 // branch breaker centre, one per circuit
+const CB_Y = 96 // branch breaker center, one per circuit
 const CB_LEAD = 40
 const RAIL = 150 // hot rail to neutral rail, loads bridge between them
 const COL_PITCH = 300
@@ -327,7 +327,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
   // breakers cost money, so an empty one is the third scored metric
   const circuitsUsed = round.circuits.filter((c) => onCircuit(c.id).length > 0).length
 
-  // Instruments stay neutral until the power goes on, so a colour never gives
+  // Instruments stay neutral until the power goes on, so a color never gives
   // away arithmetic the player can already do from the watts on the sheet.
   // Level 1 is the tutorial and level 4's surge markers are its concept.
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || phase === 'passed' || phase === 'failed'
@@ -407,7 +407,7 @@ export function OverloadChallenge({ onComplete }: ChallengeProps) {
     return map
   }, [round])
 
-  /** Column positions. The panel block is centred whatever the circuit count. */
+  /** Column positions. The panel block is centered whatever the circuit count. */
   const geom = useMemo(() => {
     const n = round.circuits.length
     const blockW = (n - 1) * COL_PITCH + RAIL

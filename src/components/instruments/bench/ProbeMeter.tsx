@@ -97,11 +97,11 @@ export function ProbeMeter({
         {[
           ['com', '#111', 'on the − rail'],
           ['v Ω', 'var(--bench-probe, #e5484d)', 'in your hand'],
-        ].map(([jack, colour, note]) => (
+        ].map(([jack, color, note]) => (
           <span key={jack} className="flex items-center gap-1.5">
             <span
               className="h-3.5 w-3.5 rounded-full ring-2 ring-[var(--bench-edge,rgba(255,255,255,0.13))]"
-              style={{ background: colour }}
+              style={{ background: color }}
             />
             <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--bench-dim,#a29b93)]">
               {jack} {note}

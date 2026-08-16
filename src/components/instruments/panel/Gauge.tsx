@@ -20,7 +20,7 @@ interface GaugeProps {
   max: number
   /** Unit shown on the face and in the digital repeat. */
   unit: string
-  /** Labelled ticks around the arc, including both ends. */
+  /** Labeled ticks around the arc, including both ends. */
   majorTicks?: number
   bands?: GaugeBand[]
   /** Overrides the digits under the dial. Defaults to the rounded value. */

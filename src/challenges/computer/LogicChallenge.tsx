@@ -52,7 +52,7 @@ const sameTruth = (x: readonly boolean[], y: readonly boolean[]) => x.every((v, 
 interface LogicSetup {
   label: string
   goal: string
-  /** The behaviour to match, as outputs for the four input rows. */
+  /** The behavior to match, as outputs for the four input rows. */
   truth: [boolean, boolean, boolean, boolean]
   /** Gates on the shelf. */
   options: Gate[]

@@ -45,13 +45,13 @@ const MODELS: ModelNote[] = [
     source: ['src/challenges/civil/truss.ts', 'src/challenges/civil/BridgeChallenge.tsx'],
     game: 'Bridge Builder, civil engineering',
     computes:
-      'Axial force in every beam you drew and the movement of every joint that is not anchored, for one truck load sitting on one deck joint. The game calls the solver again at every deck joint the truck rolls over, keeps the worst utilisation each member ever sees, and keeps the bent shape from whichever position sagged most. A span with too few triangles is a mechanism, and the deflections blow up rather than settle.',
+      'Axial force in every beam you drew and the movement of every joint that is not anchored, for one truck load sitting on one deck joint. The game calls the solver again at every deck joint the truck rolls over, keeps the worst utilization each member ever sees, and keeps the bent shape from whichever position sagged most. A span with too few triangles is a mechanism, and the deflections blow up rather than settle.',
     equations: [
       { expr: 'K u = f', note: 'assembled over the free joints only, two degrees of freedom each' },
       { expr: 'k = EA / L,   c = Δx / L,   s = Δy / L', note: 'per member, from the drawn geometry' },
       { expr: 'k_local = k · [[c², cs], [cs, s²]]', note: 'scattered into K at both joints, negated across the pair' },
       { expr: 'F = (EA / L) · ((u_b − u_a) · [c, s])', note: 'positive is tension, negative is compression' },
-      { expr: 'utilisation = |F| / capacity', note: 'capacity depends on the material and on the sign of F' },
+      { expr: 'utilization = |F| / capacity', note: 'capacity depends on the material and on the sign of F' },
     ],
     assumptions: [
       'Pin jointed and axial only. A beam carries force along its length and nothing else, so no joint transmits a moment.',
@@ -60,14 +60,14 @@ const MODELS: ModelNote[] = [
       'Strength is a flat number per material per direction: wood 22 in tension and 14 in compression, steel 50 and 38. Compression capacity does not fall as a member gets longer.',
       'Both banks are pinned in x and y. That is four restrained degrees of freedom where a pin and a roller would give three, so most spans you can draw are statically indeterminate. The stiffness method does not need determinacy, but the force split is not the one a determinate hand calculation would produce.',
       'Instability is a threshold, not a rank test. A whisper of grounding, EA / 1e7, is added to the diagonal so a mechanism gives huge finite movement instead of a singular matrix, and more than 60 px of movement is reported as folded.',
-      'Units are drawing pixels. 20 px is one metre of river, which is how joint movement becomes centimetres of sag. Load and capacity share one arbitrary scale with no newtons behind it.',
+      'Units are drawing pixels. 20 px is one meter of river, which is how joint movement becomes centimeters of sag. Load and capacity share one arbitrary scale with no newtons behind it.',
     ],
     errs: 'Optimistic on long compression members. With no buckling term, a slender strut is allowed to carry its full rated compression at any length, so a real bridge built to a design the game passes could fail before the game says it does. The other simplifications make the model smaller, not softer.',
     notModelled: [
       'Self weight and any distributed dead load. The only force in the system is the truck.',
       'Dynamics. The truck is a static load stepped along the deck, so there is no impact factor and no bounce.',
       'Bending, joint fixity, and connection detail.',
-      'Yielding, fatigue, and any post-failure behaviour. A member either is or is not over capacity.',
+      'Yielding, fatigue, and any post-failure behavior. A member either is or is not over capacity.',
       'Wind, temperature, and anything out of plane. The model is 2D.',
     ],
     evidence:
@@ -81,33 +81,33 @@ const MODELS: ModelNote[] = [
     source: ['src/challenges/civil/shear.ts', 'src/challenges/civil/QuakeChallenge.tsx'],
     game: 'Shake Proof, civil engineering',
     computes:
-      'One lateral displacement per floor, integrated through a 20 second synthetic earthquake at a 0.02 s step. Out come the natural periods and the first mode shape, the peak inter-storey drift ratio of every storey, the peak total acceleration every floor feels, the peak base and roof travel, the whole displacement history so the shake can be replayed frame by frame, and the first step and storey to cross the drift cap. Level 4 also runs a response spectrum: 50 log-spaced periods, each a full run of the same integrator, so the spectrum panel cannot disagree with the verdict the building got.',
+      'One lateral displacement per floor, integrated through a 20 second synthetic earthquake at a 0.02 s step. Out come the natural periods and the first mode shape, the peak inter-story drift ratio of every story, the peak total acceleration every floor feels, the peak base and roof travel, the whole displacement history so the shake can be replayed frame by frame, and the first step and story to cross the drift cap. Level 4 also runs a response spectrum: 50 log-spaced periods, each a full run of the same integrator, so the spectrum panel cannot disagree with the verdict the building got.',
     equations: [
-      { expr: 'M u¨ + C u˙ + K u = −M 1 a_g(t)', note: 'K is tridiagonal: each storey spring ties one floor to the one below' },
+      { expr: 'M u¨ + C u˙ + K u = −M 1 a_g(t)', note: 'K is tridiagonal: each story spring ties one floor to the one below' },
       {
         expr: 'k_storey = K_BARE · (3.4/h)³ · open + n · K_BRACE · (√(6² + 3.4²) / √(6² + h²))³',
-        note: 'columns bend, so a storey softens as the cube of its height; a brace is axial, so it softens as the cube of its diagonal',
+        note: 'columns bend, so a story softens as the cube of its height; a brace is axial, so it softens as the cube of its diagonal',
       },
       { expr: 'Newmark average acceleration, β = 1/4, γ = 1/2', note: 'unconditionally stable, no numerical damping' },
       { expr: 'C = a₀ M + a₁ K,   a₀ = 2ζω₁ω₂/(ω₁+ω₂),   a₁ = 2ζ/(ω₁+ω₂)', note: 'Rayleigh damping pinned to ζ = 0.05 on the first two modes' },
       { expr: 'eig( M^(−1/2) K M^(−1/2) )  by Jacobi rotation', note: 'periods and mode shapes, no shortcut formula' },
       { expr: 'x¨ + 2ζ_g ω_g x˙ + ω_g² x = −w(t) e(t),   a_g = −(2ζ_g ω_g x˙ + ω_g² x)', note: 'Kanai-Tajimi: seeded white noise through a site filter, under a rise, plateau and decay envelope, then scaled so the peak equals the level PGA' },
-      { expr: 'drift_i = |u_i − u_(i−1)| / h_i', note: 'the quantity the level is scored on, in metres of slip per metre of height' },
+      { expr: 'drift_i = |u_i − u_(i−1)| / h_i', note: 'the quantity the level is scored on, in meters of slip per meter of height' },
     ],
     assumptions: [
-      'One lateral degree of freedom per floor, floors rigid, columns in flexure. That is the right model for six storeys and the wrong one for a slender tower, where bending of the whole building takes over and floors stop staying level.',
-      'Linear elastic, with no behaviour factor. Capacities are checked against the elastic response, which is how hospitals and isolated buildings are designed and is conservative for an ordinary ductile frame.',
-      'Storey stiffness comes out of the geometry above rather than a fitted table. The 5 m glazed lobby lands at 0.236 of a normal storey, and a brace there delivers 0.688 of what the same brace delivers upstairs.',
+      'One lateral degree of freedom per floor, floors rigid, columns in flexure. That is the right model for six stories and the wrong one for a slender tower, where bending of the whole building takes over and floors stop staying level.',
+      'Linear elastic, with no behavior factor. Capacities are checked against the elastic response, which is how hospitals and isolated buildings are designed and is conservative for an ordinary ductile frame.',
+      'Story stiffness comes out of the geometry above rather than a fitted table. The 5 m glazed lobby lands at 0.236 of a normal story, and a brace there delivers 0.688 of what the same brace delivers upstairs.',
       'The ground motion is synthetic, not a recorded accelerogram, and one record is not a suite. The seed is fixed at 12345, so a design that passes once passes forever. That is a teaching decision, not a statistical one.',
-      'How many braces a storey carries matters. Which of its three bays they sit in does not, because bay position would need torsion and a 3D model.',
+      'How many braces a story carries matters. Which of its three bays they sit in does not, because bay position would need torsion and a 3D model.',
       'Rayleigh damping means higher modes are damped harder than 5%. Isolation bearings get their own explicit dashpot at the base degree of freedom rather than a smeared value, so 18% bearing damping does not leak into the frame.',
       'The Kanai-Tajimi filter itself is integrated with forward Euler at the same 0.02 s step. Only the structure gets Newmark.',
     ],
-    errs: 'Past the limit, too loud. A linear elastic model has no way to yield and shed load, so once a storey is past roughly twice the drift cap the numbers describe a building that has already come apart. The game clamps its readout at 40 mm/m for that reason and says it is clamping. Under the limit, where every level is actually scored, elastic is the correct model.',
+    errs: 'Past the limit, too loud. A linear elastic model has no way to yield and shed load, so once a story is past roughly twice the drift cap the numbers describe a building that has already come apart. The game clamps its readout at 40 mm/m for that reason and says it is clamping. Under the limit, where every level is actually scored, elastic is the correct model.',
     notModelled: [
       'Nonlinearity of any kind: no hinging, no hysteresis, no ductility, no strength degradation, no residual drift.',
       'Torsion, plan irregularity, and everything else that needs three dimensions. Vertical ground motion is absent too.',
-      'P-delta, soil-structure interaction, pounding against a neighbour, and infill cracking.',
+      'P-delta, soil-structure interaction, pounding against a neighbor, and infill cracking.',
       'Bearing nonlinearity. The isolation layer is a linear spring at 4200 kN/m with 18% damping, not a real lead-rubber or friction pendulum bearing.',
       'Ground displacement as an input. The trace under the animated ground band is double integrated and leaky high-passed for drawing only, and is never fed back to the structure, which is driven by acceleration.',
     ],
@@ -241,7 +241,7 @@ const MODELS: ModelNote[] = [
     notModelled: [
       'Temperature. Kw is fixed at 1e-14 and pKa never moves.',
       'Ionic strength and activity coefficients. Concentrations are used directly.',
-      'Indicator chemistry. The flask colour is a display mapping of pH, not a dye equilibrium.',
+      'Indicator chemistry. The flask color is a display mapping of pH, not a dye equilibrium.',
       'Polyprotic acids, mixtures, and any second equivalence point.',
       'Mixing kinetics and drop volume. A pour is instantaneous and perfectly mixed.',
       'Buffer capacity as a number. You feel it in the shape of the curve, but it is never computed or shown.',
@@ -251,7 +251,7 @@ const MODELS: ModelNote[] = [
   },
 ]
 
-/** The discrete-optimisation family, documented together. */
+/** The discrete-optimization family, documented together. */
 interface DiscreteNote {
   id: string
   title: string
@@ -345,7 +345,7 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A labelled block in the notebook two-column grid. min-w-0 on the content
+ * A labeled block in the notebook two-column grid. min-w-0 on the content
  * column matters: grid items default to min-width auto, and without it a long
  * equation widens the whole page instead of scrolling inside its own line.
  */
@@ -452,7 +452,7 @@ export function TechnicalNotesPage() {
               href="#discrete"
               className="text-ink underline decoration-stone-900/20 underline-offset-4 transition-colors hover:decoration-stone-900/60 dark:text-stone-200 dark:decoration-white/25 dark:hover:decoration-white/60"
             >
-              Four discrete-optimisation models
+              Four discrete-optimization models
             </a>
           </li>
           <li className="grid grid-cols-[2.5rem_1fr] gap-2 text-[15px]">
@@ -489,7 +489,7 @@ export function TechnicalNotesPage() {
               <Bullets items={m.assumptions} />
             </Block>
             <Block label="Errs toward">{m.errs}</Block>
-            <Block label="Not modelled">
+            <Block label="Not modeled">
               <Bullets items={m.notModelled} />
             </Block>
             <Block label="Evidence">
@@ -505,7 +505,7 @@ export function TechnicalNotesPage() {
         <div className="flex items-baseline gap-3">
           <span className="font-mono text-sm text-ink-soft dark:text-stone-500">07</span>
           <h2 className="font-display text-2xl font-bold tracking-tight">
-            Four discrete-optimisation models
+            Four discrete-optimization models
           </h2>
         </div>
         <p className="mt-4 text-[15px] leading-relaxed text-ink-soft dark:text-stone-300">
@@ -534,7 +534,7 @@ export function TechnicalNotesPage() {
               <Block label="The maths">
                 <Equations items={d.equations} />
               </Block>
-              <Block label="Not modelled">
+              <Block label="Not modeled">
                 <Bullets items={d.notModelled} />
               </Block>
             </div>

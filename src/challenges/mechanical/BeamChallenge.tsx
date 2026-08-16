@@ -18,10 +18,10 @@ import { cn } from '@/lib/utils'
 /* ------------------- tuning knobs (edit freely) ------------------- */
 const ALL_MARKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 const EVEN_MARKS = [2, 4, 6, 8, 10]
-/** How far the movable pivot slides from centre, in marks either way. */
+/** How far the movable pivot slides from center, in marks either way. */
 const PIVOT_RANGE = 4
 
-/** Cargo sits at a negative mark (left of centre), the counterweight at a positive one. */
+/** Cargo sits at a negative mark (left of center), the counterweight at a positive one. */
 interface Crate {
   weight: number
   pos: number

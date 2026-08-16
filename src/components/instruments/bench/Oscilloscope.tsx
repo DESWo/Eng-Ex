@@ -95,7 +95,7 @@ export function Oscilloscope({
             strokeWidth="1"
           />
         ))}
-        {/* centre tick marks, one per fifth of a division */}
+        {/* center tick marks, one per fifth of a division */}
         {Array.from({ length: divsX * 5 - 1 }, (_, i) => (
           <line
             key={`t${i}`}

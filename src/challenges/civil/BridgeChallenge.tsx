@@ -54,17 +54,17 @@ const MAX_Y = 320
 const MAX_LEN = 130 // a single beam cannot be longer than this
 /**
  * The drawing scale. The 480 px between the two banks is a 24 m river crossing,
- * so 20 px is a metre and the longest legal beam is 6.5 m. Deck sag comes out of
- * the solver in these same px, which is how it becomes centimetres.
+ * so 20 px is a meter and the longest legal beam is 6.5 m. Deck sag comes out of
+ * the solver in these same px, which is how it becomes centimeters.
  */
 const PX_PER_M = 20
 /**
- * Deflection is drawn this much larger than life. A dozen centimetres of dip is
+ * Deflection is drawn this much larger than life. A dozen centimeters of dip is
  * two px at true scale and nobody would see it, so the sag-limit line and the
  * drawn sag both use this exaggeration and stay comparable to each other.
  */
 const SAG_DRAW = 8
-/** A sag in centimetres, as px below the road on the drawing. */
+/** A sag in centimeters, as px below the road on the drawing. */
 const sagLinePx = (cm: number) => (cm / 100) * PX_PER_M * SAG_DRAW
 
 /** Build materials. Steel is far stronger but more than twice the price. */
@@ -81,7 +81,7 @@ interface BridgeSetup {
   budget: number | null
   /** Materials on the shelf. */
   materials: MaterialId[]
-  /** Level 4 on: colour beams by push versus pull instead of by how hard they work. */
+  /** Level 4 on: color beams by push versus pull instead of by how hard they work. */
   forces: boolean
   /** Level 5: the deck may only dip this far under the truck (cm), or null. */
   maxDeflection: number | null
@@ -129,7 +129,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     phase: 'understand',
     concept: 'Every beam costs',
     teach: 'Timber is billed by the length now. The sprawling bridge that worked when it was free suddenly prices itself out, so every beam has to earn its place.',
-    setup: { label: 'Loaded semi', load: 10, budget: 10000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the metre.' },
+    setup: { label: 'Loaded semi', load: 10, budget: 10000, materials: ['wood'], forces: false, maxDeflection: null, brief: 'A heavier truck, and the council is paying by the meter.' },
   },
   {
     n: 3,
@@ -152,7 +152,7 @@ const LEVELS: ChallengeLevel<BridgeSetup>[] = [
     title: 'Strength per dollar',
     phase: 'optimize',
     concept: 'Strong, stiff, and cheap',
-    teach: 'The heaviest truck yet, on a budget all-steel cannot meet. Strength and stiffness are not the same thing: a bridge can hold the load and still bounce like a diving board, so this one has to keep the deck within 15 cm as well. Depth is what buys stiffness, steel is what buys strength, and both are billed by the metre.',
+    teach: 'The heaviest truck yet, on a budget all-steel cannot meet. Strength and stiffness are not the same thing: a bridge can hold the load and still bounce like a diving board, so this one has to keep the deck within 15 cm as well. Depth is what buys stiffness, steel is what buys strength, and both are billed by the meter.',
     setup: { label: 'Heavy hauler', load: 20, budget: 21000, materials: ['wood', 'steel'], forces: true, maxDeflection: 15, brief: 'Sign off the bridge that goes out to tender: strong, stiff, and no more expensive than it has to be.' },
     // Pars checked offline against the solver itself, across Warren, Pratt and
     // X-braced spans at every legal panel and depth: 18 designs carry the load
@@ -521,7 +521,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
         outcome = result
       }
     }
-    // The solver moves joints in drawing px, and 20 px is a metre of real river.
+    // The solver moves joints in drawing px, and 20 px is a meter of real river.
     const peakSag = Math.round((peakMove / PX_PER_M) * 100)
 
     const spareNow = Math.round((1 - Math.max(0, ...Object.values(utilization))) * 100)
@@ -597,7 +597,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     return isRoad ? base + 1.2 : base
   }
 
-  /** Squashed members are drawn broken, so push and pull read without colour. */
+  /** Squashed members are drawn broken, so push and pull read without color. */
   const memberDash = (key: string) =>
     forceView && (test?.force[key] ?? 0) < -0.5 ? '10 5' : undefined
 
@@ -630,7 +630,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
     .map((id) => {
       const mine = beams.filter((b) => b.material === id)
       const px = mine.reduce((sum, b) => sum + lengthOf(b.key), 0)
-      return { id, count: mine.length, metres: px / PX_PER_M, amount: Math.round(px * MATERIALS[id].cost) }
+      return { id, count: mine.length, meters: px / PX_PER_M, amount: Math.round(px * MATERIALS[id].cost) }
     })
     .filter((r) => r.count > 0)
   const drift = cost - scheduleRows.reduce((sum, r) => sum + r.amount, 0)
@@ -792,7 +792,7 @@ export function BridgeChallenge({ onComplete }: ChallengeProps) {
                   cells: {
                     mark: `${r.id === 'steel' ? 'S' : 'W'} ${MATERIALS[r.id].label}`,
                     qty: r.count,
-                    length: `${r.metres.toFixed(1)} m`,
+                    length: `${r.meters.toFixed(1)} m`,
                     rate: `$${MATERIALS[r.id].cost * PX_PER_M}/m`,
                     amount: `$${r.amount.toLocaleString('en-US')}`,
                   },

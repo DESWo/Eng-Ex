@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 const WIDTH = 100 // beam width in mm
 const E_STEEL = 200000 // stiffness of steel, MPa
 const SPAN = 4000 // beam span in mm
-const STEEL_KG = 7.85e-3 // kg per mm² per metre
+const STEEL_KG = 7.85e-3 // kg per mm² per meter
 
 /**
  * How much a section resists bending depends on where the metal sits, not just
@@ -76,7 +76,7 @@ interface SectionSetup {
   maxSag: number
   /** Shapes on offer, or just the solid bar early on. */
   shapes: ShapeId[]
-  /** Weight allowed per metre, or null. */
+  /** Weight allowed per meter, or null. */
   maxKg: number | null
   /** Level 4 on: the stress readout is available. */
   stress: boolean
@@ -97,7 +97,7 @@ const LEVELS: ChallengeLevel<SectionSetup>[] = [
     title: 'The crane has a limit',
     phase: 'understand',
     concept: 'Weight budget',
-    teach: 'A solid bar gets heavy fast, and this one has to be lifted into place. Use the shallowest beam that still passes, because every extra millimetre is dead weight.',
+    teach: 'A solid bar gets heavy fast, and this one has to be lifted into place. Use the shallowest beam that still passes, because every extra millimeter is dead weight.',
     // 100 kg/m leaves three workable depths; 80 leaves exactly one.
     setup: { load: 20000, maxSag: 20, shapes: ['solid'], maxKg: 100, stress: false, brief: 'Same walkway, but the beam has to be craned onto the roof.' },
   },
@@ -127,7 +127,7 @@ const LEVELS: ChallengeLevel<SectionSetup>[] = [
     metrics: [
       { id: 'sag', label: 'Sag under load', goal: 'min', target: 8, unit: ' mm' },
       { id: 'mass', label: 'Weight', goal: 'min', target: 45, unit: ' kg/m' },
-      { id: 'cost', label: 'Cost, $ per metre of beam', goal: 'min', target: 45 },
+      { id: 'cost', label: 'Cost, $ per meter of beam', goal: 'min', target: 45 },
     ],
   },
 ]
@@ -188,7 +188,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
     if (won) return
     if (solved) {
       setWon(true)
-      setVerdict({ ok: true, text: `Passes. ${sag.toFixed(1)} mm of sag at ${kgPerM.toFixed(0)} kg per metre.` })
+      setVerdict({ ok: true, text: `Passes. ${sag.toFixed(1)} mm of sag at ${kgPerM.toFixed(0)} kg per meter.` })
       lv.clearLevel(lv.level.metrics ? { sag, mass: kgPerM, cost } : undefined)
       if (!completedRef.current) {
         completedRef.current = true
@@ -197,12 +197,12 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
       return
     }
     const text = tooHeavy && shownSag <= setup.maxSag
-      ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per metre is over the ${setup.maxKg} kg crane limit. All that stiffness is costing you metal.`
+      ? `Stiff enough, but ${kgPerM.toFixed(0)} kg per meter is over the ${setup.maxKg} kg crane limit. All that stiffness is costing you metal.`
       : `It sagged ${sag.toFixed(1)} mm underfoot and the limit is ${setup.maxSag} mm. Depth is what buys stiffness.`
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'The mill cancelled the order. Back to the 80 mm blank. Depth cubes into stiffness: work out roughly what you need first.' })
+      setVerdict({ ok: false, text: 'The mill canceled the order. Back to the 80 mm blank. Depth cubes into stiffness: work out roughly what you need first.' })
     } else {
       setVerdict({ ok: false, text })
     }
@@ -210,7 +210,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
 
   /** Drag the top edge of the section to make the beam deeper. */
   const { bind } = useSvgDrag((_x, y) => {
-    // The section is centred on CY, so half the height is the distance dragged.
+    // The section is centered on CY, so half the height is the distance dragged.
     const mm = Math.round(((150 - y) * 2) / 0.62 / 10) * 10
     setVerdict(null)
     setDepth(Math.max(80, Math.min(300, mm)))
@@ -340,7 +340,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
             aria-valuenow={depth}
             aria-valuemin={80}
             aria-valuemax={300}
-            aria-valuetext={`${depth} millimetres deep`}
+            aria-valuetext={`${depth} millimeters deep`}
             fill="transparent"
             className="cursor-ns-resize outline-none"
           />
@@ -467,7 +467,7 @@ export function BeamSectionChallenge({ onComplete }: ChallengeProps) {
 
       <p className="mt-4 text-sm text-ink-soft dark:text-stone-400">
         Drag the top of the section to make the beam deeper. Currently{' '}
-        <span className="accent-text font-display font-bold">{depth} mm</span>. Cost is dollars per metre of beam, rounded.
+        <span className="accent-text font-display font-bold">{depth} mm</span>. Cost is dollars per meter of beam, rounded.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

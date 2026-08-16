@@ -543,7 +543,7 @@ section('Known gaps, pinned at their current size')
   check('KNOWN: the drawn ring claims reach the stops do not allow', RING_OUTER - spanFor(ELBOW_MIN) < 3, `outer ring ${RING_OUTER} px against a real edge of ${spanFor(ELBOW_MIN).toFixed(2)} px, ${(RING_OUTER - spanFor(ELBOW_MIN)).toFixed(2)} px of overclaim, under the ${REACH_TOLERANCE} px grab tolerance`)
   check('and the drawn hole hides reach the arm does have', RING_HOLE - spanFor(ELBOW_MAX) < 8, `hole ${RING_HOLE} px against a real dead zone of ${spanFor(ELBOW_MAX).toFixed(2)} px, ${(RING_HOLE - spanFor(ELBOW_MAX)).toFixed(2)} px hidden`)
 
-  // (d) Level 5 prize 3 is elbow-down at its centre, but the grab tolerance
+  // (d) Level 5 prize 3 is elbow-down at its center, but the grab tolerance
   //     reaches a sliver where elbow up clears the shoulder stop.
   const lv = LEVELS[4]
   const third = lv.targets[2]

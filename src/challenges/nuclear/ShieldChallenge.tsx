@@ -32,12 +32,12 @@ import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
 /**
- * How strongly each centimetre of a material soaks up each kind of radiation.
+ * How strongly each centimeter of a material soaks up each kind of radiation.
  * Dense metals stop gamma rays. Neutrons are stopped by light, hydrogen-rich
  * stuff instead, because a neutron loses most of its energy when it hits
  * something close to its own mass. Lead is nearly useless against them.
  *
- * `ink` and `hatch` are board colours only: the slabs are drawn as a section
+ * `ink` and `hatch` are board colors only: the slabs are drawn as a section
  * through the wall, hatched the way a shop drawing hatches materials.
  */
 const MATERIALS = {
@@ -48,7 +48,7 @@ const MATERIALS = {
 } as const
 type MatId = keyof typeof MATERIALS
 const MAT_IDS = Object.keys(MATERIALS) as MatId[]
-const SLAB = 2 // centimetres added per slab
+const SLAB = 2 // centimeters added per slab
 const MAX_CM = 20 // per material
 
 /* --------------- board only, never read by the sim --------------- */
@@ -58,7 +58,7 @@ const RANGES = [10, 100, 1000] as const
 const PROFILE_FLOOR = 0.05
 /** Samples taken across the wall for the profile trace. */
 const PROFILE_N = 64
-/** Dot colours in the beam line. Red is radiation that reaches the technician. */
+/** Dot colors in the beam line. Red is radiation that reaches the technician. */
 const GAMMA_INK = '#a78bfa'
 const NEUTRON_INK = '#2dd4bf'
 const LEAK_INK = '#e0574a'
@@ -95,7 +95,7 @@ const LEVELS: ChallengeLevel<ShieldSetup>[] = [
     title: 'Block the beam',
     phase: 'play',
     concept: 'Thickness soaks up rays',
-    teach: 'Think lane defense: the rays are the invaders, the technician is the house, and your wall is the only thing planted in the lane. Every centimetre of lead cuts the gamma rays down by the same fraction again, so add lead until nothing red reaches the other side.',
+    teach: 'Think lane defense: the rays are the invaders, the technician is the house, and your wall is the only thing planted in the lane. Every centimeter of lead cuts the gamma rays down by the same fraction again, so add lead until nothing red reaches the other side.',
     setup: { gammaIn: 1000, neutronIn: 0, safeDose: 5, available: ['lead'], massBudget: null, costBudget: null, beam: false, brief: 'A gamma source in the lab needs a shield between it and the technician.' },
   },
   {
@@ -448,7 +448,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
             <MimicBoard
               legend="Cell elevation"
               viewBox="0 0 640 212"
-              summary={`Beam line. Source on the left, ${totalCm} centimetres of shielding in ${layers.length} layer${layers.length === 1 ? '' : 's'}, technician on the right.${
+              summary={`Beam line. Source on the left, ${totalCm} centimeters of shielding in ${layers.length} layer${layers.length === 1 ? '' : 's'}, technician on the right.${
                 outcomeVisible ? ` Detector reads ${doseText} against a limit of ${setup.safeDose}.` : ' The detector channel is isolated.'
               }`}
             >
@@ -616,7 +616,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
                 { id: 'neutron', label: 'Neutron', color: NEUTRON_INK, points: profile.n, readout: fmt(neutron), dashed: true },
               ]}
               band={{ from: 0, to: logPos(setup.safeDose), label: 'The front face is the left edge and the pens sit at the exit face. Green paper is under the limit.' }}
-              summary={`Beam intensity across ${totalCm} centimetres of shielding, each rule a factor of ten. Gamma leaves at ${fmt(gamma)}, neutrons at ${fmt(neutron)}, limit ${setup.safeDose}.`}
+              summary={`Beam intensity across ${totalCm} centimeters of shielding, each rule a factor of ten. Gamma leaves at ${fmt(gamma)}, neutrons at ${fmt(neutron)}, limit ${setup.safeDose}.`}
               height={104}
             />
           </PanelBay>
@@ -643,7 +643,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
                   tone="green"
                   pressed={sel === m}
                   onClick={() => setSel(m)}
-                  ariaLabel={`Load the handler with ${MATERIALS[m].label}, ${thick[m]} centimetres in the wall, ${MATERIALS[m].kgPerCm * SLAB} kilograms per slab`}
+                  ariaLabel={`Load the handler with ${MATERIALS[m].label}, ${thick[m]} centimeters in the wall, ${MATERIALS[m].kgPerCm * SLAB} kilograms per slab`}
                 />
               ))}
             </div>
@@ -656,7 +656,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
                 tone="white"
                 onClick={() => addSlab(sel, SLAB)}
                 disabled={thick[sel] >= MAX_CM}
-                ariaLabel={`Push ${SLAB} more centimetres of ${spec.label} into the beam line`}
+                ariaLabel={`Push ${SLAB} more centimeters of ${spec.label} into the beam line`}
               />
               <IlluminatedButton
                 legend="Pull slab"
@@ -665,7 +665,7 @@ export function ShieldChallenge({ onComplete }: ChallengeProps) {
                 tone="white"
                 onClick={() => addSlab(sel, -SLAB)}
                 disabled={thick[sel] <= 0}
-                ariaLabel={`Pull ${SLAB} centimetres of ${spec.label} back out of the beam line`}
+                ariaLabel={`Pull ${SLAB} centimeters of ${spec.label} back out of the beam line`}
               />
               <IlluminatedButton
                 legend="Strip wall"

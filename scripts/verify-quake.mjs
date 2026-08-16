@@ -68,7 +68,7 @@ const recordFor = (lv) => groundRecord(lv.site)
 const costOf = (braces, isolated) =>
   braces.reduce((a, b) => a + b, 0) * BRACE_COST + (isolated ? BEARING_COST : 0)
 
-/** Every legal layout for a level: 0..3 braces per storey, rack and budget respected. */
+/** Every legal layout for a level: 0..3 braces per story, rack and budget respected. */
 function designs(lv) {
   const n = lv.building.heights.length
   const out = []
@@ -153,9 +153,9 @@ section('Level 1, braces stop the lean')
   const stand = all.filter((r) => r.out.stands).length
   check('224 of 256 layouts stand', all.length === 256 && stand === 224, `${stand} of ${all.length}`)
   const bare = one(lv, [0, 0, 0, 0])
-  check('the bare frame fails at storey 1', !bare.stands && bare.fail.storey === 1, `${bare.worstLean.toFixed(1)} mm/m`)
+  check('the bare frame fails at story 1', !bare.stands && bare.fail.story === 1, `${bare.worstLean.toFixed(1)} mm/m`)
   const top = one(lv, [0, 0, 1, 1])
-  check('two braces up top still fails at storey 1', !top.stands && top.fail.storey === 1, `${top.worstLean.toFixed(1)} mm/m`)
+  check('two braces up top still fails at story 1', !top.stands && top.fail.story === 1, `${top.worstLean.toFixed(1)} mm/m`)
   const low = one(lv, [1, 0, 0, 0])
   check('one brace low is enough', low.stands, `worst ${low.worstLean.toFixed(1)} mm/m`)
 }
@@ -167,9 +167,9 @@ section('Level 2, the bottom carries the shove')
   const wins = all.filter((r) => r.out.stands)
   check('21 of 121 layouts stand', all.length === 121 && wins.length === 21, `${wins.length} of ${all.length}`)
   const everyWinnerBracesTheBottom = wins.every((r) => r.design.braces[0] >= 1 && r.design.braces[1] >= 1)
-  check('every winner braces storey 1 AND storey 2', everyWinnerBracesTheBottom)
+  check('every winner braces story 1 AND story 2', everyWinnerBracesTheBottom)
   const top = one(lv, [0, 0, 0, 2, 2])
-  check('the top-loaded layout fails at storey 1', !top.stands && top.fail.storey === 1, `${top.fail.value.toFixed(1)} mm/m`)
+  check('the top-loaded layout fails at story 1', !top.stands && top.fail.story === 1, `${top.fail.value.toFixed(1)} mm/m`)
 }
 
 section('Level 3, the glass lobby (the twist)')
@@ -179,14 +179,14 @@ section('Level 3, the glass lobby (the twist)')
   const wins = all.filter((r) => r.out.stands)
   check('2338 layouts, exactly 16 stand', all.length === 2338 && wins.length === 16, `${wins.length} of ${all.length}, ${((wins.length / all.length) * 100).toFixed(2)}%`)
   const bare = one(lv, [0, 0, 0, 0, 0, 0])
-  check('the bare frame fails at the lobby', !bare.stands && bare.fail.storey === 1, `${bare.fail.value.toFixed(1)} mm/m`)
+  check('the bare frame fails at the lobby', !bare.stands && bare.fail.story === 1, `${bare.fail.value.toFixed(1)} mm/m`)
   const even = one(lv, [2, 2, 2, 1, 1, 1])
-  check('spreading braces evenly fails AT STOREY 1', !even.stands && even.fail.storey === 1, `${even.fail.value.toFixed(1)} mm/m`)
+  check('spreading braces evenly fails AT STORY 1', !even.stands && even.fail.story === 1, `${even.fail.value.toFixed(1)} mm/m`)
   const dump = one(lv, [3, 3, 3, 0, 0, 0])
-  check('dumping them all at the base fails AT STOREY 4', !dump.stands && dump.fail.storey === 4, `${dump.fail.value.toFixed(1)} mm/m, one storey above the cliff`)
+  check('dumping them all at the base fails AT STORY 4', !dump.stands && dump.fail.story === 4, `${dump.fail.value.toFixed(1)} mm/m, one story above the cliff`)
   const graded = one(lv, [3, 2, 2, 1, 1, 0])
   check('the graded layout stands with room to spare', graded.stands && graded.worstLean <= 14, `worst ${graded.worstLean.toFixed(1)} mm/m, period ${graded.T1.toFixed(2)} s`)
-  // The one sentence a student can hold: feed the soft storey more than its share.
+  // The one sentence a student can hold: feed the soft story more than its share.
   const tapered = all.filter(
     (r) =>
       r.design.braces.reduce((a, b) => a + b, 0) === lv.rack &&
@@ -205,7 +205,7 @@ section('Level 4, bearings are not a get out')
   check('no fixed-base design passes', wins.every((r) => r.design.isolated))
   check('every passing design braces the lobby', wins.every((r) => r.design.braces[0] >= 1))
   const bought = one(lv, [0, 0, 0, 0, 0, 0], true)
-  check('bearings alone fail on DRIFT, not on the moat', !bought.stands && bought.fail.kind === 'drift' && bought.fail.storey === 1, `lobby tears at ${bought.fail.value.toFixed(1)} mm/m with the bearings under it, period ${bought.T1.toFixed(2)} s`)
+  check('bearings alone fail on DRIFT, not on the moat', !bought.stands && bought.fail.kind === 'drift' && bought.fail.story === 1, `lobby tears at ${bought.fail.value.toFixed(1)} mm/m with the bearings under it, period ${bought.T1.toFixed(2)} s`)
   const full = one(lv, [3, 3, 2, 2, 2, 2])
   check('the full fixed-base rack stands but is too rough', !full.stands && full.fail.kind === 'jolt', `${full.worstLean.toFixed(1)} mm/m lean but ${full.worstJolt.toFixed(0)} %g`)
   const champ3 = one(lv, [3, 2, 2, 1, 1, 0])

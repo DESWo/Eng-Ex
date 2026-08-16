@@ -15,16 +15,16 @@ import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-const SITE = 10000 // square metres of car park
+const SITE = 10000 // square meters of car park
 const STEP_SECONDS = 600 // each bar of the storm is ten minutes
 const RELEASE = 0.05 // m³ per second the downstream pipe will take
 // The site still has to work as a car park. Cars park on permeable paving as
 // happily as on tarmac (that is its whole selling point), so parkable ground
 // is tarmac plus permeable, and only grass eats into it.
 const MIN_PARKING = 3000
-const POND_COST = 60 // per cubic metre of storage dug
+const POND_COST = 60 // per cubic meter of storage dug
 
-/** Rain in millimetres per ten minutes. A short, sharp summer storm. */
+/** Rain in millimeters per ten minutes. A short, sharp summer storm. */
 const STORM = [1, 2, 4, 7, 9, 7, 4, 3, 2, 1, 0.6, 0.4]
 
 /** How much of the rain landing on each surface runs straight off. */
@@ -100,14 +100,14 @@ const LEVELS: ChallengeLevel<StormSetup>[] = [
     title: 'Land is expensive',
     phase: 'understand',
     concept: 'What digging costs',
-    teach: 'Every cubic metre of pond is land bought and soil moved. There is a ceiling on this scheme, so the storage has to be no bigger than it needs to be.',
+    teach: 'Every cubic meter of pond is land bought and soil moved. There is a ceiling on this scheme, so the storage has to be no bigger than it needs to be.',
     setup: { surfaces: false, maxOverflow: 0, budget: 10000, chart: false, brief: 'The same car park, now with a budget from the council.' },
   },
   {
     n: 3,
     title: 'Stop it at the source',
     phase: 'understand',
-    concept: 'Green beats grey',
+    concept: 'Green beats gray',
     teach: 'No pond you can afford will hold this storm. But tarmac sheds almost every drop that lands on it, and permeable paving or planting drinks a good share before it ever becomes runoff. Shrinking the flood is cheaper than storing it.',
     setup: { surfaces: true, maxOverflow: 0, budget: 6000, chart: false, brief: 'Budget cut, and no pond that fits it will hold the water.' },
   },
@@ -124,7 +124,7 @@ const LEVELS: ChallengeLevel<StormSetup>[] = [
     title: 'Get it approved',
     phase: 'optimize',
     concept: 'Dry, cheap, and still a car park',
-    teach: 'Planting soaks up the most but parks nothing, tarmac parks cars for free and sheds every drop, and permeable paving does both jobs at the dearest price per square metre. The scheme has to stay dry, stay affordable, and still be somewhere people can park.',
+    teach: 'Planting soaks up the most but parks nothing, tarmac parks cars for free and sheds every drop, and permeable paving does both jobs at the dearest price per square meter. The scheme has to stay dry, stay affordable, and still be somewhere people can park.',
     setup: { surfaces: true, maxOverflow: 0.5, budget: null, chart: true, brief: 'Submit the drainage scheme for planning approval.' },
     // Pars pull three ways: the cheapest dry scheme (2 tarmac, 4 permeable,
     // 14 grass, no pond) lands at 1,850 but parks only 3,000 m², while keeping

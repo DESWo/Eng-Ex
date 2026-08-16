@@ -191,7 +191,7 @@ export function CriticalPathChallenge({ onComplete }: ChallengeProps) {
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'The customer walked. Overtime cancelled. Find the chain of tasks with zero slack: only that chain sets the finish date.' })
+      setVerdict({ ok: false, text: 'The customer walked. Overtime canceled. Find the chain of tasks with zero slack: only that chain sets the finish date.' })
     } else {
       setVerdict({ ok: false, text })
     }

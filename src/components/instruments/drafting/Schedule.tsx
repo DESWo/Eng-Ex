@@ -193,7 +193,7 @@ export function StencilPalette({ label, options, value, onChange, disabled, clas
   )
 }
 
-/** The key: what each line on the drawing means. Samples, not colour chips. */
+/** The key: what each line on the drawing means. Samples, not color chips. */
 export function DrawingKey({ title, items, className }: { title: string; items: { label: string; sample: ReactNode }[]; className?: string }) {
   return (
     <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-1.5', className)}>

@@ -4,7 +4,7 @@ import { ink, inkDim } from './theme'
 /**
  * Schematic symbols, drawn as symbols. Not pictures of parts.
  *
- * Shared geometry: every two-pin symbol is centred on (x, y), its body is about
+ * Shared geometry: every two-pin symbol is centered on (x, y), its body is about
  * 36 units wide, and it draws its own lead stubs out to ±`lead` where the pins
  * sit. Designators go above the body, the plain-language caption below it, so a
  * sheet reads the same everywhere.
@@ -15,7 +15,7 @@ const STROKE = 2.2
 interface TwoPin {
   x: number
   y: number
-  /** Distance from centre to each pin. Matches the game's terminal offset. */
+  /** Distance from center to each pin. Matches the game's terminal offset. */
   lead?: number
   /** Reference designator: LP1, SW1, R3. */
   designator?: string

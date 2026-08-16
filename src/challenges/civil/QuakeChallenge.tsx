@@ -56,9 +56,9 @@ import type { Building, Gates, Outcome } from './shear'
  * Shake Proof, drawn as a structural frame elevation on a drafting sheet.
  *
  * You have a rack of identical X-braces and a frame that is three bays wide, and
- * you decide which storeys get them. A real shear-building time history
+ * you decide which stories get them. A real shear-building time history
  * (src/challenges/civil/shear.ts) shakes what you drew against a seeded ground
- * record and tells you which storey tore.
+ * record and tells you which story tore.
  *
  * The tuning is built so the answer is the DISTRIBUTION of stiffness up the
  * building, not the amount. What that protects, for anyone editing it:
@@ -67,8 +67,8 @@ import type { Building, Gates, Outcome } from './shear'
  *    max out. On level 3, [2,2,2,1,1,1] drops the lobby and [3,2,2,1,1,0]
  *    survives with 40% margin, on the same nine braces.
  * 2. Greedy heuristics all fail somewhere. Spread evenly, level 3 fails at the
- *    lobby. All at the base, it fails at storey 4. Max the storey that failed
- *    last time, it fails at the storey above. Bearings on level 4 do not save
+ *    lobby. All at the base, it fails at story 4. Max the story that failed
+ *    last time, it fails at the story above. Bearings on level 4 do not save
  *    the lobby.
  * 3. Level 3 stands on 16 of 2338 layouts with 3 tests, so guessing does not
  *    work; matching the stiffness profile to the shear profile lands a winner
@@ -81,8 +81,8 @@ import type { Building, Gates, Outcome } from './shear'
  *
  * Drawing conventions come from src/components/instruments/drafting/index.ts.
  * The board is a frame elevation, so it is gridded the way an elevation is
- * gridded: column-line bubbles across the top, level datums across the storeys.
- * There is no square snap grid, because the glazed lobby is 5 m and the storeys
+ * gridded: column-line bubbles across the top, level datums across the stories.
+ * There is no square snap grid, because the glazed lobby is 5 m and the stories
  * above it are 3.4 m, and no uniform square is honest about both.
  */
 
@@ -91,7 +91,7 @@ import type { Building, Gates, Outcome } from './shear'
 const BRACE_COST = 20000 // one X-brace, installed
 const BEARING_COST = 220000 // the whole isolation layer, a procurement decision
 
-/** Drawing scale: a normal 3.4 m storey is 46 px tall. */
+/** Drawing scale: a normal 3.4 m story is 46 px tall. */
 const PX_PER_M = 46 / H_STOREY
 /** Sway is drawn this many times life size, the same on every level and design. */
 const EXAGGERATION = 4
@@ -103,7 +103,7 @@ const PLAY_HALF = 1.75
  * about a building that already stopped existing, so the readout stops there.
  */
 const DRIFT_DISPLAY_CAP = 40
-/** How much of its height the storey that tore loses as it folds. */
+/** How much of its height the story that tore loses as it folds. */
 const COLLAPSE_SQUASH = 0.55
 /** Extra sideways px everything above the failure slides as it comes down. */
 const COLLAPSE_LEAN = 24
@@ -120,7 +120,7 @@ const TOWER_X = 250
 const BAY_M = 6.0 // one bay, m
 const BAY_PX = BAY_M * PX_PER_M
 const TOWER_W = 3 * BAY_PX
-/** The storey drift diagram, drawn beside the elevation like a real one. */
+/** The story drift diagram, drawn beside the elevation like a real one. */
 const DRIFT_X = 596
 const DRIFT_W = 128
 /** Braces still on the stencil sheet, cut out along the top edge. */
@@ -139,7 +139,7 @@ const uniform = (n: number): Building => ({
   open: Array<number>(n).fill(1),
 })
 
-/** Six storeys with a tall glazed lobby at the bottom. Levels 3, 4 and 5. */
+/** Six stories with a tall glazed lobby at the bottom. Levels 3, 4 and 5. */
 const LOBBY_6: Building = {
   heights: [H_LOBBY, H_STOREY, H_STOREY, H_STOREY, H_STOREY, H_STOREY],
   open: [OPEN_LOBBY, 1, 1, 1, 1, 1],
@@ -156,7 +156,7 @@ interface Site {
 
 interface QuakeSetup {
   building: Building
-  /** X-braces available. Three is the most any one storey can hold. */
+  /** X-braces available. Three is the most any one story can hold. */
   rack: number
   /** Bearings on the menu this level. */
   bearings: boolean
@@ -175,9 +175,9 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     n: 1,
     title: 'Braces stop the lean',
     phase: 'play',
-    concept: 'One storey tears',
+    concept: 'One story tears',
     teach:
-      'A building does not tip over like a bottle. One storey tears sideways while everything above it rides along on top. Lean is measured in millimetres of sideways slip for every metre of storey height, and 20 is where the columns give up. Take the brace pencil and draw an X into any empty bay. The frame does not care which of the three bays you brace, only how many, so put them where they look right to you.',
+      'A building does not tip over like a bottle. One story tears sideways while everything above it rides along on top. Lean is measured in millimeters of sideways slip for every meter of story height, and 20 is where the columns give up. Take the brace pencil and draw an X into any empty bay. The frame does not care which of the three bays you brace, only how many, so put them where they look right to you.',
     setup: {
       building: uniform(4),
       rack: 12,
@@ -187,7 +187,7 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
       site: { Tg: 0.9, pga: 0.42, zg: 0.6 },
       badge: 'shallow quake, the ground beats about once a second, 0.42g',
       showSpectrum: false,
-      brief: 'Four floors, twelve braces, no budget. Get every storey under the lean limit.',
+      brief: 'Four floors, twelve braces, no budget. Get every story under the lean limit.',
     },
   },
   {
@@ -196,7 +196,7 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     phase: 'understand',
     concept: 'The bottom carries the shove',
     teach:
-      'Four braces, five floors, so something goes bare. Every floor above a storey shoves on it when the ground yanks, so the bottom storey carries the whole building and the top storey carries almost nothing. Put the rack where the shove is. Of the 121 ways to lay these four braces out, 21 stand, and every single one of them braces storey 1 and storey 2.',
+      'Four braces, five floors, so something goes bare. Every floor above a story shoves on it when the ground yanks, so the bottom story carries the whole building and the top story carries almost nothing. Put the rack where the shove is. Of the 121 ways to lay these four braces out, 21 stand, and every single one of them braces story 1 and story 2.',
     setup: {
       building: uniform(5),
       rack: 4,
@@ -215,7 +215,7 @@ const LEVELS: ChallengeLevel<QuakeSetup>[] = [
     phase: 'understand',
     concept: 'The weak link moves',
     teach:
-      'This building is already up and you are retrofitting it. The lobby is 5 m tall with glass instead of walls, so it starts at about a fifth of a normal storey. Spreading nine braces evenly is fair and it drops the lobby, because fair is not what the shear profile asks for. Piling all nine on the bottom three fails one storey higher, because you built a cliff and the movement went where the cliff ended. Feed the soft storey more than its share and taper upward.',
+      'This building is already up and you are retrofitting it. The lobby is 5 m tall with glass instead of walls, so it starts at about a fifth of a normal story. Spreading nine braces evenly is fair and it drops the lobby, because fair is not what the shear profile asks for. Piling all nine on the bottom three fails one story higher, because you built a cliff and the movement went where the cliff ended. Feed the soft story more than its share and taper upward.',
     setup: {
       building: LOBBY_6,
       rack: 9,
@@ -292,15 +292,15 @@ type Tool = 'brace' | 'strip'
 
 /** A frozen frame of the shake: where every floor was, and how far it has folded. */
 interface Pose {
-  /** Displacement of each degree of freedom, metres. */
+  /** Displacement of each degree of freedom, meters. */
   disp: number[]
-  /** Ground displacement, metres. */
+  /** Ground displacement, meters. */
   gnd: number
-  /** 0 while it is only leaning, 1 once the storey that tore has folded. */
+  /** 0 while it is only leaning, 1 once the story that tore has folded. */
   collapse: number
 }
 
-/** A storey shears into a parallelogram: its floor slides `b`, its base `a`. */
+/** A story shears into a parallelogram: its floor slides `b`, its base `a`. */
 const shear = (a: number, b: number, yBottom: number, h: number) => {
   const slope = (b - a) / Math.max(6, h)
   return `matrix(1,0,${(-slope).toFixed(5)},1,${(a + slope * yBottom).toFixed(3)},0)`
@@ -408,7 +408,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const groundY = TOP_PAD + towerPx + isoRoom
   const sceneH = groundY + GROUND_BAND + (spec && showSpectrum ? SPECTRUM_H : 0)
 
-  /** Storey boxes as built, bottom-up. Dimensions and the drift diagram use these. */
+  /** Story boxes as built, bottom-up. Dimensions and the drift diagram use these. */
   const rowsBase = useMemo(() => {
     const out: { yTop: number; yBottom: number; h: number }[] = []
     let y = groundY - (isolated ? ISO_LIFT : 0)
@@ -426,10 +426,10 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const bayIndexAtX = (x: number) => Math.max(0, Math.min(2, Math.round((x - TOWER_X) / BAY_PX - 0.5)))
   /**
    * The level swap resets `bays` in an effect, so for one render the drawing can
-   * be a storey taller than the state behind it. Read every cell through here.
+   * be a story taller than the state behind it. Read every cell through here.
    */
   const bracedAt = (s: number, b: number) => bays[s]?.[b] ?? false
-  /** Which storey a board y lands in. Nearest centre, so it never returns nothing. */
+  /** Which story a board y lands in. Nearest center, so it never returns nothing. */
   const storeyAtY = (y: number) => {
     let best = 0
     let bd = Infinity
@@ -506,7 +506,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const cb = bayIndexAtX(board.cursor.x)
 
   // Arrows step one module. Sideways that is one bay, which the hook already
-  // does; upward it is one storey, and storeys are not all the same height.
+  // does; upward it is one story, and stories are not all the same height.
   const boardKeys = (e: React.KeyboardEvent) => {
     if (busy) return
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -520,7 +520,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   }
 
   // The frame lifts by ISO_LIFT when it goes onto bearings, and the cursor has
-  // to ride with it or it silently lands a storey out.
+  // to ride with it or it silently lands a story out.
   const isoRef = useRef(isolated)
   useEffect(() => {
     if (isoRef.current === isolated) return
@@ -548,7 +548,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
 
   const collapse = pose?.collapse ?? 0
   const failIdx = settled && shown.fail?.kind === 'drift' ? shown.failIndex : -1
-  /** Storey boxes as drawn: the storey that tore loses height as it folds. */
+  /** Story boxes as drawn: the story that tore loses height as it folds. */
   const rows = useMemo(() => {
     if (collapse === 0 || failIdx < 0) return rowsBase
     const out: { yTop: number; yBottom: number; h: number }[] = []
@@ -561,7 +561,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     return out
   }, [rowsBase, collapse, failIdx, round.building.heights])
 
-  const dofOf = (storey: number) => storey + (shown.isolated ? 1 : 0)
+  const dofOf = (story: number) => story + (shown.isolated ? 1 : 0)
   const gndPx = (pose?.gnd ?? 0) * SCALE
   const dispPx = (dof: number) => (pose?.disp[dof] ?? 0) * SCALE + gndPx
   const lean = (i: number) => (failIdx >= 0 && i >= failIdx ? COLLAPSE_LEAN * collapse : 0)
@@ -704,7 +704,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   /* ------------------- copy ------------------- */
 
   const goal =
-    `Keep every storey under ${DRIFT_CAP * 1000} mm of lean per metre` +
+    `Keep every story under ${DRIFT_CAP * 1000} mm of lean per meter` +
     (round.gates.joltCap !== undefined ? `, the floors under ${round.gates.joltCap} %g` : '') +
     (round.gates.moat !== undefined ? `, bearings inside their ${round.gates.moat * 100} cm moat` : '') +
     (round.budget !== null ? `, for ${money(round.budget)} or less` : '')
@@ -714,8 +714,8 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     if (!f) return ''
     if (f.kind === 'drift') {
       return f.value > DRIFT_DISPLAY_CAP
-        ? `Storey ${f.storey} tore. It leaned over ${DRIFT_DISPLAY_CAP} mm for every metre of its height and ${f.limit} is the limit. Past about double the limit a real frame is bending permanently and the number stops meaning anything except hopeless.`
-        : `Storey ${f.storey} tore. It leaned ${f.value.toFixed(1)} mm for every metre of its height, and ${f.limit} is the limit. Everything above it came down.`
+        ? `Story ${f.story} tore. It leaned over ${DRIFT_DISPLAY_CAP} mm for every meter of its height and ${f.limit} is the limit. Past about double the limit a real frame is bending permanently and the number stops meaning anything except hopeless.`
+        : `Story ${f.story} tore. It leaned ${f.value.toFixed(1)} mm for every meter of its height, and ${f.limit} is the limit. Everything above it came down.`
     }
     if (f.kind === 'jolt') {
       return `It stood, but the floors were thrown at ${f.value.toFixed(0)} %g and the scanners take ${f.limit}.`
@@ -731,7 +731,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
   const columnX = [0, 1, 2, 3].map((j) => TOWER_X + j * BAY_PX)
   /** Moat width in drawing px, at the same exaggeration the sway is drawn at. */
   const moatPx = round.gates.moat !== undefined ? round.gates.moat * SCALE : null
-  /** Floor elevations bottom-up, metres above the ground datum. */
+  /** Floor elevations bottom-up, meters above the ground datum. */
   const elevations = round.building.heights.reduce<number[]>((acc, h) => {
     acc.push((acc[acc.length - 1] ?? 0) + h)
     return acc
@@ -743,7 +743,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
     (round.gates.moat !== undefined ? `, moat ${round.gates.moat * 100} cm` : '') +
     (round.budget !== null ? `, ${money(round.budget)} cap` : '')
 
-  /** Storey rows read top down, the way a drawing is read. */
+  /** Story rows read top down, the way a drawing is read. */
   const storeyRows = rowsBase
     .map((_, i) => i)
     .reverse()
@@ -754,7 +754,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
         over,
         cells: {
           mark: `s${i + 1}`,
-          storey: `${round.building.heights[i].toFixed(1)} m${round.building.open[i] < 1 ? ' glazed' : ''}`,
+          story: `${round.building.heights[i].toFixed(1)} m${round.building.open[i] < 1 ? ' glazed' : ''}`,
           braces: `${braces[i] ?? 0} of ${MAX_PER_STOREY}`,
           drift: outcomeVisible ? leanText(shown.lean[i]) : '?',
           allow: String(driftLimit),
@@ -767,7 +767,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
       key: 'drift',
       over: outcomeVisible && shown.worstLean > driftLimit,
       cells: {
-        check: 'worst storey drift',
+        check: 'worst story drift',
         value: outcomeVisible ? `${leanText(shown.worstLean)} mm/m at s${shown.worstStorey}` : 'shake it to find out',
         allow: `${driftLimit} mm/m`,
         result: outcomeVisible ? (shown.worstLean > driftLimit ? 'over' : 'ok') : '-',
@@ -853,9 +853,9 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             />
             <p id="quake-board-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">
               {tool === 'brace'
-                ? `Click an empty bay to draw an X-brace into it. Up to ${MAX_PER_STOREY} per storey, and the stock along the top edge is all you get.`
+                ? `Click an empty bay to draw an X-brace into it. Up to ${MAX_PER_STOREY} per story, and the stock along the top edge is all you get.`
                 : 'Click a braced bay to rub the brace out and put it back in stock.'}{' '}
-              Keyboard: left and right walk the bays, up and down walk the storeys, enter draws or strips at the cursor, delete strips whatever the tool, escape puts the eraser down.
+              Keyboard: left and right walk the bays, up and down walk the stories, enter draws or strips at the cursor, delete strips whatever the tool, escape puts the eraser down.
             </p>
           </>
         }
@@ -864,7 +864,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             project="Civic hospital tower"
             drawing={`${lv.level.n}. ${lv.level.title}`}
             sheetNo={`Q-0${lv.level.n}`}
-            scale={`metres, sway drawn x${EXAGGERATION}`}
+            scale={`meters, sway drawn x${EXAGGERATION}`}
             checking={checking}
             rev={runId}
             status={status}
@@ -879,10 +879,10 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                 className={cn(LETTER, 'tabular-nums')}
                 style={{ letterSpacing: TRACK.normal }}
               >
-                cursor storey {cs + 1}, bay {cb + 1} · {bracedAt(cs, cb) ? 'braced' : 'empty'}
+                cursor story {cs + 1}, bay {cb + 1} · {bracedAt(cs, cb) ? 'braced' : 'empty'}
               </span>
               <span className={cn(LETTER, 'tabular-nums')} style={{ letterSpacing: TRACK.normal }}>
-                {N} storeys · {shown.totalMass.toLocaleString('en-US')} t · sways once in{' '}
+                {N} stories · {shown.totalMass.toLocaleString('en-US')} t · sways once in{' '}
                 {shown.T1.toFixed(2)} s{isolated ? ' · on bearings' : ' · fixed base'}
               </span>
             </div>
@@ -958,10 +958,10 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                   />
                 )}
                 <Schedule
-                  title="storey schedule"
+                  title="story schedule"
                   columns={[
                     { key: 'mark', label: 'mark' },
-                    { key: 'storey', label: 'storey' },
+                    { key: 'story', label: 'story' },
                     { key: 'braces', label: 'braces', align: 'right' },
                     { key: 'drift', label: 'drift mm/m', align: 'right' },
                     { key: 'allow', label: 'allow', align: 'right' },
@@ -998,7 +998,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                 rows={checkRows}
                 foot={[
                   {
-                    label: outcomeVisible ? 'every storey has to clear it, not the average' : 'hidden until you shake it',
+                    label: outcomeVisible ? 'every story has to clear it, not the average' : 'hidden until you shake it',
                     value: outcomeVisible ? (shown.stands ? 'all clear' : 'see redline') : '?',
                     tone: outcomeVisible ? (shown.stands ? 'ok' : 'over') : 'normal',
                   },
@@ -1010,7 +1010,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             <div aria-live="polite" className="min-h-[2.5rem] space-y-2">
               {phase === 'passed' && (
                 <NoteBlock n={1} tone="check">
-                  It stands. The worst storey leaned {leanText(shown.worstLean)} mm/m at storey {shown.worstStorey}, and the
+                  It stands. The worst story leaned {leanText(shown.worstLean)} mm/m at story {shown.worstStorey}, and the
                   floors took {shown.worstJolt.toFixed(0)} %g. Stamped and signed off.
                 </NoteBlock>
               )}
@@ -1039,7 +1039,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           viewBox={`0 0 ${SCENE_W} ${Math.round(sceneH)}`}
           className="w-full touch-none select-none"
           role="application"
-          aria-label={`Frame elevation, sheet Q-0${lv.level.n}. ${N} storeys, three bays wide, ${used} braces drawn${isolated ? ', on isolation bearings' : ', fixed base'}. Cursor at storey ${cs + 1}, bay ${cb + 1}, ${bracedAt(cs, cb) ? 'braced' : 'empty'}.`}
+          aria-label={`Frame elevation, sheet Q-0${lv.level.n}. ${N} stories, three bays wide, ${used} braces drawn${isolated ? ', on isolation bearings' : ', fixed base'}. Cursor at story ${cs + 1}, bay ${cb + 1}, ${bracedAt(cs, cb) ? 'braced' : 'empty'}.`}
           aria-describedby="quake-board-help"
           {...board.boardProps}
           onKeyDown={boardKeys}
@@ -1187,7 +1187,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
             </>
           )}
 
-          {/* the frame, one sheared group per storey */}
+          {/* the frame, one sheared group per story */}
           {rows.map((r, i) => {
             const glass = round.building.open[i] < 1
             const torn = i === failIdx
@@ -1208,7 +1208,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
                   fill={torn ? INK.red : INK.grid}
                   fillOpacity={torn ? 0.2 : 0.12}
                 />
-                {/* a glazed storey is drawn as mullions, not as infill */}
+                {/* a glazed story is drawn as mullions, not as infill */}
                 {glass &&
                   Array.from({ length: 11 }, (_, m) => TOWER_X + ((m + 1) * TOWER_W) / 12).map((x) => (
                     <line
@@ -1307,7 +1307,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
               )),
             )}
 
-          {/* dimensions: every storey, then the whole building */}
+          {/* dimensions: every story, then the whole building */}
           {rowsBase.map((r, i) => (
             <DimString
               key={i}
@@ -1337,7 +1337,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           />
           <ScaleBar x={TOWER_X + TOWER_W + 96} y={groundY + 78} pxPerUnit={PX_PER_M} units={4} />
 
-          {/* storey drift diagram, read against the limit line */}
+          {/* story drift diagram, read against the limit line */}
           <g className="pointer-events-none" aria-hidden>
             <text
               x={DRIFT_X}
@@ -1347,7 +1347,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
               fontSize="9"
               fill={INK.soft}
             >
-              storey drift, mm per metre
+              story drift, mm per meter
             </text>
             <line
               x1={DRIFT_X}
@@ -1569,7 +1569,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
               seed={`${runId}-drift-${failIdx}`}
               rev={runId}
               note={[
-                `storey ${shown.fail.storey} tore`,
+                `story ${shown.fail.story} tore`,
                 `drift ${leanText(shown.fail.value)} mm/m against ${shown.fail.limit} allowed`,
                 'everything above it came down',
               ]}
@@ -1665,7 +1665,7 @@ export function QuakeChallenge({ onComplete }: ChallengeProps) {
           message={
             lv.level.metrics
               ? `Signed off at ${money(spend)}, ${shown.worstJolt.toFixed(0)} %g on the floors and ${shown.travel.toFixed(0)} cm of movement. Now go and win a different one.`
-              : `It stands. Worst storey leaned ${leanText(shown.worstLean)} mm/m.`
+              : `It stands. Worst story leaned ${leanText(shown.worstLean)} mm/m.`
           }
           onReplay={reset}
         />

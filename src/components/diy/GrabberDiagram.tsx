@@ -6,7 +6,7 @@
 const label = 'fill-ink-soft dark:fill-stone-300'
 const leader = 'stroke-stone-400 dark:stroke-stone-500'
 
-/** One X of the scissor lattice, centred at (cx, cy). */
+/** One X of the scissor lattice, centered at (cx, cy). */
 function ScissorX({ cx, cy, w = 70, h = 44 }: { cx: number; cy: number; w?: number; h?: number }) {
   return (
     <g style={{ stroke: 'var(--accent)' }} strokeWidth="7" strokeLinecap="round">

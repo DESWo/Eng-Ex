@@ -2,13 +2,13 @@
  * Bench tokens.
  *
  * The bench is a piece of test equipment sitting ON the page, so it is dark in
- * both themes. `benchSurface` is the one class string that defines every colour
+ * both themes. `benchSurface` is the one class string that defines every color
  * the kit reads; put it on the panel root and every child resolves its own
- * colours from there. At night the face drops a stop and the silkscreen dims, so
+ * colors from there. At night the face drops a stop and the silkscreen dims, so
  * a lit instrument never glares on a dark page.
  *
  * Every consumer reads these through `var(--bench-x, fallback)`, so a missing
- * token degrades to a sane colour instead of a black hole.
+ * token degrades to a sane color instead of a black hole.
  */
 export const benchSurface = [
   // panel face and the recessed well the sheet and screens sit in
@@ -46,7 +46,7 @@ export const benchLabel = 'font-mono text-[10px] font-semibold uppercase trackin
 /** Measured numbers on an instrument face. */
 export const benchDigits = 'font-mono tabular-nums'
 
-/** Colour a conductor by what it is doing. */
+/** Color a conductor by what it is doing. */
 export const conductor = {
   dead: 'var(--bench-dim, #a29b93)',
   live: 'var(--bench-live, #f6bf4a)',

@@ -9,7 +9,7 @@
  *             title), sheet number (S-, T-, Q- plus the level), scale in the
  *             reader's terms, what is being checked, revision count, status.
  *             Status is draft -> revise -> approved and nothing else.
- * INK         Only the sheet vars (see tokens.ts). No Tailwind palette colours
+ * INK         Only the sheet vars (see tokens.ts). No Tailwind palette colors
  *             inside a sheet, so light vellum and dark blueprint both hold.
  * CONTROLS    Instruments are <SheetTool> toggles on the sheet edge. Choices
  *             are a <StencilPalette> radio group, arrow keys included. The
@@ -24,7 +24,7 @@
  * VERDICTS    Failure is redline: <Redline> loops the member in red pencil,
  *             leaders out to the number that broke it, and a <RevisionStamp>
  *             lands while the title block flips to revise. Success is an
- *             <ApprovalStamp> and status approved. No green glow, no colour
+ *             <ApprovalStamp> and status approved. No green glow, no color
  *             coded verdict beyond the red pencil and the blue check.
  * MOTION      Stamps and redlines are the only new animation, and both read
  *             useReducedMotion.

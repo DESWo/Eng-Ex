@@ -52,7 +52,7 @@ import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-const LOSS_PER_M = 0.15 // percent of supply lost per metre of wire travelled
+const LOSS_PER_M = 0.15 // percent of supply lost per meter of wire traveled
 
 interface GridSetup {
   label: string
@@ -81,7 +81,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     title: 'The copper runs short',
     phase: 'understand',
     concept: 'Shared trunks beat spokes',
-    teach: 'Wire is priced by the metre now, and running a private line to each house wastes it. Let houses share trunk lines and the same town connects for far less.',
+    teach: 'Wire is priced by the meter now, and running a private line to each house wastes it. Let houses share trunk lines and the same town connects for far less.',
     setup: { label: 'Copper shortage', budget: 475, closed: [], threshold: null, flow: false, n1: false, brief: 'The same town on a tight reel of wire. The cheapest possible network barely fits.' },
   },
   {
@@ -89,7 +89,7 @@ const LEVELS: ChallengeLevel<GridSetup>[] = [
     title: 'The far end flickers',
     phase: 'understand',
     concept: 'Wires leak',
-    teach: 'Power fades along every metre it travels, so a house at the end of a long daisy-chain gets a brown-out even though it is connected. The SHORTEST network and a network that DELIVERS are not the same thing.',
+    teach: 'Power fades along every meter it travels, so a house at the end of a long daisy-chain gets a brown-out even though it is connected. The SHORTEST network and a network that DELIVERS are not the same thing.',
     setup: { label: 'The brown-out', budget: 520, closed: [], threshold: 60, flow: false, n1: false, brief: 'The cheapest network from last time now leaves the far houses flickering. Route for delivery, not just length.' },
   },
   {
@@ -471,7 +471,7 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       allLit && !overBudget && round.n1 && !survivesAnyCut && worstCut
         ? `Everyone is lit today, but the storm test cut the line from the ${nodeById(worstCut.a).name} to the ${nodeById(worstCut.b).name} and ${worstCut.dark === 1 ? 'one home' : `${worstCut.dark} homes`} dropped below ${threshold}%. Every home needs a second route.`
         : !allLit && round.threshold !== null && houses.every((h) => lit.has(h.id))
-          ? 'Every home is connected, but the far ones got a brown-out. Power fades with every metre, so give the far end a shorter route.'
+          ? 'Every home is connected, but the far ones got a brown-out. Power fades with every meter, so give the far end a shorter route.'
           : allLit && overBudget
             ? `Every home is lit, but ${used} m of wire is over the ${round.budget} m reel.`
             : !allLit
@@ -595,15 +595,15 @@ export function PowerGridChallenge({ onComplete }: ChallengeProps) {
       return { value: '- - -', unit: '%', node: tag, note: 'no path back to the bus', state: 'none' }
     }
     const pct = delivery[node.id]
-    const metres = Math.round(distances(built)[node.id] ?? 0)
+    const meters = Math.round(distances(built)[node.id] ?? 0)
     return {
       value: pct.toFixed(1),
       unit: '%',
       node: tag,
       note:
         round.threshold === null
-          ? `${metres} m of line from the bus`
-          : `${metres} m of line · floor ${round.threshold}%`,
+          ? `${meters} m of line from the bus`
+          : `${meters} m of line · floor ${round.threshold}%`,
       state: round.threshold !== null && pct < threshold ? 'over' : 'ok',
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

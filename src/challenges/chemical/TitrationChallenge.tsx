@@ -22,7 +22,7 @@ const FLASK_VOL = 50 // mL of acid in the flask
 const MAX_BASE = 70
 
 /**
- * A weak acid neutralised by a strong base: the textbook titration curve.
+ * A weak acid neutralized by a strong base: the textbook titration curve.
  *
  * For the first stretch the flask sits in its buffer region and pours barely
  * move the reading. Then, right at the equivalence point, the curve goes almost
@@ -52,7 +52,7 @@ const LEVELS: ChallengeLevel<TitrationSetup>[] = [
     title: 'Take the edge off',
     phase: 'play',
     concept: 'Base cancels acid',
-    teach: 'The flask holds a sharp acid, coloured red. Add base a pour at a time and it climbs towards safe, turning green in the middle. Get the flask into the safe band, anywhere in it, and stop.',
+    teach: 'The flask holds a sharp acid, colored red. Add base a pour at a time and it climbs towards safe, turning green in the middle. Get the flask into the safe band, anywhere in it, and stop.',
     setup: { band: [4.5, 7], curve: false, brief: 'A beaker of acid too harsh to pour down the drain. Soften it into the safe range.' },
   },
   {
@@ -85,14 +85,14 @@ const LEVELS: ChallengeLevel<TitrationSetup>[] = [
     phase: 'optimize',
     concept: 'Accurate, lean, and quick',
     teach: 'Land in the middle of the band, using as little base as possible and in as few pours as you can manage. Every drop of reagent costs money, and every pour costs time on the line.',
-    setup: { band: [6, 6.6], curve: true, brief: 'Neutralise the batch to spec: dead in the band, without wasting reagent.' },
+    setup: { band: [6, 6.6], curve: true, brief: 'Neutralize the batch to spec: dead in the band, without wasting reagent.' },
     // Only 46, 47 and 48 mL land in this band, and the pars split them: 46 mL
-    // is lean and quick but sits 2 tenths off centre, while the centred pours
+    // is lean and quick but sits 2 tenths off center, while the centered pours
     // (47, 48) cost more reagent and more pours. No single play beats all three.
     metrics: [
       // Kept as whole tenths of a pH point: the scorecard ticker rounds every
       // value to an integer, so "2 tenths of pH" is honest where "0.2" is not.
-      { id: 'offset', label: 'Distance from band centre', goal: 'min', target: 1, unit: ' tenths of pH' },
+      { id: 'offset', label: 'Distance from band center', goal: 'min', target: 1, unit: ' tenths of pH' },
       { id: 'reagent', label: 'Base used', goal: 'min', target: 46, unit: ' mL' },
       { id: 'pours', label: 'Pours', goal: 'min', target: 6 },
     ],
@@ -123,7 +123,7 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
   const bandMid = (setup.band[0] + setup.band[1]) / 2
   const offset = Math.round(Math.abs(ph - bandMid) * 10)
   // Levels 2, 3 and 5 hide the numeric pH until the batch is called done:
-  // the flask colour stays, because reading the colour IS the skill.
+  // the flask color stays, because reading the color IS the skill.
   const outcomeVisible = lv.level.n === 1 || lv.level.n === 4 || verdict !== null || won
 
   const reset = () => {
@@ -163,16 +163,16 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
     if (att.spend()) {
       reset()
       att.refill()
-      setVerdict({ ok: false, text: 'Batch neutralised to waste, fresh acid in the flask. Creep up on the cliff this time.' })
+      setVerdict({ ok: false, text: 'Batch neutralized to waste, fresh acid in the flask. Creep up on the cliff this time.' })
     } else {
       setVerdict({ ok: false, text })
     }
   }
 
-  /* Scene: a beaker whose colour tracks pH, plus an optional curve. */
+  /* Scene: a beaker whose color tracks pH, plus an optional curve. */
   const W = 800
   const H = 240
-  // pH colour: red (acid) -> green (safe) -> indigo (alkali)
+  // pH color: red (acid) -> green (safe) -> indigo (alkali)
   const phColor = (p: number) => {
     if (p < bandMid) { const f = Math.max(0, p / bandMid); return `rgb(${Math.round(230 - f * 100)}, ${Math.round(70 + f * 140)}, ${Math.round(60 + f * 20)})` }
     const f = Math.min(1, (p - bandMid) / (14 - bandMid))
@@ -201,7 +201,7 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
         goal={`Bring the flask to pH ${setup.band[0]} to ${setup.band[1]}`}
         status={outcomeVisible
           ? `now pH ${ph.toFixed(2)} · ${base} mL added`
-          : `${base} mL added · watch the colour`}
+          : `${base} mL added · watch the color`}
         attemptsLeft={att.left}
         met={won}
       />
@@ -271,7 +271,7 @@ export function TitrationChallenge({ onComplete }: ChallengeProps) {
         ) : (
           <Meter
             label="pH"
-            display={`read the colour · band ${setup.band[0]}–${setup.band[1]}`}
+            display={`read the color · band ${setup.band[0]}–${setup.band[1]}`}
             fraction={0}
             markerFraction={bandMid / 14}
             barClass="bg-stone-300 dark:bg-white/15"

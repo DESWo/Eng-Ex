@@ -17,7 +17,7 @@ import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-// Gusts are metres per second, sway is centimetres at the top floor.
+// Gusts are meters per second, sway is centimeters at the top floor.
 const CORES = {
   wood: { label: 'Wood core', cost: 3, stiff: 10, fill: '#c89b6b' },
   steel: { label: 'Steel core', cost: 6, stiff: 20, fill: '#9aa7b5' },
@@ -32,7 +32,7 @@ const WIDE_COST = 4
 const WIDE_STIFF = 12
 const DAMPER_COST = 5
 const DAMPER_FACTOR = 0.55 // fraction of the sway that survives the damper
-const SWAY_K = 10 // turns gust speed over stiffness into top-floor centimetres
+const SWAY_K = 10 // turns gust speed over stiffness into top-floor centimeters
 
 type CoreId = keyof typeof CORES
 
@@ -63,7 +63,7 @@ const LEVELS: ChallengeLevel<TowerSetup>[] = [
     phase: 'play',
     concept: 'Tall things sway',
     teach: 'It is the wobbly block-tower game, scaled up to a real building. Wind pushes hardest at the top, and a bendy core lets the whole stack wave around. Pick a core stiff enough to beat the breeze. Spend whatever you like.',
-    setup: { label: 'Gentle breeze', wind: 12, budget: null, swayLimit: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-storey block on an open site. Stop it waving at the neighbours.' },
+    setup: { label: 'Gentle breeze', wind: 12, budget: null, swayLimit: null, floors: 5, upgrades: false, swayReadout: false, brief: 'A five-story block on an open site. Stop it waving at the neighbors.' },
   },
   {
     n: 2,
@@ -86,7 +86,7 @@ const LEVELS: ChallengeLevel<TowerSetup>[] = [
     title: 'Feel the top floor',
     phase: 'analyze',
     concept: 'The sway readout',
-    teach: 'Turn on the readout. Two towers that both stand can move very differently: the number is how many centimetres the top floor swings, and the people up there feel every one of them.',
+    teach: 'Turn on the readout. Two towers that both stand can move very differently: the number is how many centimeters the top floor swings, and the people up there feel every one of them.',
     setup: { label: 'Storm front', wind: 28, budget: 16, swayLimit: 5.5, floors: 8, upgrades: true, swayReadout: true, brief: 'Same storm, with the top-floor movement measured.' },
   },
   {

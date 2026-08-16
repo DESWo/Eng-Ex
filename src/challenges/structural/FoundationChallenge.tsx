@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
 const BEARING = 150 // what the clay can carry, kPa
-const SETTLE_K = 0.1 // turns load-over-width into millimetres of sinking
+const SETTLE_K = 0.1 // turns load-over-width into millimeters of sinking
 const COST_PER_M2 = 40 // concrete and excavation
 
 /** Pressure under a square footing: the load spread over its area. */
@@ -81,8 +81,8 @@ const LEVELS: ChallengeLevel<FootingSetup>[] = [
     title: 'Pour the foundations',
     phase: 'optimize',
     concept: 'Cheap, low, and even',
-    teach: 'Wide footings sink less and stay even, but concrete and excavation are billed by the square metre. Find the pair that keeps the frame straight without digging half the site out.',
-    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'Sign off the foundation design for the real building. No cost cap this time, but every square metre you pour goes on the scorecard.' },
+    teach: 'Wide footings sink less and stay even, but concrete and excavation are billed by the square meter. Find the pair that keeps the frame straight without digging half the site out.',
+    setup: { loads: [300, 1200], maxDiff: 8, budget: null, ground: true, brief: 'Sign off the foundation design for the real building. No cost cap this time, but every square meter you pour goes on the scorecard.' },
     metrics: [
       { id: 'cost', label: 'Groundworks cost', goal: 'min', target: 1400 },
       { id: 'settle', label: 'Worst settlement', goal: 'min', target: 26, unit: ' mm' },
@@ -184,8 +184,8 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
     for (let i = 1; i < spotsNow.length; i++) {
       if (Math.abs(x - spotsNow[i]) < Math.abs(x - spotsNow[best])) best = i
     }
-    const metres = (Math.abs(x - spotsNow[best]) * 2) / 34
-    const snapped = Math.round(metres * 4) / 4
+    const meters = (Math.abs(x - spotsNow[best]) * 2) / 34
+    const snapped = Math.round(meters * 4) / 4
     setVerdict(null)
     setWidths((p) => p.map((w, j) => (j === best ? Math.max(1, Math.min(6, snapped)) : w)))
   })
@@ -194,7 +194,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
   const GROUND_Y = 118
   const PX_PER_M = 34
   const spots = feet.length > 1 ? [255, 545] : [400]
-  // Sinking is drawn much larger than life so a few millimetres is visible.
+  // Sinking is drawn much larger than life so a few millimeters is visible.
   const sinkPx = (mm: number) => Math.min(26, mm * 0.55)
 
   return (
@@ -279,7 +279,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                   />
                 </g>
                 {/*
-                 * The sketched footing carries the safe/overloaded colour; the
+                 * The sketched footing carries the safe/overloaded color; the
                  * transparent rect over it stays the drag handle, so widening a
                  * footing by mouse or keyboard is untouched.
                  */}
@@ -305,7 +305,7 @@ export function FoundationChallenge({ onComplete }: ChallengeProps) {
                   aria-valuenow={f.width}
                   aria-valuemin={1}
                   aria-valuemax={6}
-                  aria-valuetext={`${f.width.toFixed(2)} metres wide`}
+                  aria-valuetext={`${f.width.toFixed(2)} meters wide`}
                   onKeyDown={(e) => {
                     const step = e.shiftKey ? 1 : 0.25
                     if (e.key === 'ArrowRight') setWidths((p) => p.map((v, j) => (j === i ? Math.min(6, v + step) : v)))

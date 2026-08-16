@@ -137,7 +137,7 @@ const FIRE_MIN = 16 // release closer than this and the sling just relaxes
  * its front face below this height smashes straight into it, so flat direct
  * shots work as well as lobs dropped on the roof.
  */
-const FORT_H_M = 8 // fort height in metres (covers the whole stacked structure)
+const FORT_H_M = 8 // fort height in meters (covers the whole stacked structure)
 
 /** Angry-Birds-style materials, each a distinct look. */
 const BLOCK_STYLE = {
@@ -158,7 +158,7 @@ interface FortBlock {
 }
 
 /**
- * A little fortress of stacked blocks, built relative to its centre `cx` and
+ * A little fortress of stacked blocks, built relative to its center `cx` and
  * the ground line `g`. Legs hold up a plank deck, a hut of stone walls guards
  * a glass loot crate under a peaked roof, and a side stack of crates leans
  * alongside. Knocking any of it down wins.
@@ -265,7 +265,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     const ys: number[] = []
     let hitWall = false
     let hitFort = false
-    const fortFace = round.target - round.tolerance // front of the fort, in metres
+    const fortFace = round.target - round.tolerance // front of the fort, in meters
     let distance = 0
     let prevX = 0
     let prevY = 0
@@ -426,7 +426,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
     // boulders fired, not tries since the last reset: zeroing it here would
     // let ten practice shots launder into a recorded 1-shot win. It clears
     // only when a run honestly starts over, replaying after a scored win.
-    // Earlier levels keep the old behaviour: reset is their boulder refill.
+    // Earlier levels keep the old behavior: reset is their boulder refill.
     if (!lv.level.metrics || beat) setAttempts(0)
     setResult(null)
     setShot(null)
@@ -595,7 +595,7 @@ export function CatapultChallenge({ onComplete }: ChallengeProps) {
               )
             }
             // Matter reports an absolute position and angle; the scene wants
-            // an offset from where the block was built, spun about its centre.
+            // an offset from where the block was built, spun about its center.
             const pose = fortPose[b.id]
             const cx = b.x + b.w / 2
             const cy = b.y + b.h / 2

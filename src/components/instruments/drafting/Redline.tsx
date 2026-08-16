@@ -15,7 +15,7 @@ function pencilLoop(cx: number, cy: number, rx: number, ry: number, seed: string
 }
 
 interface RedlineProps {
-  /** Centre of the thing being marked up. */
+  /** Center of the thing being marked up. */
   x: number
   y: number
   rx: number

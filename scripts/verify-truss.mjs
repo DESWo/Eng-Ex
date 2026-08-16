@@ -460,8 +460,8 @@ section('The moving load')
       if (Math.abs(r.forces[k]) > Math.abs(worstOver[k] ?? 0)) worstOver[k] = r.forces[k]
     }
   }
-  const centre = solveTruss(sp.joints, sp.members, jid(400, ROAD_Y), LEVELS[3].load, capsFor)
-  const everyPositionCovered = sp.members.every((k) => Math.abs(worstOver[k]) >= Math.abs(centre.forces[k]) - 1e-9)
+  const center = solveTruss(sp.joints, sp.members, jid(400, ROAD_Y), LEVELS[3].load, capsFor)
+  const everyPositionCovered = sp.members.every((k) => Math.abs(worstOver[k]) >= Math.abs(center.forces[k]) - 1e-9)
   check(
     'the crossing keeps the worst of every truck position',
     everyPositionCovered,
@@ -470,7 +470,7 @@ section('The moving load')
   let gap = 0
   let gapKey = null
   for (const k of sp.members) {
-    const ratio = Math.abs(worstOver[k]) - Math.abs(centre.forces[k])
+    const ratio = Math.abs(worstOver[k]) - Math.abs(center.forces[k])
     if (ratio > gap) {
       gap = ratio
       gapKey = k
@@ -479,7 +479,7 @@ section('The moving load')
   check(
     'and parking the truck at mid-span would badly under-read one of them',
     gap > 1,
-    `${gapKey} carries ${Math.abs(worstOver[gapKey]).toFixed(2)} t somewhere in the crossing and ${Math.abs(centre.forces[gapKey]).toFixed(2)} t at mid-span`,
+    `${gapKey} carries ${Math.abs(worstOver[gapKey]).toFixed(2)} t somewhere in the crossing and ${Math.abs(center.forces[gapKey]).toFixed(2)} t at mid-span`,
   )
 }
 
@@ -592,11 +592,11 @@ section('Both banks are pinned, so the span is a tied arch')
     `worst gap ${worst.toExponential(2)} P over ${sp.members.length} members`,
   )
   const bank = out.forces[memberKey(id(A[0]), id(A[1]))] / P
-  const centre = out.forces[memberKey(id(A[1]), id(A[2]))] / P
+  const center = out.forces[memberKey(id(A[1]), id(A[2]))] / P
   check(
     'so the deck beside each bank is squashed, not stretched',
-    bank < 0 && centre > 0,
-    `${bank.toFixed(4)} P at the bank and ${centre.toFixed(4)} P at mid-span, where a simply supported span would read +0.375 and +1.125`,
+    bank < 0 && center > 0,
+    `${bank.toFixed(4)} P at the bank and ${center.toFixed(4)} P at mid-span, where a simply supported span would read +0.375 and +1.125`,
   )
   console.log('        the banks are rock, not bearings, so the deck ties an arch and carries a third of the textbook pull')
 }
@@ -611,7 +611,7 @@ section('Mirrored constants, re-read from BridgeChallenge.tsx')
     'the sheet geometry',
     /const GRID = 40[\s\S]{0,400}const ROAD_Y = 240[\s\S]{0,80}const LEFT_X = 160[\s\S]{0,40}const RIGHT_X = 640[\s\S]{0,40}const MIN_X = 80[\s\S]{0,40}const MAX_X = 720[\s\S]{0,40}const MIN_Y = 80[\s\S]{0,40}const MAX_Y = 320[\s\S]{0,40}const MAX_LEN = 130/,
   )
-  mirrors('20 px to the metre', /const PX_PER_M = 20\b/)
+  mirrors('20 px to the meter', /const PX_PER_M = 20\b/)
   mirrors('wood costs 5 and holds 22 pulled, 14 squashed', /wood:\s*\{[^}]*cost:\s*5,\s*tension:\s*22,\s*compression:\s*14/)
   mirrors('steel costs 12 and holds 50 pulled, 38 squashed', /steel:\s*\{[^}]*cost:\s*12,\s*tension:\s*50,\s*compression:\s*38/)
   mirrors('level 1 is 6 t with free timber', /load:\s*6,\s*budget:\s*null,\s*materials:\s*\['wood'\]/)

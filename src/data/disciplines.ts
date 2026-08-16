@@ -259,12 +259,12 @@ export const disciplines: Discipline[] = [
         id: 'quake',
         title: 'Shake Proof',
         goal: 'Survive the quake',
-        realJob: 'Earthquake engineers in Japan, Chile, and California decide which storeys get braced, and whether a building sits on bearings at all.',
+        realJob: 'Earthquake engineers in Japan, Chile, and California decide which stories get braced, and whether a building sits on bearings at all.',
         why: [
           {
             icon: Columns3,
             title: 'Where the braces go matters more than how many',
-            body: 'A tower fails at one storey, not all at once. The lower floors carry the shaking of everything stacked above them, so an even spread of braces leaves the bottom too weak while the top is stiffer than it needs to be.',
+            body: 'A tower fails at one story, not all at once. The lower floors carry the shaking of everything stacked above them, so an even spread of braces leaves the bottom too weak while the top is stiffer than it needs to be.',
           },
           {
             icon: ShieldCheck,
@@ -282,7 +282,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Civil work is sized, not maximised. Engineers decide what load a structure has to survive and build for that, because building for every load anyone can imagine costs more than anyone will pay.',
+        'Civil work is sized, not maximized. Engineers decide what load a structure has to survive and build for that, because building for every load anyone can imagine costs more than anyone will pay.',
       tradeoff:
         'Civil engineers balance strength, safety, and cost, and there is never quite enough budget for all three.',
       realWorld: {
@@ -335,7 +335,7 @@ export const disciplines: Discipline[] = [
       ],
       builds: ['Power grids', 'Phone chips', 'Electric cars', 'Solar farms', 'Speakers', 'Smart lights'],
       challengeTeaser:
-        'A whole neighbourhood is sitting in the dark. Route power lines from the plant to every home before the wire runs out.',
+        'A whole neighborhood is sitting in the dark. Route power lines from the plant to every home before the wire runs out.',
     },
     challenges: [
       {
@@ -411,7 +411,7 @@ export const disciplines: Discipline[] = [
     learn: {
       heading: 'Why did that work?',
       bigIdea:
-        'Electricity only flows along a complete path, and every metre of that path costs money to build and loses a little power on the way.',
+        'Electricity only flows along a complete path, and every meter of that path costs money to build and loses a little power on the way.',
       tradeoff:
         'Electrical design trades wire, cost, and safety margins against getting power everywhere it needs to go.',
       realWorld: {
@@ -501,8 +501,8 @@ export const disciplines: Discipline[] = [
         why: [
           {
             icon: ShieldCheck,
-            title: 'Each centimetre cuts it again',
-            body: 'Shielding does not chip away a fixed amount. Every centimetre removes the same fraction of what is left, so the dose falls away steeply rather than steadily.',
+            title: 'Each centimeter cuts it again',
+            body: 'Shielding does not chip away a fixed amount. Every centimeter removes the same fraction of what is left, so the dose falls away steeply rather than steadily.',
           },
           {
             icon: Atom,
@@ -638,7 +638,7 @@ export const disciplines: Discipline[] = [
           {
             icon: PiggyBank,
             title: 'Every drop is planned years ahead',
-            body: 'Nothing refuels in orbit, so a mission budgets its speed changes before launch. Real transfers use this same two-burn manoeuvre because for most orbit changes it is the cheapest one there is.',
+            body: 'Nothing refuels in orbit, so a mission budgets its speed changes before launch. Real transfers use this same two-burn maneuver because for most orbit changes it is the cheapest one there is.',
           },
         ],
       },
@@ -1276,7 +1276,7 @@ export const disciplines: Discipline[] = [
         id: 'titration',
         title: 'The Right Dose',
         goal: 'Land on neutral',
-        realJob: 'Lab and process chemists neutralise batches to a target pH, and the cliff near the end is why it takes care. This is a simplified single weak acid version of that curve.',
+        realJob: 'Lab and process chemists neutralize batches to a target pH, and the cliff near the end is why it takes care. This is a simplified single weak acid version of that curve.',
         why: [
           {
             icon: Droplets,
@@ -1307,24 +1307,24 @@ export const disciplines: Discipline[] = [
         examples: [
           'Ammonia for fertiliser is made at a warm-middle temperature for exactly the yield reason you found.',
           'Refineries wrap themselves in counter-current exchangers to recover heat between streams.',
-          'Water and food plants neutralise batches to a target pH with the same careful last-drop control.',
+          'Water and food plants neutralize batches to a target pH with the same careful last-drop control.',
         ],
       },
     },
     diy: {
       title: 'Red cabbage pH indicator',
       intro:
-        'Make a liquid that changes colour with acidity, the same way the flask does in the game, from things in your kitchen.',
+        'Make a liquid that changes color with acidity, the same way the flask does in the game, from things in your kitchen.',
       materials: ['A few red cabbage leaves', 'Hot water and a bowl', 'Clear cups', 'Vinegar, lemon juice, and baking soda'],
       steps: [
         'Ask an adult to soak chopped red cabbage in hot water until it turns deep purple, then let it cool.',
         'Pour the purple liquid into several clear cups.',
         'Stir a little vinegar or lemon juice into one cup and watch it turn pink or red (acid).',
         'Stir a pinch of baking soda into another and watch it turn blue or green (alkali).',
-        'Try adding acid then base to the same cup and neutralise it back towards purple.',
+        'Try adding acid then base to the same cup and neutralize it back towards purple.',
       ],
       experiment:
-        'Add baking soda one tiny pinch at a time to an acid cup. Notice how the colour barely moves, then changes fast, then barely moves again, exactly the pH cliff from the game.',
+        'Add baking soda one tiny pinch at a time to an acid cup. Notice how the color barely moves, then changes fast, then barely moves again, exactly the pH cliff from the game.',
       safety: 'An adult should handle the hot water. Do not drink any of the mixtures.',
     },
   },
@@ -1355,7 +1355,7 @@ export const disciplines: Discipline[] = [
         id: 'tower',
         title: 'Sky High',
         goal: 'Beat the wind',
-        realJob: 'Tall-building engineers fight sway with cores, outriggers, and tuned dampers. Taipei 101 carries a 660-tonne one.',
+        realJob: 'Tall-building engineers fight sway with cores, outriggers, and tuned dampers. Taipei 101 carries a 660-ton one.',
         why: [
         {
           icon: Wind,
@@ -1378,7 +1378,7 @@ export const disciplines: Discipline[] = [
         id: 'beam-section',
         title: 'Beam Section',
         goal: 'Stiff enough, light enough',
-        realJob: 'Structural engineers pick section shapes from catalogs like this. The I-beam is the favourite shape of the built world.',
+        realJob: 'Structural engineers pick section shapes from catalogs like this. The I-beam is the favorite shape of the built world.',
         why: [
           {
             icon: ArrowDownToLine,
@@ -1388,7 +1388,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Columns3,
             title: 'The middle is barely working',
-            body: 'Bending stretches one face and squashes the other, and right through the centre runs a line carrying almost no stress at all. Metal sitting there is mostly just weight.',
+            body: 'Bending stretches one face and squashes the other, and right through the center runs a line carrying almost no stress at all. Metal sitting there is mostly just weight.',
           },
           {
             icon: Feather,
@@ -1411,7 +1411,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Scale,
             title: 'Sinking is fine, tilting is not',
-            body: 'A building can settle several centimetres and be perfectly usable. Let one side settle further than the other and the frame twists, doors jam, and walls crack. Engineers design for the difference, not the total.',
+            body: 'A building can settle several centimeters and be perfectly usable. Let one side settle further than the other and the frame twists, doors jam, and walls crack. Engineers design for the difference, not the total.',
           },
           {
             icon: TriangleAlert,

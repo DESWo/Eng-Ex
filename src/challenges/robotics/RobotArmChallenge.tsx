@@ -182,7 +182,7 @@ const LEVELS: ChallengeLevel<ArmSetup>[] = [
     // of the 136 it costs folded up over prize 2. Those 16 deg are narrower
     // than the wobble in a hand drag, so the pars sit above the floors as a
     // tidiness check: 390 wants the cheap flip and near-straight drags, 140
-    // wants prize 3 grabbed left of centre, judged by eye.
+    // wants prize 3 grabbed left of center, judged by eye.
     metrics: [
       { id: 'travel', label: 'Joint travel', goal: 'min', target: 390, unit: '°' },
       { id: 'torque', label: 'Peak shoulder load', goal: 'min', target: 140 },

@@ -281,7 +281,7 @@ export function CircuitChallenge({ onComplete }: ChallengeProps) {
     const p = sim.power[req.id] ?? 0
     return req.want === 'full' ? p >= FULL : p < LIT
   }
-  // Total copper, wire by wire. One board unit is one centimetre. The schematic
+  // Total copper, wire by wire. One board unit is one centimeter. The schematic
   // is not a scale drawing, so this measures pin to pin, not the drawn route.
   const wireLength = Math.round(
     wires.reduce((sum, [a, b]) => {

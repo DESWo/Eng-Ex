@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 /**
- * Modal behaviour role="dialog" does not give you: trap Tab inside the panel,
+ * Modal behavior role="dialog" does not give you: trap Tab inside the panel,
  * mark the app behind it inert, stop the body scrolling, and return focus to
  * whatever opened the dialog.
  */

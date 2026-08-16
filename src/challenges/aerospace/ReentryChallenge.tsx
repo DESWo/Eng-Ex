@@ -17,14 +17,14 @@ import type { ChallengeLevel, ChallengeProps } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ------------------- tuning knobs (edit freely) ------------------- */
-const SCALE_H = 7200 // how fast the air thins out, in metres
+const SCALE_H = 7200 // how fast the air thins out, in meters
 const RHO0 = 1.225 // air density at sea level
 const G = 9.81
 const V_ENTRY = 7800 // speed coming out of orbit, m/s
 const AREA = 12 // capsule frontal area, m²
 const DRY_MASS = 2000
-const SHIELD_PER_CM = 60 // kg of heat shield per centimetre
-const SHIELD_CAPACITY = 1400 // heat each centimetre can soak up before burning through
+const SHIELD_PER_CM = 60 // kg of heat shield per centimeter
+const SHIELD_CAPACITY = 1400 // heat each centimeter can soak up before burning through
 const SKIP_ANGLE = 1.5 // shallower than this and you bounce back off the atmosphere
 // The ablator chars usefully up to a point, then the surface flash-fails no
 // matter how thick the stack behind it is. This is what makes a too-steep
@@ -487,7 +487,7 @@ export function ReentryChallenge({ onComplete }: ChallengeProps) {
             })}
           </div>
           <p className="mt-1.5 text-xs text-ink-soft dark:text-stone-400">
-            Each layer is a centimetre of ablative shield, and each one is mass on the pad.
+            Each layer is a centimeter of ablative shield, and each one is mass on the pad.
           </p>
         </div>
       )}

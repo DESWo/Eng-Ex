@@ -26,7 +26,7 @@ const MAX_BURN = 1200 // m/s per burn
 // this past that margin and computeOrbit needs a hyperbolic case again.
 const PULSE = 25 // one press of the engine
 // A long burn is ~500 m/s, which is twenty presses of the fine control. The
-// coarse button gets you into the neighbourhood; PULSE still trims the result.
+// coarse button gets you into the neighborhood; PULSE still trims the result.
 const COARSE = 100
 
 const vCirc = (r: number) => Math.sqrt(1 / r)
@@ -132,7 +132,7 @@ const LEVELS: ChallengeLevel<OrbitSetup>[] = [
     title: 'One tank',
     phase: 'understand',
     concept: 'Fuel is finite',
-    teach: 'Engineers count fuel in metres per second of speed change, which is why the tank here reads in m/s rather than in litres. Nothing refuels in orbit, so the whole mission is planned around one fixed budget. A wasteful direction will not reach this ring at all, however hard you push.',
+    teach: 'Engineers count fuel in meters per second of speed change, which is why the tank here reads in m/s rather than in liters. Nothing refuels in orbit, so the whole mission is planned around one fixed budget. A wasteful direction will not reach this ring at all, however hard you push.',
     setup: { target: 1.6, tolKm: 400, secondBurn: false, maxE: null, fuel: 800, dirs: ['prograde', 'radial', 'retrograde'], readout: false, brief: 'A higher ring, and the upper stage has only so much left in it.' },
   },
   {
