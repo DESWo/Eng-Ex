@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Layers, Play, RotateCcw } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Keyboard, Play, RotateCcw, Table2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Confetti } from '@/components/ui/Confetti'
@@ -13,7 +13,6 @@ import {
   CursorMark,
   DimString,
   DraftingSheet,
-  DrawingKey,
   INK,
   LETTER,
   Leader,
@@ -21,12 +20,11 @@ import {
   PEN,
   Redline,
   RevisionStamp,
-  ScaleBar,
   Schedule,
-  SheetTool,
   SnapGrid,
   TRACK,
   TitleBlock,
+  sheetVars,
   useSheetCursor,
   type ScheduleColumn,
   type ScheduleFoot,
@@ -109,9 +107,12 @@ const LEVELS: ChallengeLevel<TrafficSetup>[] = [
 
 type Phase = 'idle' | 'running' | 'passed' | 'failed'
 
+/** The one collapsed panel holding every schedule and calculation. */
+const DETAILS_ID = 'traffic-engineering-details'
+
 /* ------------------- sheet geometry ------------------- */
-const VIEW_W = 800
-const VIEW_H = 440
+const VIEW_W = 760
+const VIEW_H = 412
 /** One second of cycle time, in drawing px along the timing band. */
 const PX_PER_S = 11
 /** A grid module is two seconds, which is also what the changeover snaps to. */
@@ -195,80 +196,83 @@ function SignalHead({
   )
 }
 
-/** A stage on the key: who moves, who is held, and for how long. */
-function StageKey({
-  x,
-  y,
-  kind,
-  name,
-  detail,
-  live,
+const READ_TONE = {
+  normal: 'text-[var(--dr-ink,#2e2a23)]',
+  over: 'text-[var(--dr-red,#c0362c)]',
+  ok: 'text-[var(--dr-check,#1d5f9e)]',
+} as const
+
+/**
+ * One live reading in the row under the band: the few numbers a student needs to
+ * judge the split. Drafting stock, not a chip. Everything else is a schedule,
+ * and every schedule is behind the disclosure.
+ */
+function Reading({
+  label,
+  value,
+  note,
+  tone = 'normal',
 }: {
-  x: number
-  y: number
-  kind: 'ns' | 'ew' | 'walk'
-  name: string
-  detail: string
-  live: boolean
+  label: string
+  value: string
+  note?: string
+  tone?: keyof typeof READ_TONE
 }) {
-  const cx = x + 34
-  const cy = y + 31
   return (
-    <g aria-hidden className="pointer-events-none">
-      <rect
-        x={x}
-        y={y}
-        width="200"
-        height="62"
-        fill="none"
-        stroke={live ? INK.line : INK.soft}
-        strokeWidth={live ? PEN.thin : PEN.hair}
-        strokeDasharray={live ? undefined : '5 4'}
-        opacity={live ? 1 : 0.7}
-      />
-      {/* the junction, kerbs broken through the middle */}
-      <path
-        d={`M${cx - 26} ${cy - 9} H${cx - 9} M${cx + 9} ${cy - 9} H${cx + 26} M${cx - 26} ${cy + 9} H${cx - 9} M${cx + 9} ${cy + 9} H${cx + 26}`}
-        stroke={INK.soft}
-        strokeWidth={PEN.hair}
-        fill="none"
-      />
-      <path
-        d={`M${cx - 9} ${cy - 24} V${cy - 9} M${cx - 9} ${cy + 9} V${cy + 24} M${cx + 9} ${cy - 24} V${cy - 9} M${cx + 9} ${cy + 9} V${cy + 24}`}
-        stroke={INK.soft}
-        strokeWidth={PEN.hair}
-        fill="none"
-      />
-      {kind === 'ns' && (
-        <>
-          <line x1={cx} y1={cy - 22} x2={cx} y2={cy + 16} stroke={INK.line} strokeWidth={PEN.dim} />
-          <Arrowhead x={cx} y={cy + 22} ux={0} uy={1} size={7} fill={INK.line} />
-          <line x1={cx - 9} y1={cy - 9} x2={cx - 9} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.member} />
-        </>
+    <div className="min-w-[8rem] flex-1 border border-[var(--dr-ink,#2e2a23)]/45 bg-[var(--dr-paper-2,#ece3d2)] px-2.5 py-2">
+      <p className={cn(LETTER, 'text-[9px] leading-none text-[var(--dr-ink-soft,#6c6252)]')} style={{ letterSpacing: TRACK.wide }}>
+        {label}
+      </p>
+      <p className={cn('mt-1.5 font-mono text-[13px] leading-none tabular-nums', READ_TONE[tone])}>{value}</p>
+      <p className="mt-1 min-h-[0.85rem] font-mono text-[10px] leading-tight text-[var(--dr-ink-soft,#6c6252)]">{note ?? ''}</p>
+    </div>
+  )
+}
+
+/**
+ * A disclosure lettered like the kit's sheet tools but 44 px tall, because it is
+ * the control a student on a tablet reaches for most.
+ */
+function SheetToggle({
+  open,
+  onClick,
+  label,
+  icon,
+  controls,
+  ref,
+  className,
+}: {
+  open: boolean
+  onClick: () => void
+  label: string
+  icon: ReactNode
+  controls: string
+  ref?: React.Ref<HTMLButtonElement>
+  className?: string
+}) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      aria-controls={controls}
+      className={cn(
+        'inline-flex min-h-11 items-center gap-2 border px-3 py-2 text-[10px] font-semibold transition-colors duration-150',
+        LETTER,
+        open
+          ? 'border-[var(--dr-ink,#2e2a23)] bg-[var(--dr-ink,#2e2a23)]/10 text-[var(--dr-ink,#2e2a23)]'
+          : 'border-dashed border-[var(--dr-ink,#2e2a23)]/40 text-[var(--dr-ink-soft,#6c6252)] hover:border-[var(--dr-ink,#2e2a23)]/70',
+        className,
       )}
-      {kind === 'ew' && (
-        <>
-          <line x1={cx - 22} y1={cy} x2={cx + 16} y2={cy} stroke={INK.line} strokeWidth={PEN.dim} />
-          <Arrowhead x={cx + 22} y={cy} ux={1} uy={0} size={7} fill={INK.line} />
-          <line x1={cx - 9} y1={cy - 9} x2={cx + 9} y2={cy - 9} stroke={INK.line} strokeWidth={PEN.member} />
-        </>
-      )}
-      {kind === 'walk' && (
-        <>
-          {[13, 17, 21, 25].map((d) => (
-            <line key={d} x1={cx + d} y1={cy - 9} x2={cx + d} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.dim} />
-          ))}
-          <line x1={cx - 9} y1={cy - 9} x2={cx - 9} y2={cy + 9} stroke={INK.line} strokeWidth={PEN.member} />
-          <line x1={cx - 9} y1={cy - 9} x2={cx + 9} y2={cy - 9} stroke={INK.line} strokeWidth={PEN.member} />
-        </>
-      )}
-      <text x={x + 70} y={y + 28} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fontWeight="700" fill={INK.line}>
-        {name}
-      </text>
-      <text x={x + 70} y={y + 43} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="9" fill={INK.soft}>
-        {detail}
-      </text>
-    </g>
+      style={{ letterSpacing: TRACK.wide }}
+    >
+      {icon}
+      {label}
+      <span aria-hidden className={cn('ml-auto pl-2 transition-transform duration-200', open && 'rotate-180')}>
+        ▾
+      </span>
+    </button>
   )
 }
 
@@ -293,10 +297,14 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const simInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const att = useAttempts(attemptsFor(lv.level), lv.level.n)
   const [showQueues, setShowQueues] = useState(true)
-  const [showStages, setShowStages] = useState(true)
+  /** Keyboard and drag instructions, folded away until asked for. */
+  const [showControls, setShowControls] = useState(false)
+  /** The schedules. Closed on entry and on every level change, always. */
+  const [detailsOpen, setDetailsOpen] = useState(false)
   /** Runs of the lights so far, which is the revision this sheet is at. */
   const [runs, setRuns] = useState(0)
   const svgRef = useRef<SVGSVGElement | null>(null)
+  const detailsRef = useRef<HTMLButtonElement | null>(null)
   const draggingSplit = useRef(false)
   const completedRef = useRef(false)
 
@@ -307,6 +315,8 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
     setPhase('idle')
     setSettled(null)
     setRuns(0)
+    setShowControls(false)
+    setDetailsOpen(false)
     board.setCursor({ x: tx(6), y: CURSOR_Y })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv.level.n])
@@ -466,6 +476,18 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
   const parTotal = lv.level.metrics?.find((m) => m.id === 'total')?.target ?? 0
   const parWorst = lv.level.metrics?.find((m) => m.id === 'worst')?.target ?? 0
 
+  /** Cars a minute the worse approach cannot clear, and which one that is. */
+  const worstShort = Math.max(queueNS, queueEW)
+  const worstQueueRoad = queueNS >= queueEW ? 'north-south' : 'east-west'
+  const worstDelayRoad = delayEW > delayNS ? 'east-west' : 'north-south'
+
+  /** Open the schedules and put the reader on them. The toggle is always in the
+   *  DOM (only the panel it controls is hidden), so this can focus straight away. */
+  const openAnalysis = () => {
+    setDetailsOpen(true)
+    detailsRef.current?.focus()
+  }
+
   const approachColumns: ScheduleColumn[] = [
     { key: 'mark', label: 'approach' },
     { key: 'arrives', label: 'arrives', align: 'right' },
@@ -527,12 +549,11 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       : []),
   ]
 
-  const stages: { kind: 'ns' | 'ew' | 'walk'; name: string; detail: string; live: boolean }[] = [
-    { kind: 'ns', name: 'stage 1', detail: `north-south, ${greenNS} s`, live: nsGo },
-    { kind: 'ew', name: 'stage 2', detail: `east-west, ${greenEW} s`, live: ewGo },
-    ...(round.ped > 0
-      ? [{ kind: 'walk' as const, name: 'stage 3', detail: `walk, ${round.ped} s`, live: walkNow }]
-      : []),
+  // The stage cards said no more than this line does: who runs, in what order.
+  const stages = [
+    { key: 'ns', name: 'a north-south', live: nsGo },
+    { key: 'ew', name: 'b east-west', live: ewGo },
+    ...(round.ped > 0 ? [{ key: 'walk', name: 'c walk', live: walkNow }] : []),
   ]
 
   const markX = tx(greenNS) // where the changeover is booked
@@ -549,24 +570,30 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
       />
 
       <Objective
-        goal={`Split the green so both roads clear their queues before the cycle ends (NS ${round.ns} cars/min, EW ${round.ew})`}
+        goal={`Give both roads enough green to clear a full minute of traffic, ns ${round.ns} cars and ew ${round.ew}`}
         status={`your split: ns ${greenNS} s green, ew ${greenEW} s`}
         attemptsLeft={att.left}
         met={phase === 'passed'}
       />
 
-      <p className="mb-3 max-w-2xl text-sm text-ink-soft dark:text-stone-400">{round.brief}</p>
-
       <DraftingSheet
         tools={
           <>
-            <SheetTool
-              active={showStages}
-              onClick={() => setShowStages((v) => !v)}
-              icon={<Layers className="h-3.5 w-3.5" />}
-              label="stage key"
+            <SheetToggle
+              open={showControls}
+              onClick={() => setShowControls((v) => !v)}
+              controls="band-help"
+              icon={<Keyboard className="h-3.5 w-3.5" />}
+              label="controls"
             />
-            <p id="band-help" className="max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">
+            {/* Always in the DOM: it is the band's description, shown on request. */}
+            <p
+              id="band-help"
+              className={cn(
+                'max-w-xl text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]',
+                !showControls && 'sr-only',
+              )}
+            >
               Drag the changeover mark along the timing band to share the minute out. Everything left of the mark is green for
               the north-south road, everything right of it up to the walk block is green for the east-west road. Keyboard: arrow
               keys walk the mark in 2 s steps, enter books the changeover there, escape puts it back, delete rubs out the plan.
@@ -586,119 +613,56 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
         }
         footer={
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--dr-ink-soft,#6c6252)]">
-              <span
-                role="status"
-                aria-live={board.active ? 'polite' : 'off'}
-                className={cn(LETTER, 'tabular-nums')}
-                style={{ letterSpacing: TRACK.normal }}
-              >
-                cursor {cursorSeconds} s into the cycle · changeover booked at {greenNS} s
-              </span>
-              <span className={cn(LETTER, 'tabular-nums')} style={{ letterSpacing: TRACK.normal }}>
-                cycle {CYCLE} s · booked {booked} s{running ? ` · running, ${Math.floor(simT)} s` : ''}
-              </span>
+            {/* the only numbers on the sheet during play */}
+            <div className="flex flex-wrap gap-2">
+              <Reading
+                label="total delay"
+                value={outcomeVisible ? `${totalDelay} car-s` : 'run the lights'}
+                note={lv.level.metrics ? `par ${parTotal} car-s` : undefined}
+              />
+              <Reading
+                label="worst queue"
+                value={
+                  outcomeVisible ? (worstShort > 0 ? `${worstShort.toFixed(0)}/min left` : 'both roads clear') : 'run the lights'
+                }
+                note={outcomeVisible && worstShort > 0 ? `on ${worstQueueRoad}` : undefined}
+                tone={outcomeVisible ? (worstShort > 0 ? 'over' : 'ok') : 'normal'}
+              />
+              <Reading label="cycle" value={`${CYCLE} s`} note={`${available} s of green to share`} />
+              {lv.level.metrics && (
+                <Reading
+                  label="worst road"
+                  value={outcomeVisible ? `${worstDelay} car-s` : 'run the lights'}
+                  note={`par ${parWorst} car-s`}
+                  tone={outcomeVisible ? (worstDelay <= parWorst ? 'ok' : 'over') : 'normal'}
+                />
+              )}
             </div>
 
-            <DrawingKey
-              title="key"
-              items={[
-                {
-                  label: 'north-south green',
-                  sample: (
-                    <>
-                      <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
-                      <path d="M4 9.5 L9 0.5 M11 9.5 L16 0.5 M18 9.5 L23 0.5" stroke={INK.line} strokeWidth="0.6" fill="none" />
-                    </>
-                  ),
-                },
-                {
-                  label: 'east-west green',
-                  sample: (
-                    <>
-                      <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
-                      <path d="M4 0.5 L9 9.5 M11 0.5 L16 9.5 M18 0.5 L23 9.5" stroke={INK.line} strokeWidth="0.6" fill="none" />
-                    </>
-                  ),
-                },
-                ...(round.ped > 0
-                  ? [
-                      {
-                        label: 'walk phase',
-                        sample: (
-                          <>
-                            <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
-                            <path d="M6 1 v8 M11 1 v8 M16 1 v8 M21 1 v8" stroke={INK.soft} strokeWidth="0.9" fill="none" />
-                          </>
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(lost > 0
-                  ? [
-                      {
-                        label: 'lost at each change',
-                        sample: (
-                          <>
-                            <rect x="0.5" y="0.5" width="25" height="9" fill="none" stroke={INK.line} strokeWidth="0.6" />
-                            <path d="M3 9.5 L8 0.5 M11 9.5 L16 0.5 M19 9.5 L24 0.5 M3 0.5 L8 9.5 M11 0.5 L16 9.5 M19 0.5 L24 9.5" stroke={INK.soft} strokeWidth="0.5" fill="none" />
-                          </>
-                        ),
-                      },
-                    ]
-                  : []),
-                {
-                  label: 'changeover mark',
-                  sample: (
-                    <>
-                      <line x1="13" y1="1" x2="13" y2="9" stroke={INK.line} strokeWidth="2.4" />
-                      <path d="M9 1 H17 L13 5 Z" fill={INK.line} />
-                    </>
-                  ),
-                },
-              ]}
-            />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Schedule
-                title="cycle time schedule"
-                columns={[
-                  { key: 'item', label: 'phase' },
-                  { key: 'from', label: 'starts', align: 'right' },
-                  { key: 'secs', label: 'seconds', align: 'right' },
-                ]}
-                rows={cycleRows}
-                foot={[
-                  { label: 'booked', value: `${booked} s` },
-                  { label: 'cycle', value: `${CYCLE} s` },
-                  { label: 'variance', value: `${CYCLE - booked} s`, tone: CYCLE - booked === 0 ? 'ok' : 'over' },
-                ]}
-              />
-              <Schedule
-                title="approach schedule"
-                columns={approachColumns}
-                rows={[
-                  approachRow('a · north-south', round.ns, greenNS, capNS, queueNS, delayNS, okNS),
-                  approachRow('b · east-west', round.ew, greenEW, capEW, queueEW, delayEW, okEW),
-                ]}
-                foot={approachFoot}
-              />
-            </div>
-
-            {tail > 0 && (
-              <NoteBlock n="cycle" tone="amber">
-                The last block of the band is walk time plus the seconds lost at each change. It comes off the minute before the
-                two roads split what is left, so a third stage costs every road green.
-              </NoteBlock>
-            )}
+            {/* Where the keyboard is, for whoever is driving with the keyboard. */}
+            <p
+              role="status"
+              aria-live={board.active ? 'polite' : 'off'}
+              className={cn(
+                LETTER,
+                'font-mono text-[11px] tabular-nums text-[var(--dr-ink-soft,#6c6252)]',
+                !board.active && 'sr-only',
+              )}
+              style={{ letterSpacing: TRACK.normal }}
+            >
+              cursor {cursorSeconds} s into the cycle · changeover booked at {greenNS} s
+            </p>
 
             {/* Verdicts are lettered notes on the sheet. */}
             <div aria-live="polite" className="min-h-[2.5rem] space-y-2">
               {phase === 'passed' && (
                 <NoteBlock n={1} tone="check">
-                  Green wave! Neither queue grows: each road clears a full minute of traffic inside its own green. The cars still
-                  at the line arrived after it went red and go first next cycle.
-                  {lv.level.metrics ? ` Total delay ${totalDelay} car-seconds, worst road ${worstDelay}.` : ' Nobody honks today.'}
+                  You gave north-south {greenNS} s of green and east-west {greenEW} s. Both roads keep up: {round.ns} cars a
+                  minute arrive from the north and {capNS.toFixed(0)} get through, {round.ew} arrive from the west and{' '}
+                  {capEW.toFixed(0)} get through. The cars still at the line arrived after it went red and go first next cycle.
+                  {lv.level.metrics
+                    ? ` That split costs ${totalDelay} car-seconds of waiting, and ${worstDelay} of it falls on the ${worstDelayRoad} road.`
+                    : ' Nobody honks today.'}
                 </NoteBlock>
               )}
               {phase === 'failed' && (
@@ -709,6 +673,16 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
                 </NoteBlock>
               )}
             </div>
+
+            {won && (
+              <SheetToggle
+                open={detailsOpen}
+                onClick={openAnalysis}
+                controls={DETAILS_ID}
+                icon={<Table2 className="h-3.5 w-3.5" />}
+                label="view full analysis"
+              />
+            )}
           </div>
         }
       >
@@ -832,21 +806,15 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           <SignalHead x={250} y={140} vertical mark="a" running={running} go={nsGo} />
           <SignalHead x={236} y={226} vertical={false} mark="b" running={running} go={ewGo} />
 
-          {/* what arrives, on leaders */}
+          {/* what arrives, on leaders. The queue readout rides the same label. */}
           <Leader x={JX} y={40} toX={380} toY={34} />
           <text x={384} y={38} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="10" fill={INK.soft}>
-            north approach, {round.ns}/min
+            north approach, {round.ns}/min{showQueue ? ` · ${shownQNS.toFixed(0)} waiting` : ''}
           </text>
           <Leader x={90} y={JY + LANE} toX={60} toY={258} />
           <text x={64} y={262} className={LETTER} style={{ letterSpacing: TRACK.normal }} fontSize="10" fill={INK.soft}>
-            west approach, {round.ew}/min
+            west approach, {round.ew}/min{showQueue ? ` · ${shownQEW.toFixed(0)} waiting` : ''}
           </text>
-
-          {/* ---------- the stage key ---------- */}
-          {showStages &&
-            stages.map((s, i) => (
-              <StageKey key={s.kind} x={580} y={30 + i * 70} kind={s.kind} name={s.name} detail={s.detail} live={s.live} />
-            ))}
 
           {/* ---------- the timing band ---------- */}
           <SnapGrid x0={BAND_X} y0={BAND_Y} x1={BAND_X + BAND_W} y1={BAND_Y + BAND_H} step={STEP} major={5} />
@@ -854,20 +822,22 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           {[
             // The block is lettered with the stage it is; the dimension under it
             // carries the seconds, the way a drawing splits naming from sizing.
-            { key: 'ns', from: 0, to: greenNS, fill: 'url(#tr-hatch-ns)', label: 'stage 1 north-south' },
-            { key: 'ew', from: greenNS, to: greenNS + greenEW, fill: 'url(#tr-hatch-ew)', label: 'stage 2 east-west' },
-            { key: 'walk', from: greenNS + greenEW, to: greenNS + greenEW + round.ped, fill: 'url(#tr-hatch-walk)', label: 'walk' },
-            { key: 'lost', from: greenNS + greenEW + round.ped, to: CYCLE, fill: 'url(#tr-hatch-lost)', label: 'lost' },
+            // Short form when the block is too narrow, so it never goes blank.
+            { key: 'ns', from: 0, to: greenNS, fill: 'url(#tr-hatch-ns)', label: 'a north-south', short: 'a ns' },
+            { key: 'ew', from: greenNS, to: greenNS + greenEW, fill: 'url(#tr-hatch-ew)', label: 'b east-west', short: 'b ew' },
+            { key: 'walk', from: greenNS + greenEW, to: greenNS + greenEW + round.ped, fill: 'url(#tr-hatch-walk)', label: 'c walk', short: 'c' },
+            { key: 'lost', from: greenNS + greenEW + round.ped, to: CYCLE, fill: 'url(#tr-hatch-lost)', label: 'lost time', short: 'lost' },
           ]
             .filter((b) => b.to > b.from)
             .map((b) => {
               const x = tx(b.from)
               const w = (b.to - b.from) * PX_PER_S
+              const text = w > b.label.length * 6 + 12 ? b.label : w > b.short.length * 6 + 12 ? b.short : null
               return (
                 <g key={b.key} aria-hidden>
                   <rect x={x} y={BAND_Y} width={w} height={BAND_H} fill={INK.paper} opacity="0.9" />
                   <rect x={x} y={BAND_Y} width={w} height={BAND_H} fill={b.fill} stroke={INK.line} strokeWidth={PEN.thin} />
-                  {w > b.label.length * 6 + 12 && (
+                  {text && (
                     <text
                       x={x + w / 2}
                       y={BAND_Y + BAND_H / 2 + 3.5}
@@ -878,15 +848,23 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
                       fontWeight="700"
                       fill={INK.line}
                     >
-                      {b.label}
+                      {text}
                     </text>
                   )}
                 </g>
               )
             })}
 
-          <text x={BAND_X} y={286} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fill={INK.soft}>
-            stage timing, one cycle
+          {/* the running order, in one line, with the live stage inked in */}
+          <text x={BAND_X} y={284} className={LETTER} style={{ letterSpacing: TRACK.wide }} fontSize="10" fill={INK.soft}>
+            {stages.map((s, i) => (
+              <tspan key={s.key}>
+                {i > 0 && <tspan fill={INK.soft}> to </tspan>}
+                <tspan fill={s.live ? INK.line : INK.soft} fontWeight={s.live ? 700 : 400}>
+                  {s.name}
+                </tspan>
+              </tspan>
+            ))}
           </text>
 
           {/* the changeover you are booking, and where the keyboard is pointing */}
@@ -935,8 +913,6 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
             <DimString x1={tx(greenNS + greenEW)} y1={BAND_Y + BAND_H} x2={tx(CYCLE)} y2={BAND_Y + BAND_H} offset={22} label={`walk + lost ${tail} s`} />
           )}
           <DimString x1={tx(0)} y1={BAND_Y + BAND_H} x2={tx(CYCLE)} y2={BAND_Y + BAND_H} offset={58} label={`cycle ${CYCLE} s`} />
-
-          <ScaleBar x={BAND_X} y={420} pxPerUnit={PX_PER_S} units={10} unit="s" />
 
           {/* ---------- the verdict, drawn on the sheet ---------- */}
           {phase === 'failed' && !okNS && (
@@ -1001,6 +977,71 @@ export function TrafficChallenge({ onComplete }: ChallengeProps) {
           />
         </div>
       )}
+
+      {/* Every schedule and calculation, folded away. Never open on arrival. */}
+      <div className="mt-4">
+        <SheetToggle
+          ref={detailsRef}
+          open={detailsOpen}
+          onClick={() => setDetailsOpen((v) => !v)}
+          controls={DETAILS_ID}
+          icon={<Table2 className="h-3.5 w-3.5" />}
+          label={detailsOpen ? 'hide engineering details' : 'show engineering details'}
+          className={cn(sheetVars, 'w-full sm:w-auto')}
+        />
+        <div
+          id={DETAILS_ID}
+          hidden={!detailsOpen}
+          className={cn(
+            sheetVars,
+            'mt-2 space-y-3 rounded-lg bg-[var(--dr-paper,#f5efe1)] p-3 ring-1 ring-[var(--dr-ink,#2e2a23)]/25',
+          )}
+        >
+          <p className="text-[11px] leading-snug text-[var(--dr-ink-soft,#6c6252)]">{round.brief}</p>
+
+          <p
+            className={cn(LETTER, 'font-mono text-[11px] tabular-nums text-[var(--dr-ink-soft,#6c6252)]')}
+            style={{ letterSpacing: TRACK.normal }}
+          >
+            cycle {CYCLE} s · booked {booked} s · {phases} phase changes{lost > 0 ? `, ${lost} s lost` : ''}
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Schedule
+              className="min-w-0"
+              title="cycle time schedule"
+              columns={[
+                { key: 'item', label: 'phase' },
+                { key: 'from', label: 'starts', align: 'right' },
+                { key: 'secs', label: 'seconds', align: 'right' },
+              ]}
+              rows={cycleRows}
+              foot={[
+                { label: 'booked', value: `${booked} s` },
+                { label: 'cycle', value: `${CYCLE} s` },
+                { label: 'variance', value: `${CYCLE - booked} s`, tone: CYCLE - booked === 0 ? 'ok' : 'over' },
+              ]}
+            />
+            <Schedule
+              className="min-w-0"
+              title="approach schedule"
+              columns={approachColumns}
+              rows={[
+                approachRow('a · north-south', round.ns, greenNS, capNS, queueNS, delayNS, okNS),
+                approachRow('b · east-west', round.ew, greenEW, capEW, queueEW, delayEW, okEW),
+              ]}
+              foot={approachFoot}
+            />
+          </div>
+
+          {tail > 0 && (
+            <NoteBlock n="cycle" tone="amber">
+              The last block of the band is walk time plus the seconds lost at each change. It comes off the minute before the
+              two roads split what is left, so a third stage costs every road green.
+            </NoteBlock>
+          )}
+        </div>
+      </div>
 
       {won && (
         <LevelComplete

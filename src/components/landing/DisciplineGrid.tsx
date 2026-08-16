@@ -1,16 +1,10 @@
-import { accentVars } from '@/lib/accent'
 import { motion } from 'framer-motion'
-import { Check, Lock } from 'lucide-react'
 import { Doodle } from '@/components/ui/Doodle'
 import { DisciplineCard } from '@/components/landing/DisciplineCard'
-import { Card } from '@/components/ui/Card'
 import { Reveal } from '@/components/ui/Reveal'
 import { disciplines } from '@/data/disciplines'
-import { useProgress } from '@/hooks/useProgress'
-import { usePreview } from '@/lib/preview'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import type { Discipline } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 const gridMotion = {
   variants: staggerContainer,
@@ -31,156 +25,51 @@ function Grid({ items }: { items: Discipline[] }) {
   )
 }
 
-/** Shown while the deeper fields are still locked. */
-function LockedMore({
-  core,
-  more,
-  doneCount,
-  percentFor,
-}: {
-  core: Discipline[]
-  more: Discipline[]
-  doneCount: number
-  percentFor: (slug: string) => number
-}) {
+/**
+ * A named run of cards. The two groups are reading order only: every field is
+ * playable from the first visit, so nothing here gates anything.
+ */
+function Group({ title, blurb, items }: { title: string; blurb: string; items: Discipline[] }) {
   return (
-    <motion.div
-      className="mt-20"
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.45, ease: 'easeOut' }}
-    >
-      <Card className="border-2 border-dashed border-stone-300 bg-stone-50/60 p-8 text-center dark:border-white/15 dark:bg-white/[0.02] sm:p-12">
-        <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-200 dark:bg-white/10">
-          <Lock className="h-8 w-8 text-ink-soft dark:text-stone-300" />
-        </span>
-        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          Go deeper into engineering
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-ink-soft dark:text-stone-400">
-          Finish the {core.length} core fields first. Then {more.length} more unlock, including{' '}
-          {more
-            .slice(0, 3)
-            .map((d) => d.shortName)
-            .join(', ')}
-          , and more.
-        </p>
-
-        {/* progress toward the unlock */}
-        <div className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-2">
-          {core.map((d) => {
-            const done = percentFor(d.slug) === 100
-            const Icon = d.icon
-            return (
-              <span
-                key={d.slug}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-sm font-semibold',
-                  done
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-stone-200 text-ink-soft dark:bg-white/10 dark:text-stone-400',
-                )}
-              >
-                {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                {d.shortName}
-              </span>
-            )
-          })}
-        </div>
-        <p className="mt-4 font-display text-sm font-bold text-ink-soft dark:text-stone-400">
-          {doneCount} of {core.length} complete
-        </p>
-      </Card>
-    </motion.div>
-  )
-}
-
-/** Shown once every core field is finished: branches grouped under each core parent. */
-function UnlockedMore({ core, more }: { core: Discipline[]; more: Discipline[] }) {
-  return (
-    <>
-      <Reveal className="mb-4 mt-20 text-center">
-        <motion.span
-          initial={{ scale: 0.8, opacity: 0 }}
-          whileInView={{ scale: 1, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-          className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 font-display text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
-        >
-          <Doodle name="star" className="h-4 w-4" />
-          Unlocked
-        </motion.span>
-        <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          Go deeper into engineering
-        </h2>
-        <p className="mt-3 text-ink-soft dark:text-stone-400">
-          Every field splits into branches. Here are the big ones under each core field.
-        </p>
+    <div>
+      <Reveal className="mb-6">
+        <h3 className="font-display text-2xl font-bold tracking-tight">{title}</h3>
+        <p className="mt-2 text-ink-soft dark:text-stone-400">{blurb}</p>
       </Reveal>
-
-      <div className="space-y-14">
-        {core.map((parent) => {
-          const branches = more.filter((d) => d.parent === parent.slug)
-          if (branches.length === 0) return null
-          const ParentIcon = parent.icon
-          return (
-            <div key={parent.slug}>
-              <div className="mb-6 flex items-center gap-3">
-                <span
-                  className="accent-soft flex h-11 w-11 items-center justify-center rounded-2xl"
-                  style={accentVars(parent.accent)}
-                >
-                  <ParentIcon className="accent-text h-6 w-6" />
-                </span>
-                <div>
-                  <p className="font-display text-lg font-bold tracking-tight">
-                    Branches of {parent.shortName}
-                  </p>
-                  <p className="text-sm text-ink-soft dark:text-stone-400">
-                    Fields that grow out of {parent.name.toLowerCase()}.
-                  </p>
-                </div>
-              </div>
-              <Grid items={branches} />
-            </div>
-          )
-        })}
-      </div>
-    </>
+      <Grid items={items} />
+    </div>
   )
 }
 
 export function DisciplineGrid() {
-  const { percentFor } = useProgress()
-  const preview = usePreview()
-
   const core = disciplines.filter((d) => d.tier !== 'more')
   const more = disciplines.filter((d) => d.tier === 'more')
-  const doneCount = core.filter((d) => percentFor(d.slug) === 100).length
-  // Teacher preview shows the branch fields without touching real progress.
-  const unlocked = doneCount === core.length || preview
 
   return (
     <section id="disciplines" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-16">
       <Reveal className="mb-10 text-center">
-        <p className="label-caps mb-4 text-ink-soft dark:text-stone-400">Start here</p>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
           Choose a field to study
         </h2>
         <p className="mt-3 text-ink-soft dark:text-stone-400">
-          {core.length} core fields to start, {more.length} more to unlock, zero tests.
+          Every field is open from the first visit. Three challenges in each, five levels deep.
         </p>
       </Reveal>
 
-      <Grid items={core} />
-
-      {more.length > 0 &&
-        (unlocked ? (
-          <UnlockedMore core={core} more={more} />
-        ) : (
-          <LockedMore core={core} more={more} doneCount={doneCount} percentFor={percentFor} />
-        ))}
+      <div className="space-y-16">
+        <Group
+          title="Start here"
+          blurb={`The ${core.length} widest fields. Most engineering work sits under one of them.`}
+          items={core}
+        />
+        {more.length > 0 && (
+          <Group
+            title="Explore more"
+            blurb={`${more.length} narrower fields that branch off the first three.`}
+            items={more}
+          />
+        )}
+      </div>
 
       <p className="mt-16 text-center text-sm text-ink-soft dark:text-stone-400">
         <Doodle name="star" className="mr-1.5 inline-block h-4 w-4 align-[-2px]" />

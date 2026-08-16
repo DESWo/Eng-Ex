@@ -1,6 +1,5 @@
-import { Check, Lock, Star } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import type { ChallengeLevel } from '@/lib/types'
-import { PHASE_META } from './levelMeta'
 import { Stars } from './Stars'
 import { cn } from '@/lib/utils'
 
@@ -16,7 +15,11 @@ interface LevelRailProps {
 }
 
 /**
- * The five level stepper that sits above every challenge.
+ * The five level stepper that sits above every challenge: the markers, then one
+ * line naming the level. Nothing else during play. The phase label and the
+ * running star total used to live here and both pulled attention away from the
+ * simulation, which is the thing the student came for.
+ *
  * Cleared levels stay clickable so a student can revisit an early design
  * once a later level has taught them something new.
  */
@@ -29,7 +32,6 @@ export function LevelRail({
   starsFor,
 }: LevelRailProps) {
   const active = levels.find((l) => l.n === current) ?? levels[0]
-  const earned = levels.reduce((sum, l) => sum + starsFor(l.n), 0)
 
   return (
     <div>
@@ -75,26 +77,11 @@ export function LevelRail({
             </button>
           )
         })}
-
-        <span
-          className={cn(
-            'ml-1 rounded-full px-2.5 py-1 font-display text-xs font-semibold',
-            PHASE_META[active.phase].chip,
-          )}
-        >
-          {PHASE_META[active.phase].label}
-        </span>
-
-        {earned > 0 && (
-          <span className="ml-auto flex items-center gap-1.5 font-mono text-xs font-bold tabular-nums text-ink-soft dark:text-stone-400">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-            {earned}/{levels.length * 3}
-          </span>
-        )}
       </div>
 
-      {/* title only, not the concept: that would give the level away */}
-      <p className="mt-2 flex items-center gap-2 text-sm text-ink-soft dark:text-stone-400">
+      {/* title only, not the concept: that would give the level away. Stars
+          appear once the level is cleared, never as a live score during play. */}
+      <p className="mt-2 flex items-center gap-2 text-sm">
         <span className="font-display font-semibold text-ink dark:text-stone-200">
           Level {active.n}: {active.title}
         </span>

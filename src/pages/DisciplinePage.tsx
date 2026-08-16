@@ -1,95 +1,47 @@
-import { useEffect, useState } from 'react'
-import { accentVars } from '@/lib/accent'
-import { Doodle } from '@/components/ui/Doodle'
-import { motion } from 'framer-motion'
+import { useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { DifficultyBadge } from '@/components/ui/Badge'
-import { ButtonLink } from '@/components/ui/Button'
-import { FlowStepper } from '@/components/flow/FlowStepper'
-import { IntroStep } from '@/components/flow/IntroStep'
-import { ChallengeStep } from '@/components/flow/ChallengeStep'
-import { ReflectionStep } from '@/components/flow/ReflectionStep'
-import { LearnWhyStep } from '@/components/flow/LearnWhyStep'
-import { DiyStep } from '@/components/flow/DiyStep'
-import { disciplines, getDiscipline } from '@/data/disciplines'
+import { FieldIntro } from '@/components/flow/FieldIntro'
+import { ChallengeList } from '@/components/flow/ChallengeList'
+import { SupportingMaterial } from '@/components/flow/SupportingMaterial'
+import { getDiscipline } from '@/data/disciplines'
 import { useProgress } from '@/hooks/useProgress'
-import { usePreview } from '@/lib/preview'
-import type { Discipline, StepId } from '@/lib/types'
+import { accentVars } from '@/lib/accent'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
-/** Shown when a deeper field is opened before the core fields are finished. */
-function LockedField({ discipline }: { discipline: Discipline }) {
-  return (
-    <div
-      style={accentVars(discipline.accent)}
-      className="mx-auto flex max-w-md flex-col items-center px-6 py-24 text-center"
-    >
-      {/* Someone studying until the field opens (Open Doodles, CC0). */}
-      <Doodle name="reading" className="mb-6 h-44 text-ink/85 dark:text-stone-200/90" />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        {discipline.name} is locked
-      </h1>
-      <p className="mt-3 text-ink-soft dark:text-stone-400">
-        Finish the three core fields first: Mechanical, Civil, and Electrical. Then the deeper
-        disciplines open up.
-      </p>
-      <ButtonLink to="/" className="mt-8">
-        Back to the core fields
-      </ButtonLink>
-    </div>
-  )
-}
-
+/**
+ * The field page: what this field is, the three challenges to play, and the
+ * supporting material underneath. Every field is reachable; nothing is gated.
+ */
 export function DisciplinePage() {
   const { slug } = useParams()
-  const navigate = useNavigate()
   const discipline = getDiscipline(slug)
-  const { markDone, isDone, percentFor, nextStepFor } = useProgress()
-  const preview = usePreview()
+  const { markDone } = useProgress()
 
-  // Resume where the visitor left off. A fully completed discipline starts over.
-  const [step, setStep] = useState<StepId>(() => {
-    if (!discipline) return 'intro'
-    return percentFor(discipline.slug) === 100 ? 'intro' : nextStepFor(discipline.slug)
-  })
-
-  // Arriving at "Why it works" or "Try it at home" counts as finishing them.
+  // The intro is on the page now rather than behind a step, so opening the
+  // field is what finishes it. Same key, same shape as before.
   useEffect(() => {
-    if (discipline && (step === 'learn' || step === 'diy')) markDone(discipline.slug, step)
-  }, [discipline, step, markDone])
-
-  const goTo = (next: StepId) => {
-    setStep(next)
-    window.scrollTo({ top: 0 })
-  }
+    if (discipline) markDone(discipline.slug, 'intro')
+  }, [discipline, markDone])
 
   if (!discipline) return <NotFoundPage />
-
-  // Deeper fields stay locked until every core field is 100% complete.
-  // Teacher preview opens them all so a teacher can vet content in advance.
-  if (discipline.tier === 'more' && !preview) {
-    const coreDone = disciplines
-      .filter((d) => d.tier !== 'more')
-      .every((d) => percentFor(d.slug) === 100)
-    if (!coreDone) return <LockedField discipline={discipline} />
-  }
 
   const Icon = discipline.icon
 
   return (
     <div style={accentVars(discipline.accent)}>
-      {/* Discipline header */}
+      {/* Field header */}
       <section className="accent-softer paper-grid-lg">
         <div className="mx-auto max-w-4xl px-6 py-8 sm:py-10">
           <Link
             to="/"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft transition-colors hover:text-ink dark:text-stone-400 dark:hover:text-stone-200"
+            className="-ml-1 inline-flex min-h-11 w-fit items-center gap-1 pr-2 text-sm font-semibold text-ink-soft transition-colors hover:text-ink dark:text-stone-400 dark:hover:text-stone-200"
           >
             <ChevronLeft className="h-4 w-4" />
             All disciplines
           </Link>
-          <div className="mt-4 flex flex-wrap items-center gap-4">
+          <div className="mt-2 flex flex-wrap items-center gap-4">
             <span className="accent-soft flex h-16 w-16 items-center justify-center rounded-2xl shadow-clay">
               <Icon className="accent-text h-8 w-8" />
             </span>
@@ -104,66 +56,10 @@ export function DisciplinePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <FlowStepper
-          current={step}
-          isDone={(s) => isDone(discipline.slug, s)}
-          onSelect={goTo}
-        />
-
-        <div className="mt-10">
-          {/*
-           * A keyed motion.div (no AnimatePresence) remounts on every step
-           * change and replays its enter animation. This can never wedge the
-           * way `AnimatePresence mode="wait"` can if an exit callback is missed.
-           */}
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-          >
-            {step === 'intro' && (
-                <IntroStep
-                  discipline={discipline}
-                  onNext={() => {
-                    markDone(discipline.slug, 'intro')
-                    goTo('challenge')
-                  }}
-                />
-              )}
-              {step === 'challenge' && (
-                <ChallengeStep
-                  discipline={discipline}
-                  onSolved={() => markDone(discipline.slug, 'challenge')}
-                  onNext={() => goTo('reflection')}
-                />
-              )}
-              {step === 'reflection' && (
-                <ReflectionStep
-                  discipline={discipline}
-                  onNext={() => {
-                    markDone(discipline.slug, 'reflection')
-                    goTo('learn')
-                  }}
-                />
-              )}
-              {step === 'learn' && (
-                <LearnWhyStep
-                  discipline={discipline}
-                  onNext={() => goTo('diy')}
-                  onReplay={() => goTo('challenge')}
-                />
-              )}
-              {step === 'diy' && (
-                <DiyStep
-                  discipline={discipline}
-                  onExploreMore={() => navigate('/')}
-                  onReplay={() => goTo('challenge')}
-                />
-              )}
-          </motion.div>
-        </div>
+      <div className="mx-auto max-w-4xl space-y-12 px-6 py-10">
+        <FieldIntro discipline={discipline} />
+        <ChallengeList discipline={discipline} />
+        <SupportingMaterial discipline={discipline} />
       </div>
     </div>
   )

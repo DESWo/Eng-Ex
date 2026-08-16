@@ -1,9 +1,8 @@
-import { Eye, EyeOff, Printer } from 'lucide-react'
+import { Printer } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { disciplines } from '@/data/disciplines'
 import { useProfile } from '@/hooks/useProfile'
 import { LEVELS_PER_CHALLENGE, TIER_LABEL, masteryFor, type MasteryTier } from '@/lib/mastery'
-import { setPreview, usePreview } from '@/lib/preview'
 import { loadJson } from '@/lib/storage'
 import type { Reflection } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -51,7 +50,6 @@ function SectionLabel({ children }: { children: string }) {
 
 export function TeacherPage() {
   const { profile } = useProfile()
-  const preview = usePreview()
 
   // One read at mount is enough: opening the report is the refresh.
   const store = loadJson<LevelStore>('levels', {})
@@ -111,10 +109,6 @@ export function TeacherPage() {
         <Button size="sm" onClick={() => window.print()}>
           <Printer className="h-4 w-4" />
           Print this report
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setPreview(!preview)}>
-          {preview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {preview ? 'Turn off teacher preview' : 'Unlock every field for preview'}
         </Button>
       </div>
 

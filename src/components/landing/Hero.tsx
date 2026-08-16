@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { ArrowDown } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { BeamDemo } from '@/components/landing/BeamDemo'
 import { buttonClasses } from '@/components/ui/Button'
 import { RoughLine } from '@/components/ui/Sketchy'
@@ -27,9 +28,8 @@ export function Hero() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
           <div className="max-w-xl">
             <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
-              Engineering challenges that solve the{' '}
               <span className="relative inline-block">
-                real equations
+                Try engineering
                 <svg
                   aria-hidden
                   className="absolute -bottom-2 left-0 w-full overflow-visible"
@@ -40,20 +40,26 @@ export function Hero() {
                   <RoughLine x1={10} y1={12} x2={288} y2={11} stroke="#f2695c" options={UNDERLINE_2} seed={21} />
                 </svg>
               </span>
+              , do not just read about it.
             </h1>
 
             <p className="mt-8 text-lg text-ink-soft dark:text-stone-400">
-              {disciplines.length} fields, three challenges each. The bridge challenge solves a truss
-              stiffness matrix, the robot arm runs inverse kinematics. The beam here is a much smaller
-              version of the same thing: drag the load and the reactions and the deflected shape
-              recompute.
+              {disciplines.length} fields, three challenges each. You build something, run it, and see
+              what it does. The beam here is the smallest version of that: drag the load and the
+              reactions and the sag recompute.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2">
               <a href="#disciplines" className={buttonClasses('primary', 'lg')}>
                 Pick a field
                 <ArrowDown className="h-5 w-5" />
               </a>
+              <Link
+                to="/technical"
+                className="inline-flex min-h-11 items-center px-2 font-display text-base font-semibold text-ink-soft underline decoration-ink/30 underline-offset-4 hover:text-ink dark:text-stone-400 dark:decoration-white/30 dark:hover:text-stone-200"
+              >
+                How the simulations work
+              </Link>
             </div>
           </div>
 

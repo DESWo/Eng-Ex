@@ -1,6 +1,23 @@
-import { useEffect, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link, NavLink } from 'react-router-dom'
-import { LogOut, Save, User, UserPlus } from 'lucide-react'
+import {
+  ChevronDown,
+  GraduationCap,
+  Info,
+  LogOut,
+  Save,
+  Shield,
+  User,
+  UserPlus,
+  Wrench,
+} from 'lucide-react'
 import { SoundToggle } from '@/components/ui/SoundToggle'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { ProfileDialog } from '@/components/auth/SignInDialog'
@@ -20,11 +37,195 @@ function LogoMark() {
 
 const tabClass = (isActive: boolean) =>
   cn(
-    'rounded-full px-3 py-2 font-display text-sm font-semibold transition-colors duration-200',
+    'flex min-h-11 items-center gap-1.5 rounded-full px-3 py-2 font-display text-sm font-semibold transition-colors duration-200',
     isActive
       ? 'bg-stone-900/5 text-ink dark:bg-white/10 dark:text-stone-100'
       : 'text-ink-soft hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/10',
   )
+
+const menuItemClass =
+  'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left font-display text-sm font-semibold text-ink-soft transition-colors duration-200 hover:bg-stone-900/5 dark:text-stone-300 dark:hover:bg-white/10'
+
+/** Everything a student does not need at the top level. */
+function SiteMenu({ onBackup }: { onBackup: () => void }) {
+  const { profile, leaveProfile } = useProfile()
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const close = (returnFocus = true) => {
+    setOpen(false)
+    if (returnFocus) triggerRef.current?.focus()
+  }
+
+  // Anything focusable in the panel is a menu item, including the two toggles.
+  const items = () =>
+    Array.from(panelRef.current?.querySelectorAll<HTMLElement>('a[href], button') ?? [])
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return
+      // A click outside is not a keyboard exit, so leave focus where it landed.
+      setOpen(false)
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  // Opening with a key should land on an item, but the panel only exists after
+  // the render that opens it, so the focus is queued rather than done inline.
+  const pendingFocus = useRef<'first' | 'last' | null>(null)
+  useEffect(() => {
+    if (!open || !pendingFocus.current) return
+    const list = items()
+    ;(pendingFocus.current === 'first' ? list[0] : list[list.length - 1])?.focus()
+    pendingFocus.current = null
+  }, [open])
+
+  const onTriggerKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const where = e.key === 'ArrowDown' ? 'first' : 'last'
+    if (open) {
+      const list = items()
+      ;(where === 'first' ? list[0] : list[list.length - 1])?.focus()
+    } else {
+      pendingFocus.current = where
+      setOpen(true)
+    }
+  }
+
+  const onPanelKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+    const list = items()
+    if (list.length === 0) return
+    e.preventDefault()
+    const here = list.indexOf(document.activeElement as HTMLElement)
+    const next =
+      e.key === 'Home'
+        ? 0
+        : e.key === 'End'
+          ? list.length - 1
+          : here === -1
+            ? e.key === 'ArrowDown'
+              ? 0
+              : list.length - 1
+            : (here + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length
+    list[next]?.focus()
+  }
+
+  // Tabbing past the last item leaves the menu, so it should not stay open.
+  const onBlurOut = (e: ReactFocusEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false)
+  }
+
+  return (
+    <div className="relative" onBlur={onBlurOut}>
+      <button
+        type="button"
+        ref={triggerRef}
+        onClick={() => (open ? close(false) : setOpen(true))}
+        onKeyDown={onTriggerKeyDown}
+        aria-expanded={open}
+        aria-controls="site-menu"
+        className={cn(tabClass(false), open && 'bg-stone-900/5 dark:bg-white/10')}
+      >
+        <span>Menu</span>
+        <ChevronDown
+          className={cn('h-4 w-4 motion-safe:transition-transform', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            id="site-menu"
+            ref={panelRef}
+            onKeyDown={onPanelKeyDown}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14 }}
+            className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-6rem)] w-64 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-stone-900/10 bg-cream p-1.5 shadow-clay dark:border-white/10 dark:bg-night"
+          >
+            {/* Close first, so focus is back on the trigger when the dialog
+                records what to restore focus to. */}
+            <button
+              type="button"
+              onClick={() => {
+                close()
+                onBackup()
+              }}
+              className={menuItemClass}
+            >
+              <Save className="h-4 w-4 shrink-0" aria-hidden />
+              Back up or restore
+            </button>
+            {profile && (
+              <button
+                type="button"
+                onClick={() => {
+                  close()
+                  leaveProfile()
+                }}
+                className={menuItemClass}
+              >
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                Leave this profile
+              </button>
+            )}
+
+            <div className="my-1.5 border-t border-stone-900/10 dark:border-white/10" />
+
+            <Link to="/about" onClick={() => close(false)} className={menuItemClass}>
+              <Info className="h-4 w-4 shrink-0" aria-hidden />
+              About
+            </Link>
+            <Link to="/teacher" onClick={() => close(false)} className={menuItemClass}>
+              <GraduationCap className="h-4 w-4 shrink-0" aria-hidden />
+              For teachers
+            </Link>
+            <Link to="/technical" onClick={() => close(false)} className={menuItemClass}>
+              <Wrench className="h-4 w-4 shrink-0" aria-hidden />
+              Technical notes
+            </Link>
+            <Link to="/privacy" onClick={() => close(false)} className={menuItemClass}>
+              <Shield className="h-4 w-4 shrink-0" aria-hidden />
+              Privacy
+            </Link>
+
+            <div className="my-1.5 border-t border-stone-900/10 dark:border-white/10" />
+
+            {/* The toggles keep their own labels and pressed state; the row text
+                names what the control is for. */}
+            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl px-3">
+              <span className="font-display text-sm font-semibold text-ink-soft dark:text-stone-300">
+                Sound
+              </span>
+              <SoundToggle />
+            </div>
+            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl px-3">
+              <span className="font-display text-sm font-semibold text-ink-soft dark:text-stone-300">
+                Theme
+              </span>
+              <ThemeToggle />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export function Navbar() {
   const { profile, leaveProfile } = useProfile()
@@ -60,59 +261,37 @@ export function Navbar() {
               Engineering Explorer
             </span>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-3">
-            <NavLink to="/about" className={({ isActive }) => tabClass(isActive)}>
-              About
+          <div className="flex items-center gap-1 sm:gap-2">
+            <NavLink to="/" end className={({ isActive }) => tabClass(isActive)}>
+              Explore
             </NavLink>
 
-            <button
-              type="button"
-              onClick={() => setSaveOpen(true)}
-              title="Back up or restore your progress"
-              className={cn(tabClass(false), 'flex items-center gap-1.5')}
-            >
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline">Backup</span>
-            </button>
-
             {profile ? (
-              <div className="flex items-center gap-1">
-                {/* The name is also the way to switch, so a shared machine never
-                    has to leave a profile just to hand over. */}
-                <button
-                  type="button"
-                  onClick={() => setDialogOpen(true)}
-                  aria-label={`Switch profile, using ${profile.name}`}
-                  title={`Using ${profile.name}. Click to switch.`}
-                  className={cn(tabClass(false), 'flex items-center gap-1.5')}
-                >
-                  <User className="h-4 w-4 shrink-0" />
-                  <span className="hidden max-w-[9rem] truncate sm:inline">{profile.name}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={leaveProfile}
-                  aria-label="Leave this profile"
-                  className={cn(tabClass(false), 'flex items-center gap-1.5')}
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Leave</span>
-                </button>
-              </div>
+              // The name is also the way to switch, so a shared machine never
+              // has to leave a profile just to hand over.
+              <button
+                type="button"
+                onClick={() => setDialogOpen(true)}
+                aria-label={`Switch profile, using ${profile.name}`}
+                title={`Using ${profile.name}. Click to switch.`}
+                className={tabClass(false)}
+              >
+                <User className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="hidden max-w-[9rem] truncate sm:inline">{profile.name}</span>
+              </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setDialogOpen(true)}
                 aria-label="Pick a profile on this device"
-                className={cn(tabClass(false), 'flex items-center gap-1.5')}
+                className={tabClass(false)}
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="hidden sm:inline">Profile</span>
               </button>
             )}
 
-            <SoundToggle />
-            <ThemeToggle />
+            <SiteMenu onBackup={() => setSaveOpen(true)} />
           </div>
         </div>
 
