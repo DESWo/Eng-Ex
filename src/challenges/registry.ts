@@ -10,7 +10,7 @@ export interface RegisteredChallenge {
 
 /**
  * Each game loads as its own chunk the first time somebody opens it, so the
- * landing page does not pay for all 33 up front.
+ * landing page does not pay for all 36 up front.
  */
 const lazyChallenge = <T,>(
   load: () => Promise<T>,
