@@ -42,6 +42,14 @@ const tryAnotherLabel: Record<string, string> = {
 /** Metric ids are code names ("peak-g", "line_loss"); print them as words. */
 const metricLabel = (id: string) => id.replace(/[-_]/g, ' ')
 
+/**
+ * Metric ids that a retune renamed away (amp -> shake, dampers -> peak on
+ * Smooth Ride). Old saves still carry bests under them until the level is
+ * replayed (useLevels prunes on clear), and a best for a measurement the game
+ * no longer makes should not print on a report.
+ */
+const RETIRED_METRIC_IDS = new Set(['amp', 'dampers'])
+
 const fmt = (v: number) => String(Math.round(v * 100) / 100)
 
 function SectionLabel({ children }: { children: string }) {
@@ -180,7 +188,9 @@ export function TeacherPage() {
                       (n) => n >= 1 && n <= LEVELS_PER_CHALLENGE,
                     ),
                   ).size
-                  const best = Object.entries(entry.best ?? {})
+                  const best = Object.entries(entry.best ?? {}).filter(
+                    ([id]) => !RETIRED_METRIC_IDS.has(id),
+                  )
                   return (
                     <div
                       key={c.id}

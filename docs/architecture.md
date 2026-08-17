@@ -12,8 +12,12 @@ src/
     registry.ts           challenge id -> lazy component + preload
     <field>/              one folder per field
   components/
-    ui/                   Button, Card, Badge, Meter, Confetti
-    level/                LevelRail, ConceptCard, InsightToggle, Scorecard, LevelShell
+    ui/                   shared primitives: Button, Card, Badge, Meter, Ticker,
+                          Confetti, ErrorBoundary, ProgressBar, Reveal,
+                          ScrollProgress, SketchFrame, Sketchy, Doodle,
+                          SoundToggle, ThemeToggle
+    level/                LevelRail, LevelShell, ConceptCard, InsightToggle,
+                          Objective, Scorecard, Stars
     flow/                 FieldIntro, ChallengeList, SupportingMaterial and the
                           pieces inside it (WhyItWorks, ReflectionQuestions,
                           DiyProject, PostLevelWhy)
@@ -100,18 +104,22 @@ line.
 
 Add an entry to `src/data/disciplines.ts`, copying an existing one, then build
 its challenges. Branch fields set `tier: 'more'` and a `parent` slug. The landing
-card, routing, theming, gating, and the five step flow are generated from the
-data file.
+card, routing, theming, and the whole field page are generated from the data
+file.
 
 ## Verification
 
 ```bash
 npm run lint     # oxlint
 npm run build    # tsc -b && vite build, this is the typecheck
-npm run verify   # every scripts/verify-*.mjs physics guard
+npm run verify   # every scripts/verify-*.mjs guard: six physics, one content
 ```
 
-Run all three after a series of edits. The verify scripts mirror constants out
-of the challenge components and re-read the component text to prove the mirror
-still matches, so changing a tuned constant means updating the matching script
-in the same commit. CI runs all three on every push and nothing deploys red.
+Run all three after a series of edits. The truss and quake guards import their
+model straight from the `.ts` module; the ik, ride, reactor and dose guards
+mirror constants out of a React component and re-read the component text to
+prove the mirror still matches; verify-content checks the data wiring
+(registry agreement, level counts, accent contrast). Changing a tuned constant
+means updating the matching script in the same commit — the quake level table
+especially, whose mirror has no automatic re-read. CI runs all three on every
+push to main, and nothing deploys on a red check.
