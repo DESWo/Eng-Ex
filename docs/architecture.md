@@ -14,14 +14,16 @@ src/
   components/
     ui/                   Button, Card, Badge, Meter, Confetti
     level/                LevelRail, ConceptCard, InsightToggle, Scorecard, LevelShell
-    flow/                 FlowStepper and the five step components
-    landing/ layout/ auth/ diy/
-  pages/                  LandingPage, DisciplinePage, AboutPage, TeacherPage,
-                          PrivacyPage, NotFoundPage
+    flow/                 FieldIntro, ChallengeList, SupportingMaterial and the
+                          pieces inside it (WhyItWorks, ReflectionQuestions,
+                          DiyProject, PostLevelWhy)
+    landing/ layout/ auth/ diy/ instruments/
+  pages/                  LandingPage, DisciplinePage, ChallengePage, AboutPage,
+                          TeacherPage, TechnicalNotesPage, PrivacyPage, NotFoundPage
   hooks/                  useTheme, useProgress, useLevels, useLevelCounts,
                           useProfile, useAttempts, useSvgDrag
   lib/                    types, storage, mastery, profile, saveFile, accent,
-                          preview, sound, animations, utils
+                          sound, animations, utils
 ```
 
 Content is data, not JSX. Challenge copy, field descriptions, and the DIY
@@ -32,13 +34,14 @@ hovering a challenge chip preloads it.
 
 ## Field flow
 
-Three core fields (Mechanical, Civil, Electrical) are open from the start. The
-nine branch fields unlock once the core three are fully explored. `?preview=1`
-on any URL, or the toggle on `/teacher`, opens everything without touching a
-student's save.
+All twelve fields are open from the first visit. The landing page groups them
+as three core fields (Mechanical, Civil, Electrical) and nine branch fields,
+but that is reading order, not gating.
 
-Each field runs the same five steps: intro, three games, three reflection
-questions, the idea behind each game, and a DIY project.
+A field page is the intro, the three games, and the supporting material
+(the idea behind each game, three reflection questions, and a DIY project).
+Progress still tracks the five historical step keys (intro, challenge,
+reflection, learn, diy) in `ee:progress`, so old saves keep their meaning.
 
 ## Level arc
 
@@ -56,9 +59,11 @@ level 3.
 
 ## Storage
 
-Everything persists to localStorage under the `ee:` prefix. Signed-in saves go
-to `ee:u:<email>:<key>`, guests to bare `ee:<key>`, and guest work is moved into
-a new account on first sign-in. Theme is per browser, not per account.
+Everything persists to localStorage under the `ee:` prefix. A named profile's
+work goes to `ee:p:<slug>-<hash>:<key>` (profiles created under the old email
+flow keep their `ee:u:<email>:<key>` scope forever), guests use bare
+`ee:<key>`, and guest work is moved into a new profile on first switch. Theme
+is per browser, not per profile.
 
 Renaming a storage key is a data migration, not a refactor.
 
@@ -103,6 +108,10 @@ data file.
 ```bash
 npm run lint     # oxlint
 npm run build    # tsc -b && vite build, this is the typecheck
+npm run verify   # every scripts/verify-*.mjs physics guard
 ```
 
-Run both after a series of edits.
+Run all three after a series of edits. The verify scripts mirror constants out
+of the challenge components and re-read the component text to prove the mirror
+still matches, so changing a tuned constant means updating the matching script
+in the same commit. CI runs all three on every push and nothing deploys red.

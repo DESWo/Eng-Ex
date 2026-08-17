@@ -33,8 +33,11 @@ export function masteryFor(discipline: Discipline): Mastery {
   let cleared = 0
   let everyGameAtThree = discipline.challenges.length > 0
   for (const c of discipline.challenges) {
-    const done = store[c.id]?.cleared ?? []
-    cleared += done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE).length
+    const raw = store[c.id]?.cleared
+    const done = Array.isArray(raw) ? raw : []
+    // Deduped, same as the save-file summary: a restored save is hand-editable
+    // text, and duplicate level numbers must not count a level twice.
+    cleared += new Set(done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE)).size
     // "solid" requires every game at level 3+, not one game played to death
     if (!done.some((n) => n >= 3)) everyGameAtThree = false
   }

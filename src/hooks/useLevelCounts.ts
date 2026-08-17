@@ -25,8 +25,11 @@ export function useLevelCounts(): (challengeId: string) => number {
       // Unreadable storage counts as no progress rather than a crash.
     }
     return (challengeId: string) => {
-      const done = store[challengeId]?.cleared ?? []
-      return done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE).length
+      const raw = store[challengeId]?.cleared
+      const done = Array.isArray(raw) ? raw : []
+      // Deduped: a restored save is hand-editable, and a duplicate level
+      // number must not push the count past LEVELS_PER_CHALLENGE.
+      return new Set(done.filter((n) => n >= 1 && n <= LEVELS_PER_CHALLENGE)).size
     }
   }, [raw])
 }

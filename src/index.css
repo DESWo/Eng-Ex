@@ -142,10 +142,10 @@
   }
 
   /*
-   * Text sitting ON an accent-colored surface. Ten of the twelve discipline
+   * Text sitting ON an accent-colored surface. Nine of the twelve discipline
    * accents are too light for white at WCAG AA, so each accent scope sets
    * --accent-ink (white or the app ink, whichever passes 4.5:1) and this
-   * class uses it. Falls back to white for the two accents where white wins.
+   * class uses it. Falls back to white for the accents where white wins.
    */
   .on-accent {
     color: var(--accent-ink, #ffffff);

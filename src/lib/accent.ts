@@ -1,11 +1,12 @@
 /**
  * WCAG-aware text color for content sitting ON an accent-colored surface.
  *
- * Ten of the twelve discipline accents are too light for white text at the
+ * Nine of the twelve discipline accents are too light for white text at the
  * 4.5:1 AA threshold (the nuclear yellow is barely 1.9:1), so each accent
- * scope also sets `--accent-ink`, and the `.on-accent` class uses it. The two
- * accents that fail both directions were darkened at the source instead
- * (#7b6cf0 → #7163dd, #6366f1 → #6164ec) so white passes on them.
+ * scope also sets `--accent-ink`, and the `.on-accent` class uses it. Two
+ * accents that once failed both directions were darkened at the source instead
+ * (#7b6cf0 → #7163dd, #6366f1 → #6164ec) so white passes on them; chemical's
+ * #c026d3 clears the bar for white as it is.
  */
 import type { CSSProperties } from 'react'
 

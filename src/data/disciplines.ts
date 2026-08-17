@@ -122,7 +122,7 @@ export const disciplines: Discipline[] = [
           {
             icon: Cog,
             title: 'Dampers blunt what they cannot move',
-            body: 'A shock absorber turns bounce into heat. It cannot shift the resonance, only flatten it, which is why engineers pick the spring first and the damper second.',
+            body: 'A shock absorber turns bounce into heat. It cannot shift the resonance, only flatten it, and past the resonance it feeds road back into the body. That is why engineers pick the spring first and add only the damping the worst road demands.',
           },
         ],
       },

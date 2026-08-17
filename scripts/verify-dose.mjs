@@ -112,10 +112,11 @@ const reachable = Array.from({ length: MAX_BASE + 1 }, (_, v) => v)
 
 section('Source agreement')
 {
+  // Normalized to LF so a Windows checkout (core.autocrlf) passes identically.
   const src = readFileSync(
     fileURLToPath(new URL('../src/challenges/chemical/TitrationChallenge.tsx', import.meta.url)),
     'utf8',
-  )
+  ).replace(/\r\n/g, '\n')
   const num = (name) => {
     const m = src.match(new RegExp(`const ${name} = (-?[\\d.]+)`))
     return m ? Number(m[1]) : NaN

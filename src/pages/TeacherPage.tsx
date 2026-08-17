@@ -75,7 +75,7 @@ export function TeacherPage() {
     return r && (r.enjoyed !== undefined || r.difficulty !== undefined || r.tryAnother !== undefined)
   })
 
-  const student = profile ? profile.email : 'Guest on this device'
+  const student = profile ? profile.name : 'Guest on this device'
   const printed = new Date().toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
@@ -174,9 +174,12 @@ export function TeacherPage() {
               <div className="mt-2 space-y-3">
                 {d.challenges.map((c) => {
                   const entry = store[c.id] ?? {}
-                  const cleared = (entry.cleared ?? []).filter(
-                    (n) => n >= 1 && n <= LEVELS_PER_CHALLENGE,
-                  ).length
+                  // Deduped, matching masteryFor: restored saves are untrusted.
+                  const cleared = new Set(
+                    (Array.isArray(entry.cleared) ? entry.cleared : []).filter(
+                      (n) => n >= 1 && n <= LEVELS_PER_CHALLENGE,
+                    ),
+                  ).size
                   const best = Object.entries(entry.best ?? {})
                   return (
                     <div

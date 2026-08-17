@@ -1,5 +1,5 @@
 import { loadJson, removeJson, saveJson } from '@/lib/storage'
-import { loadProfile, normalizeEmail } from '@/lib/profile'
+import { loadProfile, normalizeProfileName } from '@/lib/profile'
 import { disciplines } from '@/data/disciplines'
 import { LEVELS_PER_CHALLENGE } from '@/lib/mastery'
 
@@ -81,7 +81,10 @@ export function buildSave(): SaveFile {
     app: 'engineering-explorer',
     version: 1,
     savedAt: new Date().toISOString(),
-    account: loadProfile()?.email ?? null,
+    // The display name, so a teacher opening the file sees "Alex R", not a
+    // lowercased key. Matching on restore normalizes both sides, and legacy
+    // files that stored an email address normalize to themselves.
+    account: loadProfile()?.name ?? null,
     summary: summarize(data.levels),
     data,
   }
@@ -140,10 +143,10 @@ export function parseSave(raw: string): ParsedSave {
   return { ok: true, save: parsed as unknown as SaveFile }
 }
 
-/** Is this save from the account (or guest slot) that is signed in right now? */
+/** Is this save from the profile (or guest slot) that is in use right now? */
 export function saveMatchesCurrentAccount(save: SaveFile): boolean {
-  const mine = loadProfile()?.email ?? null
-  const theirs = typeof save.account === 'string' ? normalizeEmail(save.account) : null
+  const mine = loadProfile()?.key ?? null
+  const theirs = typeof save.account === 'string' ? normalizeProfileName(save.account) : null
   return mine === theirs
 }
 

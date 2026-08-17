@@ -71,8 +71,8 @@ const MODELS: ModelNote[] = [
       'Wind, temperature, and anything out of plane. The model is 2D.',
     ],
     evidence:
-      'None. No script under scripts/ exercises this solver, so the only thing standing behind it is the code itself.',
-    verified: false,
+      'scripts/verify-truss.mjs. It imports the real solver and checks it against member forces derived by hand with the method of joints, the method of sections and the force method, written as exact fractions of the truck weight, then re-solves every level to prove each is winnable as designed and still refuses the naive span. A source-agreement section re-reads BridgeChallenge.tsx so the mirrored geometry cannot drift silently.',
+    verified: true,
   },
   {
     id: 'quake',
@@ -143,8 +143,9 @@ const MODELS: ModelNote[] = [
       'Singularities. Near full extension small hand moves need large joint moves, and the model shows that implicitly but never reports it.',
       'Anything past a planar 2R arm: no wrist, no end-effector orientation, no redundancy, no third dimension.',
     ],
-    evidence: 'None. No script under scripts/ covers this solver.',
-    verified: false,
+    evidence:
+      'scripts/verify-ik.mjs. It feeds forward kinematics back through the solver over a grid of poses, checks the elbow angle against the law of cosines on the base-elbow-hand triangle, works the two hand-derivable extremes at full reach and full fold, and pins the four places the game deliberately approximates geometry at their current size. A source-agreement section re-reads the component so the mirrored constants cannot drift.',
+    verified: true,
   },
   {
     id: 'suspension',
@@ -153,25 +154,24 @@ const MODELS: ModelNote[] = [
     source: ['src/challenges/mechanical/SuspensionChallenge.tsx'],
     game: 'Smooth Ride, mechanical engineering',
     computes:
-      'For a chosen spring, mass and damper count: the natural frequency of the body on its springs, the static sag, a harshness number, and how much of the road shake reaches the body at one road frequency. Everything is a closed-form steady-state number. Nothing is integrated in time.',
+      'For a chosen spring, mass and damper count: the natural frequency of the body on its springs, the static sag, a harshness number, how much of the road shake reaches the body at one road frequency, and the height of the resonant spike a run up to speed would pass through. Everything is a closed-form steady-state number. Nothing is integrated in time.',
     equations: [
       { expr: 'f_n = √(k/m) / 2π', note: 'natural frequency, Hz' },
       { expr: 'ζ = c·n / (2 √(k m)),   r = f_road / f_n', note: 'c = 2000 N·s/m per damper, n is 0 to 3' },
-      { expr: 'shake = 1 / √( (1 − r²)² + (2ζr)² )', note: 'this is what the code computes, and it is the dynamic magnification factor for a force applied to the body' },
-      { expr: 'transmissibility = √(1 + (2ζr)²) / √( (1 − r²)² + (2ζr)² )', note: 'this is what a base-excited system actually transmits, and the code does not use it' },
+      { expr: 'T = √(1 + (2ζr)²) / √( (1 − r²)² + (2ζr)² )', note: 'displacement transmissibility for base excitation: the road shakes the wheels, and this is the fraction that reaches the body' },
+      { expr: 'r²_peak = (√(1 + 8ζ²) − 1) / 4ζ²', note: 'where the spike sits; its height is T at that r, and with no dampers it is unbounded, reported as a 9.99 clamp' },
       { expr: 'sag = m g / k', note: 'against 160 mm of travel, and level 5 scores what is left' },
       { expr: 'harshness = √(k/m)', note: 'the undamped natural frequency in rad/s, used bare against a cap of 10' },
     ],
     assumptions: [
-      'The formula in the code is the wrong one for the physical setup, and it matters at one level. A washboard road shakes the base, not the body, so the honest quantity is displacement transmissibility, which carries the √(1 + (2ζr)²) numerator. The code omits that numerator.',
-      'Below and at resonance the two agree closely, so the level 3 lesson is untouched: the firm spring on a 700 kg van has f_n = 1.90 Hz against a 1.90 Hz road, r = 0.999, and the response is enormous either way.',
-      'Above r = √2 they part company, and the direction reverses. On level 5 (firm spring, 1200 kg, f_n = 1.45 Hz, road 2.6 Hz, r = 1.79) the implemented shake falls from 45% to 42% as dampers go from 0 to 3, while true base transmissibility rises from 45% to 58%. On a real quarter car, above √2 a damper couples more road into the body, not less. The sign of the damper trade on that level is inverted.',
+      'The numerator matters, and levels 4 and 5 are built on it. √(1 + (2ζr)²) is the damper’s own force path from wheel to body: below r = √2 it is negligible next to the resonance, above r = √2 it is why every extra damper lets MORE road through. T = 1 exactly at r = √2 for any damping, so isolation is only possible past that crossover.',
+      'An earlier version of this game omitted that numerator, computing the dynamic magnification factor (the response to a force applied to the body) instead. Below resonance the two agree, so levels 1 to 3 were untouched, but above √2 the old formula said dampers always help, which is backwards for a road input. Levels 4 and 5 were retuned when the formula was corrected: level 4 now teaches taking dampers OFF at cruise, and level 5 trades cruise comfort against the resonant spike.',
       'One degree of freedom. The wheel, the tyre spring, and the wheel hop mode do not exist, so the model has one resonance where a real car has two.',
       'Linear spring and linear viscous damper, both constant. Steady-state harmonic response only: no transient, no time history, no single pothole.',
-      'With zero dampers ζ is exactly 0, so the response at r = 1 is infinite rather than merely large.',
+      'With zero dampers ζ is exactly 0, so the response at r = 1 is infinite rather than merely large, and the reported spike is clamped rather than infinite so the scorecard can save it as JSON.',
       'The road is one frequency, chosen per level. It is not a roughness spectrum.',
     ],
-    errs: 'Optimistic about dampers above resonance. Everywhere r > √2 the model says adding shock absorbers quietens the ride, and for base excitation the opposite is true. Below and near resonance, which is where levels 1 to 4 live, it is close enough that the lesson holds.',
+    errs: 'Optimistic about the run up to speed. The “worst spike” number assumes the van sweeps every road rhythm slowly enough to reach steady state at each, which overstates what a quick acceleration through resonance actually feels. And with one degree of freedom there is no wheel-hop mode, so the model misses the second resonance a real van would hit at higher frequency.',
     notModelled: [
       'The unsprung mass and the tyre. A quarter car has two degrees of freedom; this has one.',
       'Progressive springs and bump stops. Sag either fits inside 160 mm of travel or it does not.',
@@ -179,8 +179,9 @@ const MODELS: ModelNote[] = [
       'Pitch, roll, load transfer, anti-roll bars, and contact loss.',
       'Ride comfort weighting. ISO 2631 weights vibration by frequency because people are not equally sensitive across the band. This model treats all shake alike.',
     ],
-    evidence: 'None. No script under scripts/ covers this model, which is how the formula above went unnoticed.',
-    verified: false,
+    evidence:
+      'scripts/verify-ride.mjs. It checks the natural frequencies and damping ratios against hand arithmetic, the transmissibility against its closed forms at r = 0, 1 and √2, proves T ≥ 1 everywhere below the crossover and that damping monotonically hurts above it, re-derives every level’s winner set by grid enumeration, and keeps a regression check that fails if the old magnification-factor formula ever comes back. A source-agreement section re-reads the component so the mirror cannot drift.',
+    verified: true,
   },
   {
     id: 'reactor',
@@ -213,8 +214,9 @@ const MODELS: ModelNote[] = [
       'Decay heat. Scram the game and the heat stops, where a real core keeps making about 7% of full power the instant it shuts down.',
       'Thermal hydraulics. Coolant is a number that removes 11 units of heat per point, with no loop, no flow rate, no pressure, no boiling, and no heat exchanger.',
     ],
-    evidence: 'None. No script under scripts/ covers this model.',
-    verified: false,
+    evidence:
+      'scripts/verify-reactor.mjs. It transcribes the 300 ms tick line for line, checks it against the closed-form step response of a first-order lag, works the steady state from the energy balance by hand, derives the closed-loop ringing of an operator who corrects every tick from the eigenvalues of the loop matrix, and enumerates every rod and pump combination that can hold each level’s band. A source-agreement section re-reads the component so the transcription cannot drift.',
+    verified: true,
   },
   {
     id: 'titration',
@@ -246,8 +248,9 @@ const MODELS: ModelNote[] = [
       'Mixing kinetics and drop volume. A pour is instantaneous and perfectly mixed.',
       'Buffer capacity as a number. You feel it in the shape of the curve, but it is never computed or shown.',
     ],
-    evidence: 'None. No script under scripts/ covers this model.',
-    verified: false,
+    evidence:
+      'scripts/verify-dose.mjs. It checks that the pH equals the pKa exactly at half equivalence, matches ten hand-worked buffer points, survives the exact quadratic where Henderson-Hasselbalch is loosest, bounds the hardcoded 8.7 against the 8.85 hydrolysis value, proves the curve rises at every reachable pour, and confirms level by level where the 10 and 5 mL pours stop working, down to the exact three volumes that win level 5. A source-agreement section re-reads the component so the mirrored constants cannot drift.',
+    verified: true,
   },
 ]
 
@@ -351,7 +354,10 @@ function Label({ children }: { children: React.ReactNode }) {
  */
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rule grid gap-1.5 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
+    // grid-cols-1 matters on mobile: an implicit grid track is sized by
+    // max-content, so a wide whitespace-pre equation would stretch the page
+    // sideways instead of scrolling inside its own line.
+    <div className="rule grid grid-cols-1 gap-1.5 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
       <Label>{label}</Label>
       <div className="min-w-0 text-[15px] leading-relaxed text-ink-soft dark:text-stone-300">
         {children}
@@ -414,7 +420,7 @@ export function TechnicalNotesPage() {
       </p>
 
       <section className="mt-8">
-        <div className="rule grid gap-1.5 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
+        <div className="rule grid grid-cols-1 gap-1.5 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
           <Label>How to read it</Label>
           <div className="space-y-2 text-[15px] leading-relaxed text-ink-soft dark:text-stone-300">
             <p>
@@ -473,7 +479,8 @@ export function TechnicalNotesPage() {
             <span className="font-mono text-sm text-ink-soft dark:text-stone-500">{m.n}</span>
             <h2 className="font-display text-2xl font-bold tracking-tight">{m.title}</h2>
           </div>
-          <p className="mt-1.5 pl-0 font-mono text-[12.5px] text-ink-soft sm:pl-9 dark:text-stone-500">
+          {/* break-all: file paths are single unbreakable words on a phone */}
+          <p className="mt-1.5 break-all pl-0 font-mono text-[12.5px] text-ink-soft sm:pl-9 dark:text-stone-500">
             {m.source.join('  ·  ')}
           </p>
           <p className="mt-0.5 pl-0 text-[13px] text-ink-soft sm:pl-9 dark:text-stone-400">
@@ -525,7 +532,7 @@ export function TechnicalNotesPage() {
         {DISCRETE.map((d) => (
           <div key={d.id} id={d.id} className="mt-10 scroll-mt-24">
             <h3 className="font-display text-lg font-bold tracking-tight">{d.title}</h3>
-            <p className="mt-1 font-mono text-[12.5px] text-ink-soft dark:text-stone-500">
+            <p className="mt-1 break-all font-mono text-[12.5px] text-ink-soft dark:text-stone-500">
               {d.source}
             </p>
             <p className="mt-0.5 text-[13px] text-ink-soft dark:text-stone-400">{d.game}</p>
@@ -551,40 +558,49 @@ export function TechnicalNotesPage() {
         </div>
 
         <div className="mt-5">
-          <Block label="The one script">
+          <Block label="The six scripts">
             <p>
-              <code className="font-mono text-[13.5px]">scripts/verify-quake.mjs</code>, run with{' '}
-              <code className="font-mono text-[13.5px]">npm run verify:quake</code> or{' '}
-              <code className="font-mono text-[13.5px]">npm run verify</code>. Node strips the
-              types off <code className="font-mono text-[13.5px]">shear.ts</code> on import, so it
-              runs with no build step and no dependency.
+              Every continuous model on this page has a verification script under{' '}
+              <code className="font-mono text-[13.5px]">scripts/</code>:{' '}
+              <code className="font-mono text-[13.5px]">verify-truss</code>,{' '}
+              <code className="font-mono text-[13.5px]">verify-quake</code>,{' '}
+              <code className="font-mono text-[13.5px]">verify-ik</code>,{' '}
+              <code className="font-mono text-[13.5px]">verify-ride</code>,{' '}
+              <code className="font-mono text-[13.5px]">verify-reactor</code> and{' '}
+              <code className="font-mono text-[13.5px]">verify-dose</code>.{' '}
+              <code className="font-mono text-[13.5px]">npm run verify</code> runs all of them and
+              fails on any failure; the deploy workflow runs it on every push, so nothing ships on
+              a red check. Node strips the types off imported <code className="font-mono text-[13.5px]">.ts</code>{' '}
+              sources, so they run with no build step and no dependency.
             </p>
           </Block>
-          <Block label="What it checks">
+          <Block label="What a script has to do">
             <Bullets
               items={[
-                'The six modal periods of a uniform shear building against the closed form ω_r = 2√(k/m) sin((2r−1)π / (2(2N+1))), which comes from outside the code entirely. Worst relative error at the last run: 1.9e-15.',
-                'The peak amplitude of a single oscillator driven at its own frequency against the textbook value A / (2ζω²). Last run: 0.008% off.',
-                'That one design analysis costs under 1 ms, which is what lets the game re-run the whole earthquake on every drag. Last run: 0.909 ms.',
-                'Then every legal design for every level, enumerated: 256, 121, 2338, 4216 and 8024 layouts. It asserts what each level is tuned to teach, including that exactly 16 of level 3 layouts stand, that no fixed-base design passes level 4, and that no design in level 5 meets all three pars at once.',
+                'Check the model against numbers from OUTSIDE itself: hand-worked forces as exact fractions of the load, closed-form frequencies and step responses, textbook values at special points. Self-consistency proves nothing, so no script compares the code against a value the same code produced earlier.',
+                'Re-derive what every level is tuned to teach, usually by enumerating every legal design: verify-quake alone sweeps 256, 121, 2338, 4216 and 8024 layouts and asserts, for instance, that no fixed-base design passes level 4.',
+                'Pin the deliberate approximations at their current size, so a change that widens one fails the run instead of drifting silently.',
               ]}
             />
           </Block>
-          <Block label="What that script cannot tell you">
+          <Block label="What the scripts cannot tell you">
             <p>
-              The level table inside the script mirrors the one in{' '}
-              <code className="font-mono text-[13.5px]">QuakeChallenge.tsx</code> by hand. Change
-              one and not the other and the script will happily verify a game that no longer
-              exists. The script says so in its own header.
+              Five of the six games keep their model inside a React component, so each script
+              mirrors the constants and formulas by hand and re-reads the component text to prove
+              the mirror still matches. That source-agreement check catches drift, but it cannot
+              catch a bug that was mirrored faithfully: a wrong formula copied correctly verifies
+              correctly. The suspension model is the cautionary tale: its formula was wrong for
+              the physical setup until the day a script was written against the physics rather
+              than the code, which is when it failed and was fixed. Section 04 records both
+              halves of that story.
             </p>
           </Block>
-          <Block label="The gap">
+          <Block label="The remaining gap">
             <p>
-              Five of the six continuous models on this page have no automated check at all. The
-              truss solver, the inverse kinematics, the suspension model, the reactor lag and the
-              titration curve are backed by nothing but the code and this page. That is a gap, and
-              it is the reason the formula in section 04 sat unnoticed: no test would have caught
-              it, so nothing did.
+              The four discrete-optimization models in section 07 have no scripts, for the reason
+              given there: each is small enough to enumerate by hand, and the level comments in
+              each file record the enumeration that set its pars. Beyond these ten games, the other
+              twenty-six ship on their code and their in-file tuning comments alone.
             </p>
           </Block>
         </div>

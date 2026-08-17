@@ -133,7 +133,8 @@ function play(round, pilot, maxTicks = 400) {
 section('Transcription matches the component')
 {
   const here = dirname(fileURLToPath(import.meta.url))
-  const src = readFileSync(join(here, '..', 'src', 'challenges', 'nuclear', 'ReactorChallenge.tsx'), 'utf8')
+  // Normalized to LF so a Windows checkout (core.autocrlf) passes identically.
+  const src = readFileSync(join(here, '..', 'src', 'challenges', 'nuclear', 'ReactorChallenge.tsx'), 'utf8').replace(/\r\n/g, '\n')
   const num = (name) => {
     const m = src.match(new RegExp(`const ${name} = (-?[\\d.]+)`))
     return m ? Number(m[1]) : NaN

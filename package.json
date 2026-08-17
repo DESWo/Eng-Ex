@@ -8,8 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "s=0; for f in scripts/verify-*.mjs; do [ -f \"$f\" ] || { echo \"no scripts/verify-*.mjs found\" >&2; exit 1; }; echo \"--- $f\"; node \"$f\" || s=1; done; exit $s",
+    "verify": "node scripts/verify.mjs",
     "verify:quake": "node scripts/verify-quake.mjs"
+  },
+  "engines": {
+    "node": ">=22.18"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

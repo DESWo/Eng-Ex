@@ -80,8 +80,6 @@ export interface Discipline {
     paragraphs: string[]
     /** Chips shown under "Things they build". */
     builds: string[]
-    /** YouTube video id. Leave undefined to show the placeholder. */
-    videoId?: string
     /** Short mission text shown right before the challenge starts. */
     challengeTeaser: string
   }

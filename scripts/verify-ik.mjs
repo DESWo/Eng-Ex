@@ -31,7 +31,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'challenges', 'robotics', 'RobotArmChallenge.tsx')
-const src = readFileSync(SRC, 'utf8')
+// Normalized to LF so a Windows checkout (core.autocrlf) passes identically.
+const src = readFileSync(SRC, 'utf8').replace(/\r\n/g, '\n')
 
 let failures = 0
 function check(label, ok, detail = '') {

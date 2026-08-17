@@ -33,15 +33,46 @@ const G = 9.81
 /** Natural frequency of the body on its springs, in Hz. */
 const naturalHz = (k: number, m: number) => Math.sqrt(k / m) / (2 * Math.PI)
 
+const zetaOf = (k: number, m: number, dampers: number) =>
+  (DAMPER_C * dampers) / (2 * Math.sqrt(k * m))
+
 /**
- * How much of the road's shaking reaches the body. Near 1 the road passes
- * straight through; near resonance it is AMPLIFIED, which is what level 3
- * turns on. Classic single degree-of-freedom transmissibility.
+ * How much of the road's up-and-down reaches the body, as a ratio.
+ *
+ * A washboard road shakes the WHEELS, so this is base excitation and the right
+ * quantity is displacement transmissibility. The √(1 + (2ζr)²) numerator is the
+ * part that makes it base excitation rather than a force applied to the body,
+ * and it is what makes dampers a trade instead of a free win: they hold the
+ * resonant peak down, and above r = √2 they let MORE road through, not less.
+ *
+ * Two consequences the levels are built on:
+ *   - below r = √2 this is always ≥ 1, so isolation is only possible past it
+ *   - above r = √2 every extra damper raises the number
  */
-const ampAt = (k: number, m: number, dampers: number, roadHz: number) => {
+const transmissibilityAt = (k: number, m: number, dampers: number, roadHz: number) => {
   const r = roadHz / naturalHz(k, m)
-  const zeta = (DAMPER_C * dampers) / (2 * Math.sqrt(k * m))
-  return 1 / Math.sqrt((1 - r * r) ** 2 + (2 * zeta * r) ** 2)
+  const zeta = zetaOf(k, m, dampers)
+  return Math.sqrt(1 + (2 * zeta * r) ** 2) / Math.sqrt((1 - r * r) ** 2 + (2 * zeta * r) ** 2)
+}
+
+/**
+ * The height of the spike on the response curve: the worst the body ever sees
+ * as the van runs up through every road rhythm on its way to cruising speed.
+ * Peaks at r² = (√(1 + 8ζ²) − 1) / 4ζ², which is the exact stationary point of
+ * the expression above, so this agrees with the drawn curve by construction.
+ *
+ * With no dampers at all it is genuinely unbounded, so it is reported as
+ * PEAK_OFF_SCALE. That keeps the scorecard (and the JSON it saves to) finite;
+ * Infinity would round-trip through JSON.stringify as null and erase the best.
+ */
+const PEAK_OFF_SCALE = 9.99
+const peakTransmissibility = (k: number, m: number, dampers: number) => {
+  const zeta = zetaOf(k, m, dampers)
+  if (zeta <= 0) return PEAK_OFF_SCALE
+  const rSq = (Math.sqrt(1 + 8 * zeta * zeta) - 1) / (4 * zeta * zeta)
+  const twoZetaRSq = 4 * zeta * zeta * rSq
+  const peak = Math.sqrt(1 + twoZetaRSq) / Math.sqrt((1 - rSq) ** 2 + twoZetaRSq)
+  return Math.min(PEAK_OFF_SCALE, peak)
 }
 
 const sagOf = (k: number, m: number) => (m * G) / k
@@ -94,30 +125,35 @@ const LEVELS: ChallengeLevel<RideSetup>[] = [
     n: 4,
     title: 'Read the response',
     phase: 'analyze',
-    concept: 'The resonance curve',
-    teach: 'Turn on the curve. It shows how much shake reaches the body at EVERY road rhythm, and the spike is the resonance. Move the spring and watch the spike slide; add dampers and watch it flatten. The road’s rhythm is the marker.',
-    setup: { label: 'The corrugated track II', mass: 700, cargoNote: 'empty van', maxHarsh: null, roadHz: 1.55, maxAmp: 0.8, sagMatters: false, curve: true, brief: 'A different corrugation rhythm, with the full response curve on screen.' },
+    concept: 'Dampers cost you out here',
+    teach: 'Turn on the curve. It shows how much shake reaches the body at EVERY road rhythm. Adding dampers flattens the spike, but look to the RIGHT of it: past the crossover the damped curves sit ABOVE the bare one. You are out there now, so the dampers that saved you at resonance are the ones letting the road back in. Take them off.',
+    setup: { label: 'The corrugated track II', mass: 700, cargoNote: 'empty van', maxHarsh: null, roadHz: 1.7, maxAmp: 0.75, sagMatters: false, curve: true, brief: 'A faster corrugation rhythm, well past the soft spring’s resonance, with the full response curve on screen.' },
   },
   {
     n: 5,
     title: 'Sign off the suspension',
     phase: 'optimize',
     concept: 'Comfort, load, and parts',
-    teach: 'The production van must carry its load, smooth this road, and not carry shock absorbers it does not need. The comfy setup has thin load margin, the load-proof one needs every damper. Choose.',
-    setup: { label: 'The production spec', mass: 1200, cargoNote: '500 kg of cargo', maxHarsh: null, roadHz: 2.6, maxAmp: 0.9, sagMatters: true, curve: true, brief: 'One suspension for the whole fleet. Pick the compromise you can defend.' },
+    teach: 'The production van must carry its load, ride quietly at cruise, and survive the run up through resonance to get there. Dampers pull those last two apart: they tame the spike and they spoil the cruise. Pick the compromise you can defend.',
+    setup: { label: 'The production spec', mass: 1200, cargoNote: '500 kg of cargo', maxHarsh: null, roadHz: 3.0, maxAmp: 0.9, sagMatters: true, curve: true, brief: 'One suspension for the whole fleet. Pick the compromise you can defend.' },
     metrics: [
-      // Shake is scored in percent so the scorecard's integer tickers can
-      // show it (the old ratio id `amp` is retired; a stale saved best in
-      // ratio units would render as a rounded lie). Grid sim over every
-      // spring and damper count: only the firm spring (shake 41 to 45%,
-      // margin 42 mm, any dampers) and stiff with all three dampers (shake
-      // 85%, margin 86 mm) pass this road. These pars give each metric its
-      // own corner of that space: quietest needs two or more dampers,
-      // margin needs the stiff spring, cheap needs at most one damper. No
-      // setup collects more than one, so the sign-off is a real choice.
-      { id: 'shake', label: 'Body shake', goal: 'min', target: 44, unit: '%' },
-      { id: 'margin', label: 'Load margin', goal: 'max', target: 60, unit: ' mm' },
-      { id: 'dampers', label: 'Shock absorbers', goal: 'min', target: 1 },
+      // Everything is scored in percent so the scorecard's integer tickers can
+      // show it (the old ratio id `amp` is retired; a stale saved best in ratio
+      // units would render as a rounded lie).
+      //
+      // Grid sim over every spring and damper count on this road: the soft and
+      // medium springs bottom out under 500 kg, so the winners are firm (shake
+      // 31 to 44%, margin 42 mm) and stiff (shake 60 to 68%, margin 86 mm), at
+      // every damper count. The three pars sit in different corners of that
+      // space:
+      //   shake  32%  only firm with no dampers is quiet enough at cruise
+      //   margin 50mm only the stiff spring keeps that much travel in hand
+      //   peak  300%  needs two dampers on firm, or all three on stiff
+      // The best any single setup manages is two of three (stiff+3 takes margin
+      // and peak), so the sign-off is a real choice rather than one right answer.
+      { id: 'shake', label: 'Shake at cruise', goal: 'min', target: 32, unit: '%' },
+      { id: 'margin', label: 'Load margin', goal: 'max', target: 50, unit: ' mm' },
+      { id: 'peak', label: 'Worst spike', goal: 'min', target: 300, unit: '%' },
     ],
   },
 ]
@@ -157,9 +193,13 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
   const bottomsOut = round.sagMatters && sag > TRAVEL
   const harsh = harshnessOf(spring.k, round.mass)
   const tooHarsh = round.maxHarsh !== null && harsh > round.maxHarsh
-  const amp = round.roadHz !== null ? ampAt(spring.k, round.mass, dampers, round.roadHz) : 0
+  const amp = round.roadHz !== null ? transmissibilityAt(spring.k, round.mass, dampers, round.roadHz) : 0
   const shaken = round.roadHz !== null && amp > round.maxAmp
   const marginMm = Math.max(0, (TRAVEL - sag) * 1000)
+  const peak = peakTransmissibility(spring.k, round.mass, dampers)
+  const fnHz = naturalHz(spring.k, round.mass)
+  // Past r = √2 the spring is isolating and every extra damper costs you.
+  const isolating = round.roadHz !== null && round.roadHz / fnHz > Math.SQRT2
   const passes = !bottomsOut && !tooHarsh && !shaken
 
   /**
@@ -181,7 +221,9 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
     timerRef.current = setTimeout(() => {
       if (passes) {
         setPhase('passed')
-        lv.clearLevel(lv.level.metrics ? { shake: amp * 100, margin: marginMm, dampers } : undefined)
+        lv.clearLevel(
+          lv.level.metrics ? { shake: amp * 100, margin: marginMm, peak: peak * 100 } : undefined,
+        )
         if (!completedRef.current) {
           completedRef.current = true
           onComplete()
@@ -225,14 +267,13 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
   // Body bounce for the animation: harshness or resonance, whichever applies.
   const bounce = round.roadHz !== null ? Math.min(26, amp * 12) : Math.min(26, harsh * 1.4)
   const squat = round.sagMatters ? Math.min(30, sag * 120) : 0
-  const fnHz = naturalHz(spring.k, round.mass)
 
   /* Response curve for level 4 */
   const curvePts: string[] = []
   if (round.curve) {
     for (let i = 0; i <= 80; i++) {
       const f = 0.4 + (i / 80) * 3.6
-      const a = Math.min(4, ampAt(spring.k, round.mass, dampers, f))
+      const a = Math.min(4, transmissibilityAt(spring.k, round.mass, dampers, f))
       curvePts.push(`${60 + (i / 80) * 680},${300 - (a / 4) * 130}`)
     }
   }
@@ -407,7 +448,9 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
                 ? `The cargo squashed the ${spring.label.toLowerCase()} spring through ${(sag * 100).toFixed(0)} cm of its ${TRAVEL * 100} cm travel. Metal on metal.`
                 : tooHarsh
                   ? 'Every pothole came straight through the floor. That spring barely moves.'
-                  : `The bumps hit at ${round.roadHz?.toFixed(1)}/s and this setup bounces at ${fnHz.toFixed(2)}/s. They fed each other until the van shook ${amp > 4 ? 'violently' : `at ${amp.toFixed(2)}`}. ${springId !== 'soft' ? 'Softer detunes it.' : 'Add damping.'}`
+                  : isolating && dampers > 0
+                    ? `This spring already outruns the ${round.roadHz?.toFixed(1)}/s road, but ${dampers} damper${dampers === 1 ? '' : 's'} carried ${amp.toFixed(2)} of it into the body anyway. Past the spike a damper is a road wire. Take some off.`
+                    : `The bumps hit at ${round.roadHz?.toFixed(1)}/s and this setup bounces at ${fnHz.toFixed(2)}/s. They fed each other until the van shook ${amp > 4 ? 'violently' : `at ${amp.toFixed(2)}`}. Softer detunes it.`
               : 'Set up the suspension, then take the test drive.'}
         </p>
       </div>
@@ -478,7 +521,8 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
             ))}
           </div>
           <p className="mt-2 text-xs text-ink-soft dark:text-stone-400">
-            Dampers turn bounce into heat. They cannot move the resonance, only blunt it.
+            Dampers turn bounce into heat. They cannot move the resonance, only blunt it, and past
+            the spike they let more road through rather than less.
           </p>
         </div>
       </div>
@@ -499,7 +543,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
         <div className="mt-4">
           <Scorecard
             metrics={lv.level.metrics}
-            values={{ shake: amp * 100, margin: marginMm, dampers }}
+            values={{ shake: amp * 100, margin: marginMm, peak: peak * 100 }}
             best={lv.best}
             scored={phase === 'passed'}
           />
@@ -511,7 +555,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Shake ${(amp * 100).toFixed(0)}% with ${marginMm.toFixed(0)} mm in hand on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
+              ? `Shake ${(amp * 100).toFixed(0)}% at cruise, ${marginMm.toFixed(0)} mm in hand, and a spike of ${peak >= PEAK_OFF_SCALE ? 'off the scale' : `${(peak * 100).toFixed(0)}%`} on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
               : 'That van rides beautifully.'
           }
           onReplay={reset}

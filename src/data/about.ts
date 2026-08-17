@@ -27,7 +27,7 @@ export const aboutGoal = {
   pillars: [
     { label: 'Play first', text: 'Every field opens with the games. The explanation comes afterwards.' },
     { label: 'Real models', text: 'The bridge solves a truss. The arm solves inverse kinematics.' },
-    { label: 'Twelve fields', text: 'Three are open from the start. Nine more unlock after those.' },
+    { label: 'Twelve fields', text: 'Three wide ones to start with, nine narrower ones branching off them. All open from the first visit.' },
   ] as { label: string; text: string }[],
 }
 

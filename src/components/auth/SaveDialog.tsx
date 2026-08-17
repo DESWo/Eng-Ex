@@ -141,7 +141,7 @@ export function SaveDialog({ open, onClose }: { open: boolean; onClose: () => vo
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft dark:text-stone-400">
                   {profile
-                    ? `Everything ${profile.email} has done, as one file or one line of text.`
+                    ? `Everything ${profile.name} has done, as one file or one line of text.`
                     : 'Everything saved on this browser, as one file or one line of text.'}
                 </p>
               </div>
@@ -183,7 +183,7 @@ export function SaveDialog({ open, onClose }: { open: boolean; onClose: () => vo
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-900 dark:text-amber-200" />
                   <div>
                     <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                      {mismatchQuestion(pending, profile?.email ?? null)}
+                      {mismatchQuestion(pending, profile?.name ?? null)}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-200/80">
                       The progress that is here now is replaced, and there is no undo. Download a

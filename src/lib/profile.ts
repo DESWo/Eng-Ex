@@ -27,12 +27,6 @@ export interface Profile {
   scope: string
   /** ISO date the profile was first created on this browser. */
   since: string
-  /**
-   * @deprecated Equals `key`. Compat shim so files outside this change still
-   * compile: saveFile.ts, SaveDialog.tsx, TeacherPage.tsx, App.tsx. Point them
-   * at `name` (display) or `key` (identity) and delete this.
-   */
-  email: string
 }
 
 const KEY = 'profile'
@@ -48,12 +42,6 @@ export const cleanProfileName = (value: string) => value.replace(/\s+/g, ' ').tr
 
 /** Identity form: two students typing the same name land on the same work. */
 export const normalizeProfileName = (value: string) => cleanProfileName(value).toLowerCase()
-
-/**
- * @deprecated Old name for normalizeProfileName, still imported by saveFile.ts.
- * Emails hold no internal whitespace, so legacy save files compare identically.
- */
-export const normalizeEmail = normalizeProfileName
 
 export type NameProblem = 'empty' | 'long' | null
 
@@ -141,7 +129,7 @@ export function loadProfile(): Profile | null {
   // which scopeForName resolves back to whichever scope actually holds work.
   const scope = str(raw.scope) ?? (looksLikeEmail(key) ? legacyScope(key) : scopeForName(key))
 
-  return { name, key, scope, since: str(raw.since) ?? today(), email: key }
+  return { name, key, scope, since: str(raw.since) ?? today() }
 }
 
 /**
@@ -169,7 +157,7 @@ export function switchProfile(rawName: string): Profile {
   const scope = scopeForName(name)
   // A first-time profile inherits whatever was played as a guest.
   moveGuestDataInto(scope, CARRIED_KEYS)
-  const profile: Profile = { name, key, scope, since: today(), email: key }
+  const profile: Profile = { name, key, scope, since: today() }
   saveGlobalJson(KEY, profile)
   setStorageScope(scope)
   // typing the name is itself the confirmation, so don't ask again below

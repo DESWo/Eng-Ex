@@ -75,9 +75,9 @@ function Shell() {
       <ScrollProgress />
       <Navbar />
       <main id="main" className="flex-1">
-        {/* keyed on the account so signing in or out remounts and every hook re-reads */}
+        {/* keyed on the storage scope so switching profiles remounts and every hook re-reads */}
         <Suspense fallback={null}>
-          <Routes key={profile?.email ?? 'guest'}>
+          <Routes key={profile?.scope ?? 'guest'}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/explore/:slug" element={<DisciplinePage />} />
             <Route path="/explore/:slug/:challengeId" element={<ChallengePage />} />

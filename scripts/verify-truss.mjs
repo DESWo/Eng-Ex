@@ -605,7 +605,8 @@ section('Both banks are pinned, so the span is a tied arch')
 
 section('Mirrored constants, re-read from BridgeChallenge.tsx')
 {
-  const src = readFileSync(new URL('../src/challenges/civil/BridgeChallenge.tsx', import.meta.url), 'utf8')
+  // Normalized to LF so a Windows checkout (core.autocrlf) passes identically.
+  const src = readFileSync(new URL('../src/challenges/civil/BridgeChallenge.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
   const mirrors = (label, re) => check(label, re.test(src), String(re))
   mirrors(
     'the sheet geometry',

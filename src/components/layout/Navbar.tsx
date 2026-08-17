@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { SoundToggle } from '@/components/ui/SoundToggle'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
-import { ProfileDialog } from '@/components/auth/SignInDialog'
+import { ProfileDialog } from '@/components/auth/ProfileDialog'
 import { SaveDialog } from '@/components/auth/SaveDialog'
 import { useProfile } from '@/hooks/useProfile'
 import { confirmSession, isSessionConfirmed } from '@/lib/profile'
