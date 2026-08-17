@@ -165,7 +165,7 @@ const MODELS: ModelNote[] = [
     ],
     assumptions: [
       'The numerator matters, and levels 4 and 5 are built on it. √(1 + (2ζr)²) is the damper’s own force path from wheel to body: below r = √2 it is negligible next to the resonance, above r = √2 it is why every extra damper lets MORE road through. T = 1 exactly at r = √2 for any damping, so isolation is only possible past that crossover.',
-      'An earlier version of this game omitted that numerator, computing the dynamic magnification factor (the response to a force applied to the body) instead. Below resonance the two agree, so levels 1 to 3 were untouched, but above √2 the old formula said dampers always help, which is backwards for a road input. Levels 4 and 5 were retuned when the formula was corrected: level 4 now teaches taking dampers OFF at cruise, and level 5 trades cruise comfort against the resonant spike.',
+      'An earlier version of this game omitted that numerator, computing the dynamic magnification factor (the response to a force applied to the body) instead. Above √2 the old formula said dampers always help, which is backwards for a road input. Correcting it left levels 1 and 2 alone (no road frequency there) and kept level 3’s lesson intact — detune the spring, with soft winning at any damper count — though its winner set narrowed: a heavily damped medium spring that used to scrape past now correctly fails, because the missing numerator was the very term that made it fail. Levels 4 and 5 were retuned outright: level 4 now teaches taking dampers OFF at cruise, and level 5 trades cruise comfort against the resonant spike.',
       'One degree of freedom. The wheel, the tyre spring, and the wheel hop mode do not exist, so the model has one resonance where a real car has two.',
       'Linear spring and linear viscous damper, both constant. Steady-state harmonic response only: no transient, no time history, no single pothole.',
       'With zero dampers ζ is exactly 0, so the response at r = 1 is infinite rather than merely large, and the reported spike is clamped rather than infinite so the scorecard can save it as JSON.',
@@ -525,8 +525,9 @@ export function TechnicalNotesPage() {
         </p>
         <p className="mt-3 text-[15px] leading-relaxed text-ink-soft dark:text-stone-300">
           None of the four has a verification script, and none needs one in the way the continuous
-          models do. Each is small enough to enumerate by hand, and the level comments in each file
-          record the enumeration that set its pars.
+          models do. Each is small enough to enumerate by hand. Warehouse Layout and Critical Path
+          record that enumeration in their level comments; Mission Budget and Quality Gate ship
+          their pars uncommented.
         </p>
 
         {DISCRETE.map((d) => (
@@ -585,22 +586,26 @@ export function TechnicalNotesPage() {
           </Block>
           <Block label="What the scripts cannot tell you">
             <p>
-              Five of the six games keep their model inside a React component, so each script
-              mirrors the constants and formulas by hand and re-reads the component text to prove
-              the mirror still matches. That source-agreement check catches drift, but it cannot
-              catch a bug that was mirrored faithfully: a wrong formula copied correctly verifies
-              correctly. The suspension model is the cautionary tale: its formula was wrong for
-              the physical setup until the day a script was written against the physics rather
-              than the code, which is when it failed and was fixed. Section 04 records both
-              halves of that story.
+              The truss and quake models live in plain .ts modules, so their scripts import and
+              run the real code. The other four games keep their model inside a React component,
+              so those scripts mirror the constants and formulas by hand and re-read the component
+              text to prove the mirror still matches — except the quake script’s level table,
+              which is mirrored on trust with only a comment holding the two together. A
+              source-agreement check catches drift, but it cannot catch a bug that was mirrored
+              faithfully: a wrong formula copied correctly verifies correctly. The suspension
+              model is the cautionary tale: its formula was wrong for the physical setup until
+              the day a script was written against the physics rather than the code, which is
+              when it failed and was fixed. Section 04 records both halves of that story.
             </p>
           </Block>
           <Block label="The remaining gap">
             <p>
               The four discrete-optimization models in section 07 have no scripts, for the reason
-              given there: each is small enough to enumerate by hand, and the level comments in
-              each file record the enumeration that set its pars. Beyond these ten games, the other
-              twenty-six ship on their code and their in-file tuning comments alone.
+              given there: each is small enough to enumerate by hand. Warehouse Layout and
+              Critical Path record that enumeration in their level comments; Mission Budget and
+              Quality Gate ship their pars uncommented, which is a smaller version of the same
+              gap. Beyond these ten games, the other twenty-six ship on their code and their
+              in-file tuning comments alone.
             </p>
           </Block>
         </div>

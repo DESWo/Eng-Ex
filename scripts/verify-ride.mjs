@@ -28,7 +28,7 @@
  * History: this game used to compute the magnification factor
  * 1/sqrt((1-r^2)^2 + (2 zeta r)^2), which is the response to a force applied to
  * the body, not to a road shaking the wheels. Levels 4 and 5 were retuned when
- * that was corrected; see section 5.
+ * that was corrected; see section 4.
  */
 
 import { readFileSync } from 'node:fs'
@@ -426,7 +426,11 @@ section('Regression: the magnification factor does not come back')
   const nowT = [0, 1, 2, 3].map((d) => transmissibilityAt(k, m, d, road))
   const oldM = [0, 1, 2, 3].map((d) => magnification(k, m, d, road))
   check('the two functions still disagree on level 4, in opposite directions', nowT[3] > nowT[0] && oldM[3] < oldM[0], `T rises ${nowT[0].toFixed(3)} -> ${nowT[3].toFixed(3)} with dampers; the old M fell ${oldM[0].toFixed(3)} -> ${oldM[3].toFixed(3)}`)
-  check('under the OLD formula level 4 would teach the opposite lesson', oldM[1] <= LEVELS[3].maxAmp && !evaluate(LEVELS[3], 'soft', 1).shaken === false || true, `the old model passed soft+1 at ${oldM[1].toFixed(3)} while adding dampers; the level now requires taking them off`)
+  // The old formula passed a damped setup AND rewarded stacking more dampers
+  // on it, while the true physics punishes every one added out here. Both
+  // halves are falsifiable: revert the numerator and nowT stops rising;
+  // loosen the level and oldM[1] stops passing.
+  check('under the OLD formula level 4 would teach the opposite lesson', oldM[1] <= LEVELS[3].maxAmp && oldM[3] < oldM[1] && nowT[1] > nowT[0], `the old model passed soft+1 at ${oldM[1].toFixed(3)} and said 3 dampers were even quieter (${oldM[3].toFixed(3)}); the truth is each damper adds shake (T ${nowT[0].toFixed(3)} -> ${nowT[1].toFixed(3)}), so the level now requires taking them off`)
   // Undamped, the two are identical, so any check that passes at zeta = 0
   // proves nothing about which formula is in place.
   check('with no dampers the two are identical, so zeta = 0 proves nothing', Math.abs(nowT[0] - oldM[0]) < 1e-12, `both read ${nowT[0].toFixed(6)}; only a damped setup can tell them apart`)

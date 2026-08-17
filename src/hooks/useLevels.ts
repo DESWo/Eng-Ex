@@ -145,7 +145,15 @@ export function useLevels<S>(challengeId: string, levels: ChallengeLevel<S>[]): 
 
         if (!scores) return { ...entry, cleared: nextCleared, stars }
 
-        const best = { ...(entry.best ?? {}) }
+        // Keep only bests for metrics this level still scores. Retuning has
+        // renamed metrics before (amp -> shake, dampers -> peak), and a stale
+        // id kept forever would surface on the teacher report as a best for a
+        // measurement the game no longer makes.
+        const current = new Set((level.metrics ?? []).map((m) => m.id))
+        const best: Record<string, number> = {}
+        for (const [id, value] of Object.entries(entry.best ?? {})) {
+          if (current.has(id)) best[id] = value
+        }
         for (const metric of level.metrics ?? []) {
           const value = scores[metric.id]
           if (value === undefined) continue
