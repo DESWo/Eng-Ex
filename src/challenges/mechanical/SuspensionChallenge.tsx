@@ -555,7 +555,7 @@ export function SuspensionChallenge({ onComplete }: ChallengeProps) {
           lv={lv}
           message={
             lv.level.metrics
-              ? `Shake ${(amp * 100).toFixed(0)}% at cruise, ${marginMm.toFixed(0)} mm in hand, and a spike of ${peak >= PEAK_OFF_SCALE ? 'off the scale' : `${(peak * 100).toFixed(0)}%`} on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
+              ? `Shake ${(amp * 100).toFixed(0)}% at cruise, ${marginMm.toFixed(0)} mm in hand, and ${peak >= PEAK_OFF_SCALE ? 'a spike off the scale' : `a spike of ${(peak * 100).toFixed(0)}%`} on ${dampers} damper${dampers === 1 ? '' : 's'}. Defend a different compromise.`
               : 'That van rides beautifully.'
           }
           onReplay={reset}
