@@ -4,11 +4,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
-  // On GitHub Pages the site is served from https://deswo.github.io/Eng-Ex/, and
-  // Pages paths are CASE-SENSITIVE, so this must match the repo name exactly ('Eng-Ex').
-  // Local dev stays at root. (Custom domain or repo rename? change this to '/' or '/<new-name>/'.)
-  base: mode === 'production' ? '/Eng-Ex/' : '/',
+export default defineConfig(() => ({
+  // Served from the custom domain https://engex.wongdesmond.com/ (see public/CNAME),
+  // so the app sits at the host root in production exactly as it does in dev.
+  // This was '/Eng-Ex/' back when Pages served it from the repo subpath.
+  base: '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

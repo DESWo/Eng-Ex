@@ -43,7 +43,7 @@ jobs:
       - run: npm run verify
 
       # GitHub Pages has no SPA fallback, so serve the app for unknown paths
-      # (e.g. /Eng-Ex/explore/nuclear) by copying index.html to 404.html.
+      # (e.g. /explore/nuclear) by copying index.html to 404.html.
       - run: cp dist/index.html dist/404.html
 
       - uses: actions/configure-pages@v5

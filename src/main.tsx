@@ -9,9 +9,9 @@ import { applyStoredScope } from '@/lib/profile'
 // hooks' initial state reads from the wrong (or no) account.
 applyStoredScope()
 
-// basename keeps routes working under the GitHub Pages subpath (/Eng-Ex/, and
-// the case matters there) and stays '/' in local dev. Vite fills BASE_URL from
-// the `base` in vite.config.ts.
+// basename tracks whatever `base` vite.config.ts sets: '/' now that the app has
+// its own domain, and the Pages subpath before that. Vite fills BASE_URL from
+// that value, so this line needs no edit if the host ever moves again.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>

@@ -5,7 +5,7 @@ small simulations, five levels deep, plus a short intro, a few reflection
 questions, and a project you can build at home. Everything runs client side and
 saves to localStorage. There is no server and no account.
 
-Live: https://deswo.github.io/Eng-Ex/
+Live: https://engex.wongdesmond.com/
 
 ## The interesting parts
 
